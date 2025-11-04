@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <strong>Agentscope ReMe (formerly MemoryScope): Memory Management Kit for Agents</strong><br>
+  <strong>Agentscope ReMe: Memory Management Kit for Agents</strong><br>
   <em>Remember Me, Refine Me.</em>
 </p>
 

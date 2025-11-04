@@ -127,10 +127,10 @@ response = requests.post("http://localhost:8002/retrieve_task_memory", json={
 ## Citation
 
 ```bibtex
-@software{ReMe2025,
-  title = {ReMe: Memory Management Kit for Agents},
+@software{AgentscopeReMe2025,
+  title = {AgentscopeReMe: Memory Management Kit for Agents},
   author = {Li Yu, Jiaji Deng, Zouying Cao},
-  url = {https://github.com/agentscope-ai/ReMe},
+  url = {https://reme.agentscope.io},
   year = {2025}
 }
 ```

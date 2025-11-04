@@ -10,11 +10,12 @@
 </p>
 
 <p align="center">
-  <strong>ReMe (formerly MemoryScope): Memory Management Kit for Agents</strong><br>
+  <strong>Agentscope ReMe (formerly MemoryScope): Memory Management Kit for Agents</strong><br>
   <em>Remember Me, Refine Me.</em>
 </p>
 
 ---
+
 ReMe provides AI agents with a unified memory system—enabling the ability to extract, reuse, and share memories across
 users, tasks, and agents.
 
@@ -23,6 +24,7 @@ Personal Memory + Task Memory + Tool Memory = Agent Memory
 ```
 
 Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**".
+
 ---
 
 ## ✨ Architecture Design

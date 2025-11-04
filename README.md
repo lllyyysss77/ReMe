@@ -23,28 +23,6 @@ Personal Memory + Task Memory + Tool Memory = Agent Memory
 ```
 
 Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**".
-
----
-
-## 📰 Latest Updates
-
-- **[2025-10]** 🚀 ReMe v0.1.10 released! Core enhancement: direct Python import support. You can now use ReMe without starting an HTTP or MCP service - simply `from reme_ai import ReMeApp` and call methods directly in your Python code.
-- **[2025-10]** 🔧 Tool Memory support is now available! Enables data-driven tool selection and parameter optimization through historical performance tracking. Check out the [Tool Memory Guide](docs/tool_memory/tool_memory.md) and [benchmark results](docs/tool_memory/tool_bench.md).
-- **[2025-09]** 🎉 ReMe v0.1.9 has been officially released, adding support for asynchronous operations. It has also been
-  integrated into the memory service of agentscope-runtime.
-- **[2025-09]** 🎉 ReMe v0.1 officially released, integrating task memory and personal memory. If you want to use the
-  original memoryscope project, you can find it
-  in [MemoryScope](https://github.com/modelscope/Reme/tree/memoryscope_branch).
-- **[2025-09]** 🧪 We validated the effectiveness of task memory extraction and reuse in agents in appworld, bfcl(v3),
-  and frozenlake environments. For more information,
-  check [appworld exp](docs/cookbook/appworld/quickstart.md), [bfcl exp](docs/cookbook/bfcl/quickstart.md),
-  and [frozenlake exp](docs/cookbook/frozenlake/quickstart.md).
-- **[2025-08]** 🚀 MCP protocol support is now available -> [MCP Quick Start](docs/mcp_quick_start.md).
-- **[2025-06]** 🚀 Multiple backend vector storage support (Elasticsearch &
-  ChromaDB) -> [Vector DB quick start](docs/vector_store_api_guide.md).
-- **[2024-09]** 🧠 [MemoryScope](https://github.com/modelscope/Reme/tree/memoryscope_branch) v0.1 released,
-  personalized and time-aware memory storage and usage.
-
 ---
 
 ## ✨ Architecture Design
@@ -87,6 +65,27 @@ Data-driven tool selection and usage optimization
 - **Dynamic Guidelines**: Transform static tool descriptions into living, learned manuals
 
 Learn more about how to use tool memory from [tool memory](docs/tool_memory/tool_memory.md)
+
+---
+
+## 📰 Latest Updates
+
+- **[2025-10]** 🚀 ReMe v0.1.10 released! Core enhancement: direct Python import support. You can now use ReMe without starting an HTTP or MCP service - simply `from reme_ai import ReMeApp` and call methods directly in your Python code.
+- **[2025-10]** 🔧 Tool Memory support is now available! Enables data-driven tool selection and parameter optimization through historical performance tracking. Check out the [Tool Memory Guide](docs/tool_memory/tool_memory.md) and [benchmark results](docs/tool_memory/tool_bench.md).
+- **[2025-09]** 🎉 ReMe v0.1.9 has been officially released, adding support for asynchronous operations. It has also been
+  integrated into the memory service of agentscope-runtime.
+- **[2025-09]** 🎉 ReMe v0.1 officially released, integrating task memory and personal memory. If you want to use the
+  original memoryscope project, you can find it
+  in [MemoryScope](https://github.com/modelscope/Reme/tree/memoryscope_branch).
+- **[2025-09]** 🧪 We validated the effectiveness of task memory extraction and reuse in agents in appworld, bfcl(v3),
+  and frozenlake environments. For more information,
+  check [appworld exp](docs/cookbook/appworld/quickstart.md), [bfcl exp](docs/cookbook/bfcl/quickstart.md),
+  and [frozenlake exp](docs/cookbook/frozenlake/quickstart.md).
+- **[2025-08]** 🚀 MCP protocol support is now available -> [MCP Quick Start](docs/mcp_quick_start.md).
+- **[2025-06]** 🚀 Multiple backend vector storage support (Elasticsearch &
+  ChromaDB) -> [Vector DB quick start](docs/vector_store_api_guide.md).
+- **[2024-09]** 🧠 [MemoryScope](https://github.com/modelscope/Reme/tree/memoryscope_branch) v0.1 released,
+  personalized and time-aware memory storage and usage.
 
 ---
 

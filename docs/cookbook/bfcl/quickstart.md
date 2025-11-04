@@ -51,7 +51,7 @@ python run_bfcl.py
 
 ### 3. Start ReMe Service and Init the task memory pool
 
-After collecting trajectories, Launch the ReMe service (make sure you have installed ReMe environment, if not please follow the steps in the [ReMe Installation Guide](https://github.com/modelscope/ReMe/blob/main/doc/README.md) to install):
+After collecting trajectories, Launch the ReMe service (make sure you have installed ReMe environment, if not please follow the steps in the [ReMe Installation Guide](https://github.com/agentscope-ai/ReMe/blob/main/doc/README.md) to install):
 
 ```bash
 reme \

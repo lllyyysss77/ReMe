@@ -42,7 +42,7 @@ pip install reme-ai
 ### Option 2: Install from Source
 
 ```bash
-git clone https://github.com/modelscope/ReMe.git
+git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe
 pip install .
 ```

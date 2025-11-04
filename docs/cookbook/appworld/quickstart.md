@@ -8,7 +8,7 @@ This guide helps you quickly set up and run AppWorld experiments with ReMe integ
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/modelscope/ReMe.git
+git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe/cookbook/appworld
 ```
 

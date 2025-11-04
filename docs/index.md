@@ -19,7 +19,7 @@ kernelspec:
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.12+-blue" alt="Python Version"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/pypi-v0.1.10.7-blue?logo=pypi" alt="PyPI Version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="License"></a>
-  <a href="https://github.com/modelscope/ReMe"><img src="https://img.shields.io/github/stars/modelscope/ReMe?style=social" alt="GitHub Stars"></a>
+  <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/modelscope/ReMe?style=social" alt="GitHub Stars"></a>
 </div>
 
 ---
@@ -130,7 +130,7 @@ response = requests.post("http://localhost:8002/retrieve_task_memory", json={
 @software{ReMe2025,
   title = {ReMe: Memory Management Kit for Agents},
   author = {Li Yu, Jiaji Deng, Zouying Cao},
-  url = {https://github.com/modelscope/ReMe},
+  url = {https://github.com/agentscope-ai/ReMe},
   year = {2025}
 }
 ```

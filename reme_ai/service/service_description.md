@@ -12,7 +12,7 @@
       <td align="center">ReMe.PersonalMemoryService</td>
       <td><code>from reme_ai.service.personal_memory_service import PersonalMemoryService</code></td>
       <td>ReMe's personalized memory service (formerly MemoryScope) empowers you to generate, retrieve, and share customized memories. Leveraging advanced LLM, embedding, and vector store technologies, it builds a comprehensive memory system with intelligent, context- and time-aware memory management—seamlessly enabling you to configure and deploy powerful AI agents.</td>
-      <td align="center">https://github.com/modelscope/ReMe Need to configure environment variables: <code>FLOW_EMBEDDING_API_KEY</code>, <code>FLOW_EMBEDDING_BASE_URL</code>, <code>FLOW_LLM_API_KEY</code> and <code>FLOW_LLM_BASE_URL</code></td>
+      <td align="center">https://github.com/agentscope-ai/ReMe Need to configure environment variables: <code>FLOW_EMBEDDING_API_KEY</code>, <code>FLOW_EMBEDDING_BASE_URL</code>, <code>FLOW_LLM_API_KEY</code> and <code>FLOW_LLM_BASE_URL</code></td>
     </tr>
     <tr>
       <td align="center">ReMe.TaskMemoryService</td>

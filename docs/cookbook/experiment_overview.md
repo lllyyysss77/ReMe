@@ -53,4 +53,4 @@ We evaluated Tool Memory effectiveness using a controlled benchmark with three m
 - Tool Memory enables data-driven tool selection based on historical performance
 - Success rates improved by ~15% with learned parameter configurations
 
-You can find more details in [tool_bench.md](../tool_memory/tool_bench.md) and the implementation at [run_reme_tool_bench.py](https://github.com/modelscope/ReMe/tree/main/cookbook/tool_memory/run_reme_tool_bench.py).
+You can find more details in [tool_bench.md](../tool_memory/tool_bench.md) and the implementation at [run_reme_tool_bench.py](https://github.com/agentscope-ai/ReMe/tree/main/cookbook/tool_memory/run_reme_tool_bench.py).

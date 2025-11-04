@@ -22,7 +22,7 @@ This guide helps you quickly set up and run FrozenLake experiments with ReMe int
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/modelscope/ReMe.git
+git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe/cookbook/frozenlake
 ```
 

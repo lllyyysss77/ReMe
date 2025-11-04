@@ -6,7 +6,7 @@
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.12+-blue" alt="Python Version"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/pypi-v0.1.10.x-blue?logo=pypi" alt="PyPI Version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="License"></a>
-  <a href="https://github.com/modelscope/ReMe"><img src="https://img.shields.io/github/stars/modelscope/ReMe?style=social" alt="GitHub Stars"></a>
+  <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/modelscope/ReMe?style=social" alt="GitHub Stars"></a>
 </p>
 
 <p align="center">
@@ -78,7 +78,7 @@ Learn more about how to use tool memory from [tool memory](docs/tool_memory/tool
   integrated into the memory service of agentscope-runtime.
 - **[2025-09]** 🎉 ReMe v0.1 officially released, integrating task memory and personal memory. If you want to use the
   original memoryscope project, you can find it
-  in [MemoryScope](https://github.com/modelscope/Reme/tree/memoryscope_branch).
+  in [MemoryScope](https://github.com/agentscope-ai/ReMe/tree/memoryscope_branch).
 - **[2025-09]** 🧪 We validated the effectiveness of task memory extraction and reuse in agents in appworld, bfcl(v3),
   and frozenlake environments. For more information,
   check [appworld exp](docs/cookbook/appworld/quickstart.md), [bfcl exp](docs/cookbook/bfcl/quickstart.md),
@@ -86,7 +86,7 @@ Learn more about how to use tool memory from [tool memory](docs/tool_memory/tool
 - **[2025-08]** 🚀 MCP protocol support is now available -> [MCP Quick Start](docs/mcp_quick_start.md).
 - **[2025-06]** 🚀 Multiple backend vector storage support (Elasticsearch &
   ChromaDB) -> [Vector DB quick start](docs/vector_store_api_guide.md).
-- **[2024-09]** 🧠 [MemoryScope](https://github.com/modelscope/Reme/tree/memoryscope_branch) v0.1 released,
+- **[2024-09]** 🧠 [MemoryScope](https://github.com/agentscope-ai/ReMe/tree/memoryscope_branch) v0.1 released,
   personalized and time-aware memory storage and usage.
 
 ---
@@ -102,7 +102,7 @@ pip install reme-ai
 ### Install from Source
 
 ```bash
-git clone https://github.com/modelscope/ReMe.git
+git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe
 pip install .
 ```
@@ -757,10 +757,10 @@ We believe the best memory systems come from collective wisdom. Contributions we
 ## 📄 Citation
 
 ```bibtex
-@software{ReMe2025,
-  title = {ReMe: Memory Management Kit for Agents},
+@software{AgentscopeReMe2025,
+  title = {AgentscopeReMe: Memory Management Kit for Agents},
   author = {Li Yu, Jiaji Deng, Zouying Cao},
-  url = {https://github.com/modelscope/ReMe},
+  url = {https://reme.agentscope.io},
   year = {2025}
 }
 ```

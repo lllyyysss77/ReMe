@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reme_ai"
-version = "0.1.10.8"
+version = "0.2.0.0"
 description = "Remember me"
 authors = [
     { name = "jinli.yl", email = "jinli.yl@alibaba-inc.com" },
@@ -13,7 +13,7 @@ authors = [
 ]
 license = { file = "LICENSE" }
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -24,7 +24,7 @@ classifiers = [
 keywords = ["llm", "memory", "experience", "memoryscope", "ai", "mcp", "http"]
 
 dependencies = [
-    "flowllm[reme]>=0.1.11.6",
+    "flowllm[reme]>=0.2.0.0",
 ]
 
 [project.optional-dependencies]

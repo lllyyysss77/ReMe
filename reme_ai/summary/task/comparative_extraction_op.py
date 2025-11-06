@@ -188,10 +188,10 @@ class ComparativeExtractionOp(BaseAsyncOp):
             failure_texts = [merge_messages_content(seq) for seq in failure_step_sequences]
 
             # Get embedding vectors
-            if hasattr(self.context, 'vector_store') and self.context.vector_store and hasattr(
-                    self.context.vector_store, 'embedding_model'):
-                success_embeddings = self.context.vector_store.embedding_model.get_embeddings(success_texts)
-                failure_embeddings = self.context.vector_store.embedding_model.get_embeddings(failure_texts)
+            if hasattr(self, 'vector_store') and self.vector_store and hasattr(
+                    self.vector_store, 'embedding_model'):
+                success_embeddings = self.vector_store.embedding_model.get_embeddings(success_texts)
+                failure_embeddings = self.vector_store.embedding_model.get_embeddings(failure_texts)
 
                 # Calculate similarity and find most similar pairs
                 similarity_threshold = self.op_params.get("similarity_threshold", 0.3)

@@ -13,7 +13,7 @@ class MemoryDeduplicationOp(BaseAsyncOp):
     async def async_execute(self):
         """Remove duplicate task memories"""
         # Get task memories to deduplicate
-        task_memories: List[BaseMemory] = self.context.memory_list
+        task_memories: List[BaseMemory] = self.context.response.metadata.get("memory_list", [])
 
         if not task_memories:
             logger.info("No task memories found for deduplication")
@@ -28,7 +28,7 @@ class MemoryDeduplicationOp(BaseAsyncOp):
             f"Deduplication complete: {len(deduplicated_task_memories)} deduplicated task memories out of {len(task_memories)}")
 
         # Update context
-        self.context.memory_list = deduplicated_task_memories
+        self.context.response.metadata["memory_list"] = deduplicated_task_memories
 
     async def _deduplicate_task_memories(self, task_memories: List[BaseMemory]) -> List[BaseMemory]:
         """Remove duplicate task memories"""
@@ -70,11 +70,11 @@ class MemoryDeduplicationOp(BaseAsyncOp):
     async def _get_existing_task_memory_embeddings(self, workspace_id: str) -> List[List[float]]:
         """Get embeddings of existing task memories"""
         try:
-            if not hasattr(self.context, 'vector_store') or not self.context.vector_store or not workspace_id:
+            if not hasattr(self, 'vector_store') or not self.vector_store or not workspace_id:
                 return []
 
             # Query existing task memory nodes
-            existing_nodes = await self.context.vector_store.async_search(
+            existing_nodes = await self.vector_store.async_search(
                 query="...",  # Empty query to get all
                 workspace_id=workspace_id,
                 top_k=self.op_params.get("max_existing_task_memories", 1000)
@@ -97,12 +97,10 @@ class MemoryDeduplicationOp(BaseAsyncOp):
     def _get_task_memory_embedding(self, task_memory: BaseMemory) -> List[float] | None:
         """Generate embedding for task memory"""
         try:
-            if not hasattr(self.context, 'vector_store') or not self.context.vector_store:
-                return None
 
             # Combine task memory description and content for embedding
             text_for_embedding = f"{task_memory.when_to_use} {task_memory.content}"
-            embeddings = self.context.vector_store.embedding_model.get_embeddings([text_for_embedding])
+            embeddings = self.vector_store.embedding_model.get_embeddings([text_for_embedding])
 
             if embeddings and len(embeddings) > 0:
                 return embeddings[0]

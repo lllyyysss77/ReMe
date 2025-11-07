@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reme_ai"
-version = "0.2.0.0"
+dynamic = ["version"]
 description = "Remember Me, Refine Me."
 authors = [
     { name = "jinli.yl", email = "jinli.yl@alibaba-inc.com" },
@@ -32,7 +32,7 @@ classifiers = [
 keywords = ["llm", "memory", "experience", "memoryscope", "ai", "mcp", "http"]
 
 dependencies = [
-    "flowllm[reme]>=0.2.0.0",
+    "flowllm[reme]>=0.2.0a1",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +51,9 @@ reme_ai = [
     "**/*.py",
     "**/*.json",
 ]
+
+[tool.setuptools.dynamic]
+version = { attr = "reme_ai.__version__" }
 
 [project.urls]
 Homepage = "https://github.com/agentscope-ai/ReMe"

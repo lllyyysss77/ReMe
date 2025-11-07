@@ -1,10 +1,17 @@
+"""Trajectory segmentation operation for task memory generation.
+
+This module provides operations to segment trajectories into meaningful step
+sequences that can be used for more granular memory extraction.
+"""
+
 import json
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message as FlowMessage
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message as FlowMessage
 from loguru import logger
 
 from reme_ai.schema import Message, Trajectory
@@ -12,6 +19,13 @@ from reme_ai.schema import Message, Trajectory
 
 @C.register_op()
 class TrajectorySegmentationOp(BaseAsyncOp):
+    """Segment trajectories into meaningful step sequences.
+
+    This operation uses LLM to identify natural breakpoints in trajectories,
+    allowing for more granular analysis and memory extraction from specific
+    segments rather than entire trajectories.
+    """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -26,8 +40,11 @@ class TrajectorySegmentationOp(BaseAsyncOp):
             return
 
         # Determine which trajectories to segment
-        target_trajectories = self._get_target_trajectories(all_trajectories, success_trajectories,
-                                                            failure_trajectories)
+        target_trajectories = self._get_target_trajectories(
+            all_trajectories,
+            success_trajectories,
+            failure_trajectories,
+        )
 
         # Add segmentation info to trajectories
         segmented_count = 0
@@ -40,9 +57,12 @@ class TrajectorySegmentationOp(BaseAsyncOp):
 
         # Update context with segmented trajectories
 
-    def _get_target_trajectories(self, all_trajectories: List[Trajectory],
-                                 success_trajectories: List[Trajectory],
-                                 failure_trajectories: List[Trajectory]) -> List[Trajectory]:
+    def _get_target_trajectories(
+        self,
+        all_trajectories: List[Trajectory],
+        success_trajectories: List[Trajectory],
+        failure_trajectories: List[Trajectory],
+    ) -> List[Trajectory]:
         """Determine which trajectories to segment based on configuration"""
         segment_target = self.op_params.get("segment_target", "all")
 
@@ -59,9 +79,10 @@ class TrajectorySegmentationOp(BaseAsyncOp):
 
         prompt = self.prompt_format(
             prompt_name="step_segmentation_prompt",
-            query=trajectory.metadata.get('query', ''),
+            query=trajectory.metadata.get("query", ""),
             trajectory_content=trajectory_content,
-            total_steps=len(trajectory.messages))
+            total_steps=len(trajectory.messages),
+        )
 
         def parse_segmentation(message: Message) -> List[List[Message]]:
             content = message.content
@@ -82,8 +103,11 @@ class TrajectorySegmentationOp(BaseAsyncOp):
 
             return segments if segments else [trajectory.messages]
 
-        return await self.llm.achat(messages=[FlowMessage(role=Role.USER, content=prompt)], callback_fn=parse_segmentation,
-                             default_value=[trajectory.messages])
+        return await self.llm.achat(
+            messages=[FlowMessage(role=Role.USER, content=prompt)],
+            callback_fn=parse_segmentation,
+            default_value=[trajectory.messages],
+        )
 
     @staticmethod
     def _format_trajectory_content(trajectory: Trajectory) -> str:
@@ -99,7 +123,7 @@ class TrajectorySegmentationOp(BaseAsyncOp):
         segment_points = []
 
         # Try to extract JSON format
-        json_pattern = r'```json\s*([\s\S]*?)\s*```'
+        json_pattern = r"```json\s*([\s\S]*?)\s*```"
         json_blocks = re.findall(json_pattern, response)
 
         if json_blocks:
@@ -114,7 +138,7 @@ class TrajectorySegmentationOp(BaseAsyncOp):
 
         # Fallback: extract numbers
         if not segment_points:
-            numbers = re.findall(r'\b\d+\b', response)
+            numbers = re.findall(r"\b\d+\b", response)
             segment_points = [int(num) for num in numbers if int(num) > 0]
 
         return sorted(list(set(segment_points)))

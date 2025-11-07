@@ -203,7 +203,7 @@ op:
     vector_store: default
     params:
       similarity_threshold: 0.5
-      
+
   # tool memory ops
   parse_tool_call_result_op:
     backend: parse_tool_call_result_op

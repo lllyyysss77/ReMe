@@ -1,7 +1,7 @@
 summary_prompt: |
   # Execution Process A
   {execution_process_a}
-  
+
   # Execution Process B
   {execution_process_b}
 

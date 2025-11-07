@@ -10,7 +10,7 @@ We tested ReMe on Appworld using qwen3-8b:
 | with ReMe    | 0.109 **(+2.6%)** | 0.175 **(+3.5%)** | 0.281 **(+5.3%)** |
 
 Pass@K measures the probability that at least one of the K generated samples successfully completes the task (
-score=1).  
+score=1).
 The current experiment uses an internal AppWorld environment, which may have slight differences.
 
 You can find more details on reproducing the experiment in [quickstart.md](appworld/quickstart.md).

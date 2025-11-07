@@ -184,11 +184,11 @@ The `summary_task_memory` tool transforms conversation trajectories into valuabl
 async def run_summary(client, messages):
     """
     Generate a summary of conversation messages and create task memories
-    
+
     Args:
         client: MCP client instance
         messages: List of message objects from a conversation
-        
+
     Returns:
         None
     """
@@ -227,11 +227,11 @@ The `retrieve_task_memory` tool allows you to retrieve relevant memories based o
 async def run_retrieve(client, query):
     """
     Retrieve relevant task memories based on a query
-    
+
     Args:
         client: MCP client instance
         query: The query to retrieve relevant memories
-        
+
     Returns:
         String containing the retrieved memory answer
     """

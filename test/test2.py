@@ -16,25 +16,26 @@ BASE_URL = "https://reportapi.eastmoney.com/report/list"
 DETAIL_BASE_URL = "https://data.eastmoney.com/report/info/"
 
 # 读取config.json获取stock_code
-with open('config.json', 'r', encoding='utf-8') as f:
+with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
-STOCK_CODE = config.get('stock_code', '600519')
-MIN_PAGES = config.get('min_pages', 20)
-DOWNLOAD_DIR = config.get('download_dir', "reports_pdf")
-YEARS_AGO = config.get('years_ago', 2)
+STOCK_CODE = config.get("stock_code", "600519")
+MIN_PAGES = config.get("min_pages", 20)
+DOWNLOAD_DIR = config.get("download_dir", "reports_pdf")
+YEARS_AGO = config.get("years_ago", 2)
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 # 随机User-Agent列表
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
 ]
 
 
 def get_random_user_agent():
     """获取随机User-Agent"""
     import random
+
     return random.choice(USER_AGENTS)
 
 
@@ -46,8 +47,8 @@ def fetch_jsonp_data(page_no=1):
     """
     # 计算日期
     today = datetime.today()
-    end_time = today.strftime('%Y-%m-%d')
-    begin_time = (today - timedelta(days=365 * YEARS_AGO)).strftime('%Y-%m-%d')
+    end_time = today.strftime("%Y-%m-%d")
+    begin_time = (today - timedelta(days=365 * YEARS_AGO)).strftime("%Y-%m-%d")
 
     # 检查是否存在已保存的原始数据
     raw_data_dir = "raw_data"
@@ -56,7 +57,7 @@ def fetch_jsonp_data(page_no=1):
     if os.path.exists(raw_data_file):
         print(f"使用已保存的原始数据: {raw_data_file}")
         try:
-            with open(raw_data_file, 'r', encoding='utf-8') as f:
+            with open(raw_data_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             print(f"读取已保存数据失败: {e}")
@@ -77,24 +78,24 @@ def fetch_jsonp_data(page_no=1):
         "p": page_no,
         "pageNum": page_no,
         "pageNumber": page_no,
-        "_": int(time.time() * 1000)  # 使用当前时间戳
+        "_": int(time.time() * 1000),  # 使用当前时间戳
     }
     headers = {
         "User-Agent": get_random_user_agent(),
-        "Referer": "https://data.eastmoney.com/"
+        "Referer": "https://data.eastmoney.com/",
     }
     try:
         response = requests.get(BASE_URL, params=params, headers=headers)
         response.raise_for_status()
         # 提取JSON部分
-        json_str = re.search(r'\((.*)\)', response.text).group(1)
+        json_str = re.search(r"\((.*)\)", response.text).group(1)
         data = json.loads(json_str)
 
         # 保存原始数据到本地
         if not os.path.exists(raw_data_dir):
             os.makedirs(raw_data_dir, exist_ok=True)
 
-        with open(raw_data_file, 'w', encoding='utf-8') as f:
+        with open(raw_data_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
         print(f"原始数据已保存: {raw_data_file}")
@@ -117,7 +118,7 @@ def get_report_detail(info_code):
     if os.path.exists(detail_html_file):
         print(f"使用已保存的详情页HTML: {detail_html_file}")
         try:
-            with open(detail_html_file, 'r', encoding='utf-8') as f:
+            with open(detail_html_file, "r", encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
             print(f"读取已保存详情页失败: {e}")
@@ -125,7 +126,7 @@ def get_report_detail(info_code):
     url = urljoin(DETAIL_BASE_URL, f"{info_code}.html")
     headers = {
         "User-Agent": get_random_user_agent(),
-        "Referer": "https://data.eastmoney.com/"
+        "Referer": "https://data.eastmoney.com/",
     }
 
     try:
@@ -136,7 +137,7 @@ def get_report_detail(info_code):
         if not os.path.exists(detail_data_dir):
             os.makedirs(detail_data_dir, exist_ok=True)
 
-        with open(detail_html_file, 'w', encoding='utf-8') as f:
+        with open(detail_html_file, "w", encoding="utf-8") as f:
             f.write(response.text)
 
         print(f"详情页HTML已保存: {detail_html_file}")
@@ -155,7 +156,7 @@ def parse_detail_page(html, info_code):
     """
     try:
         # 使用正则提取zwinfo变量
-        match = re.search(r'var zwinfo\s*=\s*({.*?});', html, re.DOTALL)
+        match = re.search(r"var zwinfo\s*=\s*({.*?});", html, re.DOTALL)
         if not match:
             return None
         zwinfo = json.loads(match.group(1))
@@ -163,19 +164,19 @@ def parse_detail_page(html, info_code):
         # 保存解析后的zwinfo数据
         detail_data_dir = "detail_data"
         zwinfo_file = os.path.join(detail_data_dir, f"zwinfo_{info_code}.json")
-        with open(zwinfo_file, 'w', encoding='utf-8') as f:
+        with open(zwinfo_file, "w", encoding="utf-8") as f:
             json.dump(zwinfo, f, ensure_ascii=False, indent=2)
 
         print(f"zwinfo数据已保存: {zwinfo_file}")
 
         # 提取所需字段
         return {
-            'attach_url': zwinfo.get('attach_url'),
-            'notice_title': zwinfo.get('notice_title', ''),
-            'short_name': zwinfo.get('short_name', ''),
-            'notice_date': zwinfo.get('notice_date', ''),
-            'source_sample_name': zwinfo.get('source_sample_name', ''),
-            'attach_pages': zwinfo.get('attach_pages', '')
+            "attach_url": zwinfo.get("attach_url"),
+            "notice_title": zwinfo.get("notice_title", ""),
+            "short_name": zwinfo.get("short_name", ""),
+            "notice_date": zwinfo.get("notice_date", ""),
+            "source_sample_name": zwinfo.get("source_sample_name", ""),
+            "attach_pages": zwinfo.get("attach_pages", ""),
         }
     except Exception as e:
         print(f"解析详情页失败: {e}")
@@ -190,7 +191,7 @@ def is_pdf_complete(pdf_path, expected_pages):
     :return: bool
     """
     try:
-        with open(pdf_path, 'rb') as f:
+        with open(pdf_path, "rb") as f:
             reader = PdfReader(f)
             actual_pages = len(reader.pages)
         return actual_pages == expected_pages, actual_pages
@@ -228,7 +229,7 @@ def download_pdf(pdf_url, filename):
             f"User-Agent: {get_random_user_agent()}",
             "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Referer: https://data.eastmoney.com/",
-            "Accept-Language: zh-CN,zh;q=0.9"
+            "Accept-Language: zh-CN,zh;q=0.9",
         ]
         c.setopt(pycurl.HTTPHEADER, headers)
 
@@ -241,7 +242,7 @@ def download_pdf(pdf_url, filename):
             return False
 
         # 保存文件
-        with open(save_path, 'wb') as f:
+        with open(save_path, "wb") as f:
             f.write(buffer.getvalue())
 
         print(f"✓ 成功下载 {filename}")
@@ -306,14 +307,14 @@ def process_all_reports():
                 continue
             # 解析PDF链接及命名信息
             detail_info = parse_detail_page(detail_html, info_code)
-            if not detail_info or not detail_info.get('attach_url'):
+            if not detail_info or not detail_info.get("attach_url"):
                 print("未找到PDF链接")
                 continue
             # 组装文件名，避免重复拼接
-            notice_title = detail_info.get('notice_title', '').strip().replace('/', '_')
-            short_name = detail_info.get('short_name', '').strip().replace('/', '_')
-            notice_date = detail_info.get('notice_date', '').replace('-', '')[:8]  # 只取年月日
-            source_sample_name = detail_info.get('source_sample_name', '').strip().replace('/', '_')
+            notice_title = detail_info.get("notice_title", "").strip().replace("/", "_")
+            short_name = detail_info.get("short_name", "").strip().replace("/", "_")
+            notice_date = detail_info.get("notice_date", "").replace("-", "")[:8]  # 只取年月日
+            source_sample_name = detail_info.get("source_sample_name", "").strip().replace("/", "_")
 
             filename_parts = []
             filename_parts.append(notice_date)
@@ -348,10 +349,10 @@ def process_all_reports():
             # 下载PDF并校验页数，最多重试3次
             max_retries = 5
             for attempt in range(1, max_retries + 1):
-                download_pdf(detail_info['attach_url'], os.path.join(pdf_subdir, pdf_filename))
+                download_pdf(detail_info["attach_url"], os.path.join(pdf_subdir, pdf_filename))
                 # 校验PDF页数
                 try:
-                    expected_pages = int(detail_info.get('attach_pages', 0))
+                    expected_pages = int(detail_info.get("attach_pages", 0))
                 except Exception:
                     expected_pages = 0
                 is_complete = True
@@ -363,7 +364,8 @@ def process_all_reports():
                         break
                     else:
                         print(
-                            f"✗ PDF页数不符：实际{actual_pages}页，预期{expected_pages}页，正在重试({attempt}/{max_retries})...")
+                            f"✗ PDF页数不符：实际{actual_pages}页，预期{expected_pages}页，正在重试({attempt}/{max_retries})...",
+                        )
                         # 删除不完整文件
                         try:
                             os.remove(pdf_full_path)

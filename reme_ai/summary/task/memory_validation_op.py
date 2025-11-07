@@ -1,18 +1,32 @@
+"""Memory validation operation for task memory quality control.
+
+This module provides operations to validate the quality of extracted task
+memories using LLM-based evaluation, ensuring only high-quality memories
+are stored.
+"""
+
 import json
 import re
 from typing import List, Dict, Any
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message as FlowMessage
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message as FlowMessage
 from loguru import logger
 
-from reme_ai.schema import Message
 from reme_ai.schema.memory import BaseMemory
 
 
 @C.register_op()
 class MemoryValidationOp(BaseAsyncOp):
+    """Validate quality of extracted task memories.
+
+    This operation uses LLM-based evaluation to assess the quality of extracted
+    task memories, filtering out low-quality or invalid memories based on
+    validation scores and criteria.
+    """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -59,15 +73,16 @@ class MemoryValidationOp(BaseAsyncOp):
             prompt = self.prompt_format(
                 prompt_name="task_memory_validation_prompt",
                 condition=task_memory.when_to_use,
-                task_memory_content=task_memory.content)
+                task_memory_content=task_memory.content,
+            )
 
-            def parse_validation(message: Message) -> Dict[str, Any]:
+            def parse_validation(message: FlowMessage) -> Dict[str, Any]:
                 try:
                     response_content = message.content
 
                     # Parse validation result
                     # Extract JSON blocks
-                    json_pattern = r'```json\s*([\s\S]*?)\s*```'
+                    json_pattern = r"```json\s*([\s\S]*?)\s*```"
                     json_blocks = re.findall(json_pattern, response_content)
 
                     if json_blocks:
@@ -85,8 +100,11 @@ class MemoryValidationOp(BaseAsyncOp):
                         "is_valid": is_valid and score >= validation_threshold,
                         "score": score,
                         "feedback": response_content,
-                        "reason": "" if (
-                                    is_valid and score >= validation_threshold) else f"Low validation score ({score:.2f}) or marked as invalid"
+                        "reason": (
+                            ""
+                            if (is_valid and score >= validation_threshold)
+                            else f"Low validation score ({score:.2f}) or marked as invalid"
+                        ),
                     }
 
                 except Exception as e_inner:
@@ -95,10 +113,13 @@ class MemoryValidationOp(BaseAsyncOp):
                         "is_valid": False,
                         "score": 0.0,
                         "feedback": "",
-                        "reason": f"Parse error: {str(e_inner)}"
+                        "reason": f"Parse error: {str(e_inner)}",
                     }
 
-            return await self.llm.achat(messages=[FlowMessage(role=Role.USER, content=prompt)], callback_fn=parse_validation)
+            return await self.llm.achat(
+                messages=[FlowMessage(role=Role.USER, content=prompt)],
+                callback_fn=parse_validation,
+            )
 
         except Exception as e:
             logger.error(f"LLM validation failed: {e}")
@@ -106,5 +127,5 @@ class MemoryValidationOp(BaseAsyncOp):
                 "is_valid": False,
                 "score": 0.0,
                 "feedback": "",
-                "reason": f"LLM validation error: {str(e)}"
+                "reason": f"LLM validation error: {str(e)}",
             }

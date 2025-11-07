@@ -1,10 +1,18 @@
+"""Memory reranking operation module.
+
+This module provides functionality to rerank and filter retrieved memories
+using LLM-based reranking and score-based filtering to select the most relevant
+memories for the current task.
+"""
+
 import json
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory
@@ -12,13 +20,22 @@ from reme_ai.schema.memory import BaseMemory
 
 @C.register_op()
 class RerankMemoryOp(BaseAsyncOp):
+    """Rerank and filter recalled experiences using LLM and score-based filtering.
+
+    This operation takes recalled memories and applies multiple filtering and
+    ranking strategies to select the most relevant memories for the current task.
+    It supports LLM-based reranking and score-based filtering.
     """
-    Rerank and filter recalled experiences using LLM and score-based filtering
-    """
+
     file_path: str = __file__
 
     async def async_execute(self):
-        """Execute rerank operation"""
+        """Execute the memory reranking operation.
+
+        Applies LLM-based reranking (optional) and score-based filtering (optional)
+        to select the top-k most relevant memories. Stores the reranked results
+        in the context response metadata.
+        """
         memory_list: List[BaseMemory] = self.context.response.metadata["memory_list"]
         retrieval_query: str = self.context.query
         enable_llm_rerank = self.op_params.get("enable_llm_rerank", True)
@@ -52,7 +69,15 @@ class RerankMemoryOp(BaseAsyncOp):
         self.context.response.metadata["memory_list"] = reranked_memories
 
     async def _llm_rerank(self, query: str, candidates: List[BaseMemory]) -> List[BaseMemory]:
-        """LLM-based reranking of candidate experiences"""
+        """LLM-based reranking of candidate experiences.
+
+        Args:
+            query: The retrieval query used to rank candidates.
+            candidates: List of memory candidates to rerank.
+
+        Returns:
+            List of memories reranked by relevance to the query.
+        """
         if not candidates:
             return candidates
 
@@ -63,7 +88,8 @@ class RerankMemoryOp(BaseAsyncOp):
             prompt_name="memory_rerank_prompt",
             query=query,
             candidates=candidates_text,
-            num_candidates=len(candidates))
+            num_candidates=len(candidates),
+        )
 
         response = await self.llm.achat([Message(role=Role.USER, content=prompt)])
 
@@ -89,7 +115,15 @@ class RerankMemoryOp(BaseAsyncOp):
 
     @staticmethod
     def _score_based_filter(memories: List[BaseMemory], min_score: float) -> List[BaseMemory]:
-        """Filter memories based on quality scores"""
+        """Filter memories based on quality scores.
+
+        Args:
+            memories: List of memories to filter.
+            min_score: Minimum combined score threshold for filtering.
+
+        Returns:
+            List of memories that meet the minimum score threshold.
+        """
         filtered_memories = []
 
         for memory in memories:
@@ -110,7 +144,14 @@ class RerankMemoryOp(BaseAsyncOp):
 
     @staticmethod
     def _format_candidates_for_rerank(candidates: List[BaseMemory]) -> str:
-        """Format candidates for LLM reranking"""
+        """Format candidates for LLM reranking.
+
+        Args:
+            candidates: List of memory candidates to format.
+
+        Returns:
+            Formatted string representation of candidates for LLM evaluation.
+        """
         formatted_candidates = []
 
         for i, candidate in enumerate(candidates):
@@ -127,10 +168,17 @@ class RerankMemoryOp(BaseAsyncOp):
 
     @staticmethod
     def _parse_rerank_response(response: str) -> List[int]:
-        """Parse LLM reranking response to extract ranked indices"""
+        """Parse LLM reranking response to extract ranked indices.
+
+        Args:
+            response: The LLM response containing ranked indices.
+
+        Returns:
+            List of indices representing the reranked order.
+        """
         try:
             # Try to extract JSON format
-            json_pattern = r'```json\s*([\s\S]*?)\s*```'
+            json_pattern = r"```json\s*([\s\S]*?)\s*```"
             json_blocks = re.findall(json_pattern, response)
 
             if json_blocks:
@@ -141,7 +189,7 @@ class RerankMemoryOp(BaseAsyncOp):
                     return parsed
 
             # Try to extract numbers from text
-            numbers = re.findall(r'\b\d+\b', response)
+            numbers = re.findall(r"\b\d+\b", response)
             return [int(num) for num in numbers if int(num) < 100]  # Reasonable upper bound
 
         except Exception as e:

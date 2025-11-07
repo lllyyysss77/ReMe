@@ -1,7 +1,10 @@
-# common_constants.py
-# This module defines constants used as keys throughout the application to maintain a consistent reference
-# for data structures related to workflow management, chat interactions, context storage, memory operations,
-# node processing, and temporal inference functionalities.
+"""Common constants module.
+
+This module defines constants used as keys throughout the application to maintain
+a consistent reference for data structures related to workflow management, chat
+interactions, context storage, memory operations, node processing, and temporal
+inference functionalities.
+"""
 
 WORKFLOW_NAME = "workflow_name"
 

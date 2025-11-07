@@ -1,5 +1,7 @@
+# flake8: noqa: E402, E501
 import os
 from typing import List
+
 from tqdm import tqdm
 
 os.environ["APPWORLD_ROOT"] = "."
@@ -7,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv("../../../.env")
 
-import re
 import time
 import json
 import ray
@@ -18,26 +19,28 @@ from jinja2 import Template
 from loguru import logger
 from openai import OpenAI
 
-from prompt import PROMPT_TEMPLATE, PROMPT_TEMPLATE_WITH_EXPERIENCE
+from prompt import PROMPT_TEMPLATE_WITH_EXPERIENCE
 
 
 @ray.remote
 class AppworldReactAgent:
     """A minimal ReAct Agent for AppWorld tasks."""
 
-    def __init__(self,
-                 index: int,
-                 task_ids: List[str],
-                 experiment_name: str,
-                 model_name: str = "qwen3-8b",
-                 temperature: float = 0.9,
-                 max_interactions: int = 30,
-                 max_response_size: int = 2048,
-                 num_runs: int = 1,
-                 use_task_memory: bool = False,
-                 make_task_memory: bool = False,
-                 api_url: str = "http://0.0.0.0:8002/",
-                 workspace_id: str="appworld_v1"):
+    def __init__(
+        self,
+        index: int,
+        task_ids: List[str],
+        experiment_name: str,
+        model_name: str = "qwen3-8b",
+        temperature: float = 0.9,
+        max_interactions: int = 30,
+        max_response_size: int = 2048,
+        num_runs: int = 1,
+        use_task_memory: bool = False,
+        make_task_memory: bool = False,
+        api_url: str = "http://0.0.0.0:8002/",
+        workspace_id: str = "appworld_v1",
+    ):
 
         self.index: int = index
         self.task_ids: List[str] = task_ids
@@ -62,7 +65,8 @@ class AppworldReactAgent:
                     messages=messages,
                     temperature=self.temperature,
                     extra_body={"enable_thinking": False},
-                    seed=0)
+                    seed=0,
+                )
 
                 return response.choices[0].message.content
 
@@ -72,13 +76,17 @@ class AppworldReactAgent:
 
         return "call llm error"
 
-    def prompt_messages(self,world: AppWorld) -> list[dict]:
+    def prompt_messages(self, world: AppWorld) -> list[dict]:
         if self.use_task_memory:
             task_memory = self.get_task_memory(world.task.instruction)
             logger.info(f"loaded task_memory: {task_memory}")
-            dictionary = {"supervisor": world.task.supervisor, "instruction": world.task.instruction, "experience": task_memory}
+            dictionary = {
+                "supervisor": world.task.supervisor,
+                "instruction": world.task.instruction,
+                "experience": task_memory,
+            }
         else:
-            dictionary = {"supervisor": world.task.supervisor, "instruction": world.task.instruction ,"experience": ""}
+            dictionary = {"supervisor": world.task.supervisor, "instruction": world.task.instruction, "experience": ""}
         print(dictionary)
         prompt = Template(PROMPT_TEMPLATE_WITH_EXPERIENCE.lstrip()).render(dictionary)
         messages: list[dict] = []
@@ -96,7 +104,7 @@ class AppworldReactAgent:
         #     messages.append({"role": role_type, "content": None})
         #     last_start = match.span()[1]
         # messages[-1]["content"] = prompt[last_start:]
-        messages.append({"role":"user", "content":prompt})
+        messages.append({"role": "user", "content": prompt})
         return messages
 
     @staticmethod
@@ -122,7 +130,7 @@ class AppworldReactAgent:
                         output = world.execute(code)
                         if len(output) > self.max_response_size:
                             # logger.warning(f"output exceed max size={len(output)}")
-                            output = output[:self.max_response_size]
+                            output = output[: self.max_response_size]
                         history.append({"role": "user", "content": output})
 
                         if world.task_completed():
@@ -164,7 +172,7 @@ class AppworldReactAgent:
             json={
                 "workspace_id": self.workspace_id,
                 "query": query,
-            }
+            },
         )
 
         result = self.handle_api_response(response)
@@ -181,26 +189,28 @@ class AppworldReactAgent:
         if not result:
             print("No results to summarize")
             return
-            
+
         # Prepare trajectories from results
         trajectories = []
         for r in result:
             if "task_history" in r:
-                trajectories.append({
-                    "messages": r["task_history"],
-                    "score": float(r.get("uplift_score", 0.0))
-                })
-        
+                trajectories.append(
+                    {
+                        "messages": r["task_history"],
+                        "score": float(r.get("uplift_score", 0.0)),
+                    },
+                )
+
         if not trajectories:
             print("No trajectories to summarize")
             return
-            
+
         response = requests.post(
             url=f"{self.api_url}summary_task_memory",
             json={
                 "workspace_id": self.workspace_id,
-                "trajectories": trajectories
-            }
+                "trajectories": trajectories,
+            },
         )
 
         result = self.handle_api_response(response)

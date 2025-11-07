@@ -26,10 +26,10 @@ WORKSPACE_ID = "test_workspace"
 async def delete_workspace(client: Client) -> None:
     """
     Delete the current workspace from the vector store
-    
+
     Args:
         client: MCP client instance
-        
+
     Returns:
         None
     """
@@ -38,7 +38,7 @@ async def delete_workspace(client: Client) -> None:
         arguments={
             "workspace_id": WORKSPACE_ID,
             "action": "delete",
-        }
+        },
     )
     print(f"Workspace '{WORKSPACE_ID}' deleted successfully")
 
@@ -53,12 +53,12 @@ async def run_agent(client: Client, query: str, dump_messages: bool = False) -> 
 async def run_summary(client: Client, messages: List[Dict[str, Any]], enable_dump_memory: bool = True) -> None:
     """
     Generate a summary of conversation messages and create task memories
-    
+
     Args:
         client: MCP client instance
         messages: List of message objects from a conversation
         enable_dump_memory: Whether to save memory list to a file
-        
+
     Returns:
         None
     """
@@ -71,9 +71,9 @@ async def run_summary(client: Client, messages: List[Dict[str, Any]], enable_dum
         arguments={
             "workspace_id": WORKSPACE_ID,
             "trajectories": [
-                {"messages": messages, "score": 1.0}
-            ]
-        }
+                {"messages": messages, "score": 1.0},
+            ],
+        },
     )
 
     answer = result.content[0].text
@@ -90,11 +90,11 @@ async def run_summary(client: Client, messages: List[Dict[str, Any]], enable_dum
 async def run_retrieve(client: Client, query: str) -> str:
     """
     Retrieve relevant task memories based on a query
-    
+
     Args:
         client: MCP client instance
         query: The query to retrieve relevant memories
-        
+
     Returns:
         String containing the retrieved memory answer
     """
@@ -103,7 +103,7 @@ async def run_retrieve(client: Client, query: str) -> str:
         arguments={
             "workspace_id": WORKSPACE_ID,
             "query": query,
-        }
+        },
     )
 
     answer = result.content[0].text
@@ -111,22 +111,27 @@ async def run_retrieve(client: Client, query: str) -> str:
     return answer
 
 
-async def run_agent_with_memory(client: Client, query_first: str, query_second: str, enable_dump_memory: bool = True) -> List[Dict[str, Any]]:
+async def run_agent_with_memory(
+    client: Client,
+    query_first: str,
+    query_second: str,
+    enable_dump_memory: bool = True,
+) -> List[Dict[str, Any]]:
     """
     Run the agent with memory augmentation
-    
+
     This function demonstrates how to use task memory to enhance agent responses:
     1. First run the agent with the second query to build memory
     2. Then summarize the conversation to create memories
     3. Retrieve relevant memories for the first query
     4. Run the agent with the first query augmented with retrieved memories
-    
+
     Args:
         client: MCP client instance
         query_first: The query to run with memory augmentation
         query_second: The query to build initial memories
         enable_dump_memory: Whether to save memory list to a file
-        
+
     Returns:
         List of message objects from the final conversation
     """
@@ -148,18 +153,18 @@ async def run_agent_with_memory(client: Client, query_first: str, query_second: 
     augmented_query = f"{retrieved_memory}\n\nUser Question:\n{query_first}"
     print(f"Augmented query: {augmented_query}")
     messages = await run_agent(client, query=augmented_query)
-    
+
     return messages
 
 
 async def dump_memory(client: Client, path: str = "./") -> None:
     """
     Dump the vector store memories to disk
-    
+
     Args:
         client: MCP client instance
         path: Directory path to save the memories
-        
+
     Returns:
         None
     """
@@ -169,7 +174,7 @@ async def dump_memory(client: Client, path: str = "./") -> None:
             "workspace_id": WORKSPACE_ID,
             "action": "dump",
             "path": path,
-        }
+        },
     )
     print(f"Memory dumped to {path}")
 
@@ -177,11 +182,11 @@ async def dump_memory(client: Client, path: str = "./") -> None:
 async def load_memory(client: Client, path: str = "./") -> None:
     """
     Load memories from disk into the vector store
-    
+
     Args:
         client: MCP client instance
         path: Directory path to load the memories from
-        
+
     Returns:
         None
     """
@@ -191,7 +196,7 @@ async def load_memory(client: Client, path: str = "./") -> None:
             "workspace_id": WORKSPACE_ID,
             "action": "load",
             "path": path,
-        }
+        },
     )
     print(f"Memory loaded from {path}")
 

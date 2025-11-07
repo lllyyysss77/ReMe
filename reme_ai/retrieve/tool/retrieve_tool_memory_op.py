@@ -1,7 +1,15 @@
+"""Tool memory retrieval operation module.
+
+This module provides functionality to retrieve tool memories from a vector store
+based on tool names, format them into structured documents, and match them with
+the requested tools.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.vector_node import VectorNode
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import VectorNode
 from loguru import logger
 
 from reme_ai.schema.memory import ToolMemory, vector_node_to_memory
@@ -9,26 +17,51 @@ from reme_ai.schema.memory import ToolMemory, vector_node_to_memory
 
 @C.register_op()
 class RetrieveToolMemoryOp(BaseAsyncOp):
+    """Retrieves tool memories from vector store based on tool names.
+
+    This operation searches for tool memories in the vector store using tool names,
+    validates that the retrieved memories match the requested tools, and formats
+    them into a structured document format for use in the context.
+    """
+
     file_path: str = __file__
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @staticmethod
+    def _format_tool_memories(memories: List[ToolMemory]) -> str:
+        """Format tool memories into a structured document format.
 
-    def _format_tool_memories(self, memories: List[ToolMemory]) -> str:
-        """Format tool memories into a structured document format"""
-        lines = []
-        lines.append(f"Retrieved {len(memories)} tool memory(ies):\n")
+        Args:
+            memories: List of ToolMemory objects to format.
+
+        Returns:
+            A formatted string containing all tool memories with separators.
+        """
+        lines = [f"Retrieved {len(memories)} tool memory(ies):\n"]
 
         for idx, memory in enumerate(memories, 1):
             lines.append(f"Tool: {memory.when_to_use}")
             lines.append(memory.content)
-            
+
             if idx < len(memories):
                 lines.append("\n---\n")
 
         return "\n".join(lines)
 
     async def async_execute(self):
+        """Execute the tool memory retrieval operation.
+
+        This method:
+        1. Extracts tool names from context
+        2. Searches for each tool in the vector store
+        3. Validates that retrieved memories match the requested tools
+        4. Formats the memories into a structured document
+        5. Stores the results in context response
+
+        The operation expects 'tool_names' in the context, which should be a
+        comma-separated string of tool names. For each tool name, it retrieves
+        the top matching memory from the vector store and validates that it
+        matches exactly.
+        """
         tool_names: str = self.context.get("tool_names", "")
         workspace_id: str = self.context.workspace_id
 
@@ -49,7 +82,7 @@ class RetrieveToolMemoryOp(BaseAsyncOp):
             nodes: List[VectorNode] = await self.vector_store.async_search(
                 query=tool_name,
                 workspace_id=workspace_id,
-                top_k=1
+                top_k=1,
             )
 
             if nodes:
@@ -59,9 +92,11 @@ class RetrieveToolMemoryOp(BaseAsyncOp):
                 # Ensure it's a ToolMemory and when_to_use matches
                 if isinstance(memory, ToolMemory) and memory.when_to_use == tool_name:
                     matched_tool_memories.append(memory)
-                    logger.info(f"Found tool_memory for tool_name={tool_name}, "
-                                f"memory_id={memory.memory_id}, "
-                                f"total_calls={len(memory.tool_call_results)}")
+                    logger.info(
+                        f"Found tool_memory for tool_name={tool_name}, "
+                        f"memory_id={memory.memory_id}, "
+                        f"total_calls={len(memory.tool_call_results)}",
+                    )
                 else:
                     logger.warning(f"No exact match found for tool_name={tool_name}")
             else:
@@ -83,6 +118,8 @@ class RetrieveToolMemoryOp(BaseAsyncOp):
 
         # Log retrieval results
         for memory in matched_tool_memories:
-            logger.info(f"Retrieved tool: {memory.when_to_use}, "
-                        f"total_calls={len(memory.tool_call_results)}, "
-                        f"content_length={len(memory.content)}")
+            logger.info(
+                f"Retrieved tool: {memory.when_to_use}, "
+                f"total_calls={len(memory.tool_call_results)}, "
+                f"content_length={len(memory.content)}",
+            )

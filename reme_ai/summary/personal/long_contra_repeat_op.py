@@ -1,9 +1,19 @@
+"""Module for handling contradictions and redundancies in long conversations.
+
+This module provides the LongContraRepeatOp class which manages and updates
+memory entries within a conversation scope by identifying and handling
+contradictions or redundancies. It extends BaseAsyncOp to provide specialized
+functionality for long conversations with potential contradictory or
+repetitive statements.
+"""
+
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory, PersonalMemory
@@ -17,12 +27,13 @@ class LongContraRepeatOp(BaseAsyncOp):
     specialized functionality for long conversations with potential contradictory
     or repetitive statements.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
         """
         Analyze memories for contradictions and redundancies, resolving conflicts.
-        
+
         Process:
         1. Get updated insight memories from previous operation
         2. Check for contradictions and redundancies among memories
@@ -51,7 +62,7 @@ class LongContraRepeatOp(BaseAsyncOp):
         sorted_memories = sorted(
             updated_insights,
             key=lambda x: x.time_created,
-            reverse=True
+            reverse=True,
         )[:max_memories_to_process]
 
         if len(sorted_memories) <= 1:
@@ -71,10 +82,10 @@ class LongContraRepeatOp(BaseAsyncOp):
     async def _analyze_and_resolve_conflicts(self, memories: List[BaseMemory]) -> List[BaseMemory]:
         """
         Analyze memories for contradictions and redundancies using LLM.
-        
+
         Args:
             memories: List of memories to analyze
-            
+
         Returns:
             List of filtered memories with conflicts resolved
         """
@@ -89,15 +100,15 @@ class LongContraRepeatOp(BaseAsyncOp):
         system_prompt = self.prompt_format(
             prompt_name="long_contra_repeat_system",
             num_obs=len(memory_texts),
-            user_name=user_name
+            user_name=user_name,
         )
         few_shot = self.prompt_format(
             prompt_name="long_contra_repeat_few_shot",
-            user_name=user_name
+            user_name=user_name,
         )
         user_query = self.prompt_format(
             prompt_name="long_contra_repeat_user_query",
-            user_query="\n".join(memory_texts)
+            user_query="\n".join(memory_texts),
         )
 
         full_prompt = f"{system_prompt}\n\n{few_shot}\n\n{user_query}"
@@ -139,7 +150,7 @@ class LongContraRepeatOp(BaseAsyncOp):
                 memory = memories[memory_idx]
                 judgment_lower = judgment.lower()
 
-                if judgment_lower in ['矛盾', 'contradiction']:
+                if judgment_lower in ["矛盾", "contradiction"]:
                     # For contradictory memories, either modify content or mark for removal
                     if modified_content.strip():
                         # Create new memory with modified content
@@ -147,9 +158,9 @@ class LongContraRepeatOp(BaseAsyncOp):
                             workspace_id=memory.workspace_id,
                             memory_id=memory.memory_id,
                             content=modified_content.strip(),
-                            target=memory.target if hasattr(memory, 'target') else user_name,
+                            target=memory.target if hasattr(memory, "target") else user_name,
                             author=memory.author,
-                            metadata={**memory.metadata, 'modified_by': 'long_contra_repeat'}
+                            metadata={**memory.metadata, "modified_by": "long_contra_repeat"},
                         )
                         modified_memory.update_time_modified()
                         filtered_memories.append(modified_memory)
@@ -158,7 +169,7 @@ class LongContraRepeatOp(BaseAsyncOp):
                         # Remove contradictory memory without modification
                         logger.info(f"Removing contradictory memory {idx}: {memory.content[:50]}...")
 
-                elif judgment_lower in ['被包含', 'contained']:
+                elif judgment_lower in ["被包含", "contained"]:
                     # Remove contained/redundant memories
                     logger.info(f"Removing contained memory {idx}: {memory.content[:50]}...")
 
@@ -179,7 +190,15 @@ class LongContraRepeatOp(BaseAsyncOp):
         return filtered_memories
 
     def get_language_value(self, value_dict: dict):
-        """Get language-specific value from dictionary"""
+        """Get language-specific value from dictionary.
+
+        Args:
+            value_dict: Dictionary mapping language codes to values
+
+        Returns:
+            The value corresponding to the current language, or the English
+            value as fallback if the current language is not found
+        """
         return value_dict.get(self.language, value_dict.get("en"))
 
     @staticmethod
@@ -188,7 +207,10 @@ class LongContraRepeatOp(BaseAsyncOp):
         # Pattern to match both Chinese and English judgment formats
         # Chinese: 判断：<序号> <矛盾|被包含|无> <修改后的内容>
         # English: Judgment: <Index> <Contradiction|Contained|None> <Modified content>
-        pattern = r"判断：<(\d+)>\s*<(矛盾|被包含|无)>\s*<([^<>]*)>|Judgment:\s*<(\d+)>\s*<(Contradiction|Contained|None)>\s*<([^<>]*)>"
+        pattern = (
+            r"判断：<(\d+)>\s*<(矛盾|被包含|无)>\s*<([^<>]*)>|"
+            r"Judgment:\s*<(\d+)>\s*<(Contradiction|Contained|None)>\s*<([^<>]*)>"
+        )
         matches = re.findall(pattern, response_text, re.IGNORECASE | re.MULTILINE)
 
         judgments = []

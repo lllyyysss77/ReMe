@@ -139,7 +139,7 @@ Here's a complete example workflow that demonstrates how to use task memory:
 def run_agent_with_memory(query_first, query_second):
     # Run agent with second query to build initial memories
     messages = run_agent(query=query_second)
-    
+
     # Summarize conversation to create memories
     requests.post(
         url=f"{BASE_URL}summary_task_memory",
@@ -150,7 +150,7 @@ def run_agent_with_memory(query_first, query_second):
             ]
         }
     )
-    
+
     # Retrieve relevant memories for the first query
     response = requests.post(
         url=f"{BASE_URL}retrieve_task_memory",
@@ -160,7 +160,7 @@ def run_agent_with_memory(query_first, query_second):
         }
     )
     retrieved_memory = response.json().get("answer", "")
-    
+
     # Run agent with first query augmented with retrieved memories
     augmented_query = f"{retrieved_memory}\n\nUser Question:\n{query_first}"
     return run_agent(query=augmented_query)

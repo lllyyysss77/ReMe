@@ -101,7 +101,7 @@ for node in store.iter_workspace_nodes(workspace_id: str, **kwargs):
 store.dump_workspace(workspace_id: str, path: str | Path = "", callback_fn=None, **kwargs)
 
 # Import workspace from file
-store.load_workspace(workspace_id: str, path: str | Path = "", nodes: List[VectorNode] = None, 
+store.load_workspace(workspace_id: str, path: str | Path = "", nodes: List[VectorNode] = None,
                     callback_fn=None, **kwargs)
 ```
 
@@ -221,8 +221,8 @@ nodes = [
         workspace_id=workspace_id,
         content="Deep learning models require large datasets",
         metadata={
-            "category": "AI", 
-            "difficulty": "advanced", 
+            "category": "AI",
+            "difficulty": "advanced",
             "topic": "deep_learning"
         }
     ),
@@ -520,17 +520,17 @@ import asyncio
 
 async def main():
     # All operations have async equivalents
-    
+
     # Check if workspace exists
     exists = await vector_store.async_exist_workspace(workspace_id)
-    
+
     # Create workspace
     if not exists:
         await vector_store.async_create_workspace(workspace_id)
-    
+
     # Insert nodes with async embedding
     await vector_store.async_insert(nodes, workspace_id)
-    
+
     # Search with async embedding
     results = await vector_store.async_search(
         query="AI research",
@@ -538,13 +538,13 @@ async def main():
         top_k=5,
         filter_dict={"category": "AI"}
     )
-    
+
     # Delete nodes
     await vector_store.async_delete(node_ids, workspace_id)
-    
+
     # Delete workspace
     await vector_store.async_delete_workspace(workspace_id)
-    
+
     # Close client
     await vector_store.async_close()
 
@@ -665,11 +665,11 @@ from flowllm.schema.vector_node import VectorNode
 
 async def async_example():
     workspace_id = "async_qdrant_workspace"
-    
+
     # Create workspace
     if not await vector_store.async_exist_workspace(workspace_id):
         await vector_store.async_create_workspace(workspace_id)
-    
+
     # Create nodes
     nodes = [
         VectorNode(
@@ -685,10 +685,10 @@ async def async_example():
             metadata={"type": "performance", "async": True}
         )
     ]
-    
+
     # Insert with async embedding
     await vector_store.async_insert(nodes, workspace_id)
-    
+
     # Search with async embedding
     results = await vector_store.async_search(
         query="performance optimization",
@@ -696,11 +696,11 @@ async def async_example():
         top_k=2,
         filter_dict={"async": True}
     )
-    
+
     for result in results:
         print(f"Score: {result.metadata['score']:.4f}")
         print(f"Content: {result.content}")
-    
+
     # Cleanup
     await vector_store.async_delete_workspace(workspace_id)
     await vector_store.async_close()
@@ -784,7 +784,7 @@ nodes = [
         workspace_id=workspace_id,
         content="Memory stores provide ultra-fast access to data",
         metadata={
-            "category": "performance", 
+            "category": "performance",
             "type": "memory",
             "speed": "ultra_fast"
         }

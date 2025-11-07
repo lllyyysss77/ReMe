@@ -194,7 +194,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Retriever: Get relevant memories
         result = await app.async_execute(
             name="retrieve_task_memory",
@@ -327,7 +327,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Memory Retrieval: Get personal memory fragments
         result = await app.async_execute(
             name="retrieve_personal_memory",
@@ -477,7 +477,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Generate usage guidelines from history
         result = await app.async_execute(
             name="summary_tool_memory",
@@ -485,7 +485,7 @@ async def main():
             tool_names="web_search"
         )
         print(result)
-        
+
         # Retrieve tool guidelines before use
         result = await app.async_execute(
             name="retrieve_tool_memory",
@@ -651,7 +651,7 @@ async def main():
             path="./docs/library/"
         )
         print(result)
-        
+
         # Query relevant memories
         result = await app.async_execute(
             name="retrieve_task_memory",
@@ -679,7 +679,7 @@ We tested ReMe on Appworld using qwen3-8b:
 | with ReMe    | 0.109 **(+2.6%)** | 0.175 **(+3.5%)** | 0.281 **(+5.3%)** |
 
 Pass@K measures the probability that at least one of the K generated samples successfully completes the task (
-score=1).  
+score=1).
 The current experiment uses an internal AppWorld environment, which may have slight differences.
 
 You can find more details on reproducing the experiment in [quickstart.md](docs/cookbook/appworld/quickstart.md).

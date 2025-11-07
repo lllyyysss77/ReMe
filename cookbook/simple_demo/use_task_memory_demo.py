@@ -26,10 +26,10 @@ WORKSPACE_ID = "test_workspace"
 def handle_api_response(response: requests.Response) -> Optional[Dict[str, Any]]:
     """
     Handle API response with proper error checking
-    
+
     Args:
         response: Response object from requests
-        
+
     Returns:
         Response JSON if successful, None otherwise
     """
@@ -44,7 +44,7 @@ def handle_api_response(response: requests.Response) -> Optional[Dict[str, Any]]
 def delete_workspace() -> None:
     """
     Delete the current workspace from the vector store
-    
+
     Returns:
         None
     """
@@ -53,7 +53,7 @@ def delete_workspace() -> None:
         json={
             "workspace_id": WORKSPACE_ID,
             "action": "delete",
-        }
+        },
     )
 
     result = handle_api_response(response)
@@ -64,17 +64,17 @@ def delete_workspace() -> None:
 def run_agent(query: str, dump_messages: bool = False) -> List[Dict[str, Any]]:
     """
     Run the agent with a specific query
-    
+
     Args:
         query: The query to send to the agent
         dump_messages: Whether to save messages to a file
-        
+
     Returns:
         List of message objects from the conversation
     """
     response = requests.post(
         url=f"{BASE_URL}react",
-        json={"query": query}
+        json={"query": query},
     )
 
     result = handle_api_response(response)
@@ -93,18 +93,18 @@ def run_agent(query: str, dump_messages: bool = False) -> List[Dict[str, Any]]:
         with open("task_messages.jsonl", "w") as f:
             f.write(json.dumps(messages, indent=2, ensure_ascii=False))
         print(f"Messages saved to messages.jsonl")
-    
+
     return messages
 
 
 def run_summary(messages: List[Dict[str, Any]], enable_dump_memory: bool = True) -> None:
     """
     Generate a summary of conversation messages and create task memories
-    
+
     Args:
         messages: List of message objects from a conversation
         enable_dump_memory: Whether to save memory list to a file
-        
+
     Returns:
         None
     """
@@ -118,9 +118,9 @@ def run_summary(messages: List[Dict[str, Any]], enable_dump_memory: bool = True)
         json={
             "workspace_id": WORKSPACE_ID,
             "trajectories": [
-                {"messages": messages, "score": 1.0}
-            ]
-        }
+                {"messages": messages, "score": 1.0},
+            ],
+        },
     )
 
     result = handle_api_response(response)
@@ -141,10 +141,10 @@ def run_summary(messages: List[Dict[str, Any]], enable_dump_memory: bool = True)
 def run_retrieve(query: str) -> str:
     """
     Retrieve relevant task memories based on a query
-    
+
     Args:
         query: The query to retrieve relevant memories
-        
+
     Returns:
         String containing the retrieved memory answer
     """
@@ -154,7 +154,7 @@ def run_retrieve(query: str) -> str:
         json={
             "workspace_id": WORKSPACE_ID,
             "query": query,
-        }
+        },
     )
 
     result = handle_api_response(response)
@@ -170,18 +170,18 @@ def run_retrieve(query: str) -> str:
 def run_agent_with_memory(query_first: str, query_second: str, enable_dump_memory: bool = True) -> List[Dict[str, Any]]:
     """
     Run the agent with memory augmentation
-    
+
     This function demonstrates how to use task memory to enhance agent responses:
     1. First run the agent with the second query to build memory
     2. Then summarize the conversation to create memories
     3. Retrieve relevant memories for the first query
     4. Run the agent with the first query augmented with retrieved memories
-    
+
     Args:
         query_first: The query to run with memory augmentation
         query_second: The query to build initial memories
         enable_dump_memory: Whether to save memory list to a file
-        
+
     Returns:
         List of message objects from the final conversation
     """
@@ -203,17 +203,17 @@ def run_agent_with_memory(query_first: str, query_second: str, enable_dump_memor
     augmented_query = f"{retrieved_memory}\n\nUser Question:\n{query_first}"
     print(f"Augmented query: {augmented_query}")
     messages = run_agent(query=augmented_query)
-    
+
     return messages
 
 
 def dump_memory(path: str = "./") -> None:
     """
     Dump the vector store memories to disk
-    
+
     Args:
         path: Directory path to save the memories
-        
+
     Returns:
         None
     """
@@ -223,7 +223,7 @@ def dump_memory(path: str = "./") -> None:
             "workspace_id": WORKSPACE_ID,
             "action": "dump",
             "path": path,
-        }
+        },
     )
 
     result = handle_api_response(response)
@@ -234,10 +234,10 @@ def dump_memory(path: str = "./") -> None:
 def load_memory(path: str = "./") -> None:
     """
     Load memories from disk into the vector store
-    
+
     Args:
         path: Directory path to load the memories from
-        
+
     Returns:
         None
     """
@@ -247,7 +247,7 @@ def load_memory(path: str = "./") -> None:
             "workspace_id": WORKSPACE_ID,
             "action": "load",
             "path": path,
-        }
+        },
     )
 
     result = handle_api_response(response)

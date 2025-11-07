@@ -66,6 +66,7 @@ class VectorStoreActionOp(BaseAsyncOp):
             path: str = self.context.path
 
             def node_to_memory(node: VectorNode) -> dict:
+                assert isinstance(node, VectorNode)
                 return vector_node_to_memory(node).model_dump()
 
             result = await self.vector_store.async_dump_workspace(

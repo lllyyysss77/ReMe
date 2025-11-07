@@ -1,15 +1,15 @@
-import random
-
-import requests
 import json
-import re
 import os
-from urllib.parse import urljoin
-from time import sleep
-import pycurl
-from io import BytesIO
-from PyPDF2 import PdfReader
+import random
+import re
 from datetime import datetime, timedelta
+from io import BytesIO
+from time import sleep
+from urllib.parse import urljoin
+
+import pycurl
+import requests
+from PyPDF2 import PdfReader
 
 # 全局配置
 BASE_URL = "https://reportapi.eastmoney.com/report/list"

@@ -15,6 +15,7 @@ from . import service  # noqa: E402
 from . import summary  # noqa: E402
 from . import utils  # noqa: E402
 from . import vector_store  # noqa: E402
+from .main import ReMeApp  # noqa: E402 F401
 
 __all__ = [
     "agent",

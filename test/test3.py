@@ -1,15 +1,8 @@
-import random
-
-import requests
-import json
-import re
 import os
-from urllib.parse import urljoin
-from time import sleep
-import pycurl
 from io import BytesIO
+
+import pycurl
 from PyPDF2 import PdfReader
-from datetime import datetime, timedelta
 
 DOWNLOAD_DIR = "./"
 

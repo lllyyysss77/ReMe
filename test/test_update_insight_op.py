@@ -5,7 +5,6 @@ This is a basic validation test to ensure the class structure is correct.
 """
 
 import sys
-import os
 
 sys.path.append("/Users/yuli/workspace/MemoryScope")
 

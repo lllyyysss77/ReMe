@@ -43,10 +43,10 @@ We tested ReMe on BFCL-V3 multi-turn-base (randomly split 50train/150val) using 
 
 We evaluated Tool Memory effectiveness using a controlled benchmark with three mock search tools using Qwen3-30B-Instruct:
 
-| Scenario              | Avg Score | Improvement        |
-|-----------------------|-----------|--------------------|
-| Train (No Memory)     | 0.650     | -                  |
-| Test (No Memory)      | 0.672     | Baseline           |
+| Scenario               | Avg Score | Improvement |
+|------------------------|-----------|-------------|
+| Train (No Memory)      | 0.650     | -           |
+| Test (No Memory)       | 0.672     | Baseline    |
 | **Test (With Memory)** | **0.772** | **+14.88%** |
 
 **Key Findings:**

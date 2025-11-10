@@ -1,8 +1,15 @@
+"""Failure extraction operation for task memory generation.
+
+This module provides operations to extract task memories from failed trajectories,
+identifying mistakes, pitfalls, and lessons learned from failures.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message as FlowMessage
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message as FlowMessage
 from loguru import logger
 
 from reme_ai.schema import Message, Trajectory
@@ -12,6 +19,13 @@ from reme_ai.utils.op_utils import merge_messages_content, parse_json_experience
 
 @C.register_op()
 class FailureExtractionOp(BaseAsyncOp):
+    """Extract task memories from failed trajectories.
+
+    This operation analyzes failed trajectories (or their segments) to extract
+    lessons learned, common mistakes, and anti-patterns that should be avoided
+    in similar future tasks.
+    """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -28,7 +42,7 @@ class FailureExtractionOp(BaseAsyncOp):
 
         # Process trajectories
         for trajectory in failure_trajectories:
-            if hasattr(trajectory, 'segments') and trajectory.segments:
+            if hasattr(trajectory, "segments") and trajectory.segments:
                 # Process segmented step sequences
                 for segment in trajectory.segments:
                     task_memories = await self._extract_failure_task_memory_from_steps(segment, trajectory)
@@ -43,17 +57,21 @@ class FailureExtractionOp(BaseAsyncOp):
         # Add task memories to context
         self.context.failure_task_memories = failure_task_memories
 
-    async def _extract_failure_task_memory_from_steps(self, steps: List[Message], trajectory: Trajectory) -> List[BaseMemory]:
+    async def _extract_failure_task_memory_from_steps(
+        self,
+        steps: List[Message],
+        trajectory: Trajectory,
+    ) -> List[BaseMemory]:
         """Extract task memory from failed step sequences"""
         step_content = merge_messages_content(steps)
         context = get_trajectory_context(trajectory, steps)
 
         prompt = self.prompt_format(
             prompt_name="failure_step_task_memory_prompt",
-            query=trajectory.metadata.get('query', ''),
+            query=trajectory.metadata.get("query", ""),
             step_sequence=step_content,
             context=context,
-            outcome="failed"
+            outcome="failed",
         )
 
         def parse_task_memories(message: Message) -> List[BaseMemory]:
@@ -65,11 +83,14 @@ class FailureExtractionOp(BaseAsyncOp):
                     workspace_id=self.context.get("workspace_id", ""),
                     when_to_use=tm_data.get("when_to_use", tm_data.get("condition", "")),
                     content=tm_data.get("experience", ""),
-                    author=getattr(self.llm, 'model_name', 'system'),
-                    metadata=tm_data
+                    author=getattr(self.llm, "model_name", "system"),
+                    metadata=tm_data,
                 )
                 task_memories.append(task_memory)
 
             return task_memories
 
-        return await self.llm.achat(messages=[FlowMessage(role=Role.USER, content=prompt)], callback_fn=parse_task_memories)
+        return await self.llm.achat(
+            messages=[FlowMessage(role=Role.USER, content=prompt)],
+            callback_fn=parse_task_memories,
+        )

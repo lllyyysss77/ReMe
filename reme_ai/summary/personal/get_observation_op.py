@@ -1,8 +1,17 @@
+"""Module for generating observations from chat messages.
+
+This module provides the GetObservationOp class which extracts personal
+observations from chat messages. It filters messages to exclude those with
+time-related keywords and uses LLM-based extraction to generate structured
+observation memories from the filtered messages.
+"""
+
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory, PersonalMemory
@@ -14,6 +23,7 @@ class GetObservationOp(BaseAsyncOp):
     """
     A specialized operation class to generate observations from chat messages using BaseAsyncOp.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -68,13 +78,17 @@ class GetObservationOp(BaseAsyncOp):
             user_query_list.append(f"{i + 1} {user_name}: {msg.content}")
 
         # Create prompt using the prompt format method
-        system_prompt = self.prompt_format(prompt_name="get_observation_system",
-                                           num_obs=len(user_query_list),
-                                           user_name=user_name)
+        system_prompt = self.prompt_format(
+            prompt_name="get_observation_system",
+            num_obs=len(user_query_list),
+            user_name=user_name,
+        )
         few_shot = self.prompt_format(prompt_name="get_observation_few_shot", user_name=user_name)
-        user_query = self.prompt_format(prompt_name="get_observation_user_query",
-                                        user_query="\n".join(user_query_list),
-                                        user_name=user_name)
+        user_query = self.prompt_format(
+            prompt_name="get_observation_user_query",
+            user_query="\n".join(user_query_list),
+            user_name=user_name,
+        )
 
         full_prompt = f"{system_prompt}\n\n{few_shot}\n\n{user_query}"
         logger.info(f"get_observation_prompt={full_prompt}")
@@ -104,8 +118,8 @@ class GetObservationOp(BaseAsyncOp):
                     metadata={
                         "keywords": obs["keywords"],
                         "source_message": filtered_messages[idx].content,
-                        "observation_type": "personal_info"
-                    }
+                        "observation_type": "personal_info",
+                    },
                 )
                 observation_memories.append(observation)
                 logger.info(f"Created observation: {obs['content'][:50]}...")
@@ -127,19 +141,21 @@ class GetObservationOp(BaseAsyncOp):
             # Handle both Chinese and English patterns
             if match[0]:  # Chinese pattern
                 idx_str, content, keywords = match[0], match[1], match[2]
-            else:  # English pattern  
+            else:  # English pattern
                 idx_str, content, keywords = match[3], match[4], match[5]
 
             try:
                 idx = int(idx_str)
                 # Skip if content indicates no meaningful observation
                 content_lower = content.lower().strip()
-                if content_lower not in ['无', 'none', '', 'repeat']:
-                    observations.append({
-                        "index": idx,
-                        "content": content.strip(),
-                        "keywords": keywords.strip() if keywords else ""
-                    })
+                if content_lower not in ["无", "none", "", "repeat"]:
+                    observations.append(
+                        {
+                            "index": idx,
+                            "content": content.strip(),
+                            "keywords": keywords.strip() if keywords else "",
+                        },
+                    )
             except ValueError:
                 logger.warning(f"Invalid index format: {idx_str}")
                 continue

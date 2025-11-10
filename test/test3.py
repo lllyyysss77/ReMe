@@ -1,15 +1,8 @@
-import random
-
-import requests
-import json
-import re
 import os
-from urllib.parse import urljoin
-from time import sleep
-import pycurl
 from io import BytesIO
+
+import pycurl
 from PyPDF2 import PdfReader
-from datetime import datetime, timedelta
 
 DOWNLOAD_DIR = "./"
 
@@ -17,13 +10,14 @@ DOWNLOAD_DIR = "./"
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
 ]
 
 
 def get_random_user_agent():
     """获取随机User-Agent"""
     import random
+
     return random.choice(USER_AGENTS)
 
 
@@ -56,7 +50,7 @@ def download_pdf(pdf_url, filename):
             f"User-Agent: {get_random_user_agent()}",
             "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Referer: https://data.eastmoney.com/",
-            "Accept-Language: zh-CN,zh;q=0.9"
+            "Accept-Language: zh-CN,zh;q=0.9",
         ]
         c.setopt(pycurl.HTTPHEADER, headers)
 
@@ -69,7 +63,7 @@ def download_pdf(pdf_url, filename):
             return False
 
         # 保存文件
-        with open(save_path, 'wb') as f:
+        with open(save_path, "wb") as f:
             f.write(buffer.getvalue())
 
         print(f"✓ 成功下载 {filename}")
@@ -86,7 +80,8 @@ def download_pdf(pdf_url, filename):
         c.close()
         buffer.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     url_list = [
         "https://pdf.dfcfw.com/pdf/H3_AP202508061722531920_1.pdf?1754495126000.pdf",
     ]

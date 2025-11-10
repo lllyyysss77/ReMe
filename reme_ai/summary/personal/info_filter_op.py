@@ -1,8 +1,17 @@
+"""Module for filtering messages based on information content scores.
+
+This module provides the InfoFilterOp class which filters chat messages by
+retaining only those that include significant information about the user.
+It uses LLM-based scoring to evaluate the information content of messages
+and filters them based on configurable score thresholds.
+"""
+
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.message import Message, Trajectory
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message, Trajectory
 from loguru import logger
 
 from reme_ai.schema.memory import PersonalMemory
@@ -14,6 +23,7 @@ class InfoFilterOp(BaseAsyncOp):
     A specialized operation class to filter messages based on information content scores using BaseAsyncOp.
     This filters chat messages by retaining only those that include significant information about the user.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -36,7 +46,7 @@ class InfoFilterOp(BaseAsyncOp):
         user_name = self.context.get("user_name", "user")
 
         # Filter and process messages
-        info_messages = self._filter_and_process_messages(messages, user_name, info_filter_msg_max_size)
+        info_messages = self._filter_and_process_messages(messages, info_filter_msg_max_size)
         if not info_messages:
             logger.warning("No messages left after filtering")
             self.context.messages = []
@@ -52,7 +62,7 @@ class InfoFilterOp(BaseAsyncOp):
         logger.info(f"Filtered to {len(filtered_memories)} high-information messages")
 
     @staticmethod
-    def _filter_and_process_messages(messages: List[Message], user_name: str, max_size: int) -> List[Message]:
+    def _filter_and_process_messages(messages: List[Message], max_size: int) -> List[Message]:
         """Filter and process messages for information filtering"""
         info_messages = []
 
@@ -60,7 +70,7 @@ class InfoFilterOp(BaseAsyncOp):
             # Ensure metadata exists
 
             # Skip memorized messages
-            if msg.metadata.get('memorized', False):
+            if msg.metadata.get("memorized", False):
                 continue
 
             # Only process messages from the target user
@@ -68,7 +78,7 @@ class InfoFilterOp(BaseAsyncOp):
             # if role_name and role_name != user_name:
             #     continue
 
-            elif msg.role.value != "user":
+            if msg.role.value != "user":
                 continue
 
             # Truncate long messages
@@ -81,8 +91,12 @@ class InfoFilterOp(BaseAsyncOp):
         logger.info(f"Filtered messages from {len(messages)} to {len(info_messages)}")
         return info_messages
 
-    async def _filter_messages_with_llm(self, info_messages: List[Message], user_name: str, preserved_scores: str) -> List[
-        PersonalMemory]:
+    async def _filter_messages_with_llm(
+        self,
+        info_messages: List[Message],
+        user_name: str,
+        preserved_scores: str,
+    ) -> List[PersonalMemory]:
         """Filter messages using LLM to score information content"""
 
         # Build prompt for information filtering
@@ -92,12 +106,16 @@ class InfoFilterOp(BaseAsyncOp):
             user_query_list.append(f"{i + 1} {user_name}{colon} {msg.content}")
 
         # Create prompt using the prompt format method
-        system_prompt = self.prompt_format(prompt_name="info_filter_system",
-                                           batch_size=len(info_messages),
-                                           user_name=user_name)
+        system_prompt = self.prompt_format(
+            prompt_name="info_filter_system",
+            batch_size=len(info_messages),
+            user_name=user_name,
+        )
         few_shot = self.prompt_format(prompt_name="info_filter_few_shot", user_name=user_name)
-        user_query = self.prompt_format(prompt_name="info_filter_user_query",
-                                        user_query="\n".join(user_query_list))
+        user_query = self.prompt_format(
+            prompt_name="info_filter_user_query",
+            user_query="\n".join(user_query_list),
+        )
 
         full_prompt = f"{system_prompt}\n\n{few_shot}\n\n{user_query}"
         logger.info(f"info_filter_prompt={full_prompt}")
@@ -134,11 +152,11 @@ class InfoFilterOp(BaseAsyncOp):
                         metadata={
                             "info_score": score,
                             "filter_type": "info_content",
-                            "original_message_time": getattr(message, 'time_created', None),
+                            "original_message_time": getattr(message, "time_created", None),
                             "role_name": message.metadata.pop("role_name", user_name),
                             "memorized": True,
-                            **message.metadata  # Include all original metadata
-                        }
+                            **message.metadata,  # Include all original metadata
+                        },
                     )
                     filtered_memories.append(memory)
                     logger.info(f"Info filter: kept message with score {score}: {message.content[:50]}...")

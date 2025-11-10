@@ -1,10 +1,17 @@
+"""Memory rewriting operation module.
+
+This module provides functionality to rewrite and format retrieved memories
+into context messages that can be used by LLMs for task completion.
+"""
+
 import json
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory
@@ -12,17 +19,25 @@ from reme_ai.schema.memory import BaseMemory
 
 @C.register_op()
 class RewriteMemoryOp(BaseAsyncOp):
+    """Generate and rewrite context messages from reranked experiences.
+
+    This operation takes reranked memories and formats them into context messages
+    that can be used by LLMs. It optionally uses LLM-based rewriting to make
+    the context more relevant and actionable for the current task.
     """
-    Generate and rewrite context messages from reranked experiences
-    """
+
     file_path: str = __file__
 
     async def async_execute(self):
-        """Execute rewrite operation"""
+        """Execute the memory rewrite operation.
+
+        Retrieves memories from context metadata, formats them, and optionally
+        rewrites them using LLM to make them more relevant for the current query.
+        Stores the rewritten context in the response answer field.
+        """
         memory_list: List[BaseMemory] = self.context.response.metadata["memory_list"]
         query: str = self.context.query
-        messages: List[Message] = \
-            [Message(**x) if isinstance(x, dict) else x for x in self.context.get('messages', [])]
+        messages: List[Message] = [Message(**x) if isinstance(x, dict) else x for x in self.context.get("messages", [])]
 
         if not memory_list:
             logger.info("No reranked memories to rewrite")
@@ -39,7 +54,16 @@ class RewriteMemoryOp(BaseAsyncOp):
         self.context.response.metadata["memory_list"] = [memory.model_dump() for memory in memory_list]
 
     async def _generate_context_message(self, query: str, messages: List[Message], memories: List[BaseMemory]) -> str:
-        """Generate context message from retrieved memories"""
+        """Generate context message from retrieved memories.
+
+        Args:
+            query: The current query string.
+            messages: List of conversation messages for context.
+            memories: List of retrieved memories to format.
+
+        Returns:
+            Formatted context string, optionally rewritten by LLM.
+        """
         if not memories:
             return ""
 
@@ -60,7 +84,16 @@ class RewriteMemoryOp(BaseAsyncOp):
             return self._format_memories_for_context(memories)
 
     async def _rewrite_context(self, query: str, context_content: str, messages: List[Message]) -> str:
-        """LLM-based context rewriting to make experiences more relevant and actionable"""
+        """LLM-based context rewriting to make experiences more relevant and actionable.
+
+        Args:
+            query: The current query string.
+            context_content: The formatted context content to rewrite.
+            messages: List of conversation messages for additional context.
+
+        Returns:
+            Rewritten context string optimized for the current task.
+        """
         if not context_content:
             return context_content
 
@@ -72,7 +105,8 @@ class RewriteMemoryOp(BaseAsyncOp):
                 prompt_name="memory_rewrite_prompt",
                 current_query=query,
                 current_context=current_context,
-                original_context=context_content)
+                original_context=context_content,
+            )
 
             response = await self.llm.achat([Message(role=Role.USER, content=prompt)])
 
@@ -91,7 +125,14 @@ class RewriteMemoryOp(BaseAsyncOp):
 
     @staticmethod
     def _format_memories_for_context(memories: List[BaseMemory]) -> str:
-        """Format memories for context generation"""
+        """Format memories for context generation.
+
+        Args:
+            memories: List of memories to format.
+
+        Returns:
+            Formatted string containing all memories with their conditions and content.
+        """
         formatted_memories = []
 
         for i, memory in enumerate(memories, 1):
@@ -105,7 +146,14 @@ class RewriteMemoryOp(BaseAsyncOp):
 
     @staticmethod
     def _extract_context(messages: List[Message]) -> str:
-        """Extract relevant context from messages"""
+        """Extract relevant context from messages.
+
+        Args:
+            messages: List of conversation messages.
+
+        Returns:
+            Formatted string containing recent conversation context.
+        """
         if not messages:
             return ""
 
@@ -125,10 +173,18 @@ class RewriteMemoryOp(BaseAsyncOp):
 
     @staticmethod
     def _parse_json_response(response: str, key: str) -> str:
-        """Parse JSON response to extract specific key"""
+        """Parse JSON response to extract specific key.
+
+        Args:
+            response: The response string that may contain JSON.
+            key: The key to extract from the JSON object.
+
+        Returns:
+            The value associated with the key, or the response string if parsing fails.
+        """
         try:
             # Try to extract JSON blocks
-            json_pattern = r'```json\s*([\s\S]*?)\s*```'
+            json_pattern = r"```json\s*([\s\S]*?)\s*```"
             json_blocks = re.findall(json_pattern, response)
 
             if json_blocks:

@@ -1,3 +1,9 @@
+"""Personal memory retrieval operations module.
+
+This module provides operations for retrieving, ranking, and formatting personal memories
+from a vector store, including time extraction, semantic ranking, and memory formatting.
+"""
+
 from .extract_time_op import ExtractTimeOp
 from .fuse_rerank_op import FuseRerankOp
 from .print_memory_op import PrintMemoryOp
@@ -13,5 +19,5 @@ __all__ = [
     "ReadMessageOp",
     "RetrieveMemoryOp",
     "SemanticRankOp",
-    "SetQueryOp"
+    "SetQueryOp",
 ]

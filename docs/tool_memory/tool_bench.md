@@ -24,11 +24,11 @@ This benchmark evaluates Tool Memory effectiveness by comparing agent performanc
 
 Three LLM-based mock search tools with different performance profiles:
 
-| Tool | Simple Queries | Medium Queries | Complex Queries |
-|------|---------------|----------------|-----------------|
-| **SearchToolA** | ⭐⭐⭐ Fast, high success (90%) | ❌ Poor (20% success) | ⚠️ Weak (50% success) |
-| **SearchToolB** | ⚠️ Over-engineered (30%) | ⭐⭐⭐ Optimal (90% success) | ⚠️ Limited (50% success) |
-| **SearchToolC** | ⚠️ Overkill (30%) | ⚠️ Excessive (40%) | ⭐⭐⭐ Best (90% success) |
+| Tool            | Simple Queries               | Medium Queries            | Complex Queries          |
+|-----------------|------------------------------|---------------------------|--------------------------|
+| **SearchToolA** | ⭐⭐⭐ Fast, high success (90%) | ❌ Poor (20% success)      | ⚠️ Weak (50% success)    |
+| **SearchToolB** | ⚠️ Over-engineered (30%)     | ⭐⭐⭐ Optimal (90% success) | ⚠️ Limited (50% success) |
+| **SearchToolC** | ⚠️ Overkill (30%)            | ⚠️ Excessive (40%)        | ⭐⭐⭐ Best (90% success)   |
 
 **Performance Characteristics:**
 - `success_rate`: Probability of successful execution (vs "Service busy" error)

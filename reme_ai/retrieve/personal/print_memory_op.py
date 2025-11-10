@@ -1,6 +1,13 @@
+"""Memory printing operation for personal memories.
+
+This module provides functionality to format and print memories in various formats
+for display or output purposes.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory
@@ -11,6 +18,7 @@ class PrintMemoryOp(BaseAsyncOp):
     """
     Formats the memories to print.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -39,7 +47,15 @@ class PrintMemoryOp(BaseAsyncOp):
 
     @staticmethod
     def _format_memories_for_print(memories: List[BaseMemory]) -> str:
-        """Format memories for printing"""
+        """
+        Format memories for printing.
+
+        Args:
+            memories: List of memory objects to format
+
+        Returns:
+            Formatted string representation of memories
+        """
         if not memories:
             return "No memories available."
 
@@ -51,10 +67,10 @@ class PrintMemoryOp(BaseAsyncOp):
             memory_text += f"  Content: {memory.content}\n"
 
             # Add additional metadata if available
-            if hasattr(memory, 'metadata') and memory.metadata:
+            if hasattr(memory, "metadata") and memory.metadata:
                 metadata_items = []
                 for key, value in memory.metadata.items():
-                    if key not in ['when_to_use', 'content']:
+                    if key not in ["when_to_use", "content"]:
                         metadata_items.append(f"{key}: {value}")
                 if metadata_items:
                     memory_text += f"  Metadata: {', '.join(metadata_items)}\n"
@@ -67,10 +83,10 @@ class PrintMemoryOp(BaseAsyncOp):
     def format_memories_for_output(memories: List) -> str:
         """
         Format memory list for output string.
-        
+
         Args:
             memories: List of memory objects
-            
+
         Returns:
             Formatted string
         """
@@ -79,8 +95,8 @@ class PrintMemoryOp(BaseAsyncOp):
 
         formatted_parts = []
         for i, memory in enumerate(memories, 1):
-            when_to_use = getattr(memory, 'when_to_use', '') or memory.get('when_to_use', '')
-            content = getattr(memory, 'content', '') or memory.get('content', '')
+            when_to_use = getattr(memory, "when_to_use", "") or memory.get("when_to_use", "")
+            content = getattr(memory, "content", "") or memory.get("content", "")
 
             part = f"Memory {i}:\n"
             if when_to_use:
@@ -96,10 +112,10 @@ class PrintMemoryOp(BaseAsyncOp):
     def format_memories_for_simple_output(memories: List) -> str:
         """
         Format memory list for simple flow output.
-        
+
         Args:
             memories: List of memory objects
-            
+
         Returns:
             Formatted string suitable for response.answer
         """
@@ -110,8 +126,8 @@ class PrintMemoryOp(BaseAsyncOp):
 
         for memory in memories:
             # Safely get field values
-            when_to_use = getattr(memory, 'when_to_use', '') or memory.get('when_to_use', '')
-            content = getattr(memory, 'content', '') or memory.get('content', '')
+            when_to_use = getattr(memory, "when_to_use", "") or memory.get("when_to_use", "")
+            content = getattr(memory, "content", "") or memory.get("content", "")
 
             # Skip memories with empty content
             if not content:
@@ -125,7 +141,9 @@ class PrintMemoryOp(BaseAsyncOp):
         if len(content_parts) == 1:  # Only title
             return "No relevant memories with valid content found."
 
-        content_parts.append("\nPlease consider the helpful parts from these in answering the question, "
-                             "to make the response more comprehensive and substantial.")
+        content_parts.append(
+            "\nPlease consider the helpful parts from these in answering the question, "
+            "to make the response more comprehensive and substantial.",
+        )
 
         return "\n".join(content_parts)

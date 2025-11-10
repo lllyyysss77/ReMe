@@ -1,10 +1,20 @@
+"""Module for detecting and handling contradictory and repetitive memories.
+
+This module provides the ContraRepeatOp class which processes memory nodes
+to identify and handle contradictory and repetitive information. It collects
+observation memories from context, constructs prompts for language model
+analysis, parses responses to detect contradictions or redundancies, and
+filters the processed memories accordingly.
+"""
+
 import json
 import re
 from typing import List, Tuple
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory
@@ -22,6 +32,7 @@ class ContraRepeatOp(BaseAsyncOp):
     - Parses the model's response to detect contradictions or redundancies.
     - Filters and returns the processed memories.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -71,12 +82,16 @@ class ContraRepeatOp(BaseAsyncOp):
         user_name = self.context.get("user_name", "user")
 
         # Create prompt using the new pattern
-        system_prompt = self.prompt_format(prompt_name="contra_repeat_system",
-                                           num_obs=len(user_query_list),
-                                           user_name=user_name)
+        system_prompt = self.prompt_format(
+            prompt_name="contra_repeat_system",
+            num_obs=len(user_query_list),
+            user_name=user_name,
+        )
         few_shot = self.prompt_format(prompt_name="contra_repeat_few_shot", user_name=user_name)
-        user_query = self.prompt_format(prompt_name="contra_repeat_user_query",
-                                        user_query="\n".join(user_query_list))
+        user_query = self.prompt_format(
+            prompt_name="contra_repeat_user_query",
+            user_query="\n".join(user_query_list),
+        )
 
         full_prompt = f"{system_prompt}\n\n{few_shot}\n\n{user_query}"
         logger.info(f"contra_repeat_prompt={full_prompt}")
@@ -105,7 +120,9 @@ class ContraRepeatOp(BaseAsyncOp):
 
     @staticmethod
     def _parse_and_filter_memories(response_text: str, memories: List[BaseMemory]) -> Tuple[
-        List[BaseMemory], List[str]]:
+        List[BaseMemory],
+        List[str],
+    ]:
         """Parse LLM response and filter memories based on contradiction/containment analysis"""
 
         # Parse the response to extract judgments
@@ -128,7 +145,7 @@ class ContraRepeatOp(BaseAsyncOp):
                     continue
 
                 judgment_lower = judgment.lower()
-                if judgment_lower in ['矛盾', 'contradiction', '被包含', 'contained']:
+                if judgment_lower in ["矛盾", "contradiction", "被包含", "contained"]:
                     indices_to_remove.add(idx)
                     deleted_memory_ids.append(memories[idx].memory_id)
                     logger.info(f"Marking memory {idx + 1} for removal: {judgment} - {memories[idx].content[:100]}...")

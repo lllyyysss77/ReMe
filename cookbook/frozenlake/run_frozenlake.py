@@ -1,18 +1,18 @@
-import os
-import time
 import json
-import ray
+import time
 from pathlib import Path
 from typing import List, Dict
+
 import numpy as np
-from loguru import logger
+import ray
 from gymnasium.envs.toy_text.frozen_lake import generate_random_map
+from loguru import logger
 
 from frozenlake_react_agent import FrozenLakeReactAgent
 from map_manager import MapManager
 
 
-def generate_training_configs(num_maps: int = 20, map_size: int = 4, is_slippery: bool=False) -> List[Dict]:
+def generate_training_configs(num_maps: int = 20, map_size: int = 4, is_slippery: bool = False) -> List[Dict]:
     """Generate random maps for training/task memory generation"""
     configs = []
 
@@ -25,7 +25,7 @@ def generate_training_configs(num_maps: int = 20, map_size: int = 4, is_slippery
             "map_desc": random_map,
             "map_size": map_size,
             "is_slippery": is_slippery,
-            "task_id": f"train_{i}_{is_slippery}"
+            "task_id": f"train_{i}_{is_slippery}",
         }
         configs.append(config)
 
@@ -43,7 +43,7 @@ def generate_test_configs(num_test_maps: int = 100, is_slippery: bool = False) -
     configs = []
 
     for map_data in maps_data:
-        map_desc = np.array([list(row) for row in map_data["map_desc"]], dtype='c')
+        map_desc = np.array([list(row) for row in map_data["map_desc"]], dtype="c")
         map_id = map_data["map_id"]
 
         for use_memory in [True, False]:
@@ -54,7 +54,7 @@ def generate_test_configs(num_test_maps: int = 100, is_slippery: bool = False) -
                 "is_slippery": is_slippery,
                 "use_task_memory": use_memory,
                 "map_id": map_id,
-                "task_id": f"test_map{map_id}_slip{is_slippery}_mem{use_memory}"
+                "task_id": f"test_map{map_id}_slip{is_slippery}_mem{use_memory}",
             }
             configs.append(config)
 
@@ -62,7 +62,13 @@ def generate_test_configs(num_test_maps: int = 100, is_slippery: bool = False) -
     return configs
 
 
-def train(experiment_name: str, max_workers: int = 2, num_runs: int = 3, num_training_maps= 15, is_slippery: bool= False) -> None:
+def train(
+    experiment_name: str,
+    max_workers: int = 2,
+    num_runs: int = 3,
+    num_training_maps=15,
+    is_slippery: bool = False,
+) -> None:
     """Phase 1: Generate task memory from random maps"""
     logger.info("🎯 Starting Training Phase - Generating Task Memory")
     logger.info("=" * 60)
@@ -116,7 +122,7 @@ def train(experiment_name: str, max_workers: int = 2, num_runs: int = 3, num_tra
             experiment_name=experiment_name,
             num_runs=num_runs,
             use_task_memory=False,
-            make_task_memory=True
+            make_task_memory=True,
         )
         results = agent.execute()
         dump_results()
@@ -130,7 +136,13 @@ def train(experiment_name: str, max_workers: int = 2, num_runs: int = 3, num_tra
     return results
 
 
-def test(experiment_name: str, max_workers: int = 2, num_runs: int = 5, num_test_maps: int = 100, is_slippery: bool=False) -> None:
+def test(
+    experiment_name: str,
+    max_workers: int = 2,
+    num_runs: int = 5,
+    num_test_maps: int = 100,
+    is_slippery: bool = False,
+) -> None:
     """Phase 2: Test on fixed maps with/without task memory"""
     logger.info("🧪 Starting Test Phase - Evaluating Performance")
     logger.info(f"📊 Testing on {num_test_maps} maps with {num_runs} runs each")
@@ -147,8 +159,6 @@ def test(experiment_name: str, max_workers: int = 2, num_runs: int = 5, num_test
     logger.info(f"📝 Configs without task memory: {len(no_memory_configs)}")
     logger.info(f"📝 Configs with task memory: {len(memory_configs)}")
 
-
-
     def dump_results(suffix: str):
         output_file = path / f"{experiment_name}_test_{suffix}.jsonl"
         with open(output_file, "w") as f:
@@ -164,7 +174,7 @@ def test(experiment_name: str, max_workers: int = 2, num_runs: int = 5, num_test
         experiment_name=experiment_name,
         max_workers=max_workers,
         num_runs=num_runs,
-        use_task_memory=False
+        use_task_memory=False,
     )
     all_results.extend(results_no_memory)
     dump_results("no_memory")
@@ -177,7 +187,7 @@ def test(experiment_name: str, max_workers: int = 2, num_runs: int = 5, num_test
         experiment_name=experiment_name,
         max_workers=max_workers,
         num_runs=num_runs,
-        use_task_memory=True
+        use_task_memory=True,
     )
     all_results.extend(results_with_memory)
     dump_results("with_memory")
@@ -185,8 +195,13 @@ def test(experiment_name: str, max_workers: int = 2, num_runs: int = 5, num_test
     return all_results
 
 
-def run_test_configs(configs: List[Dict], experiment_name: str, max_workers: int,
-                     num_runs: int, use_task_memory: bool) -> List[Dict]:
+def run_test_configs(
+    configs: List[Dict],
+    experiment_name: str,
+    max_workers: int,
+    num_runs: int,
+    use_task_memory: bool,
+) -> List[Dict]:
     """Run a set of test configurations"""
     results = []
 
@@ -201,7 +216,7 @@ def run_test_configs(configs: List[Dict], experiment_name: str, max_workers: int
                     experiment_name=experiment_name,
                     num_runs=num_runs,
                     use_task_memory=use_task_memory,
-                    make_task_memory=False
+                    make_task_memory=False,
                 )
                 future = agent.execute.remote()
                 future_list.append(future)
@@ -220,7 +235,7 @@ def run_test_configs(configs: List[Dict], experiment_name: str, max_workers: int
             experiment_name=experiment_name,
             num_runs=num_runs,
             use_task_memory=use_task_memory,
-            make_task_memory=False
+            make_task_memory=False,
         )
         results = agent.execute()
 
@@ -255,13 +270,12 @@ def main():
             max_workers=max_workers,
             num_runs=training_runs,
             num_training_maps=num_training_maps,
-            is_slippery=is_slippery
+            is_slippery=is_slippery,
         )
 
         # Wait a bit for task memory service to process
         logger.info("⏰ Waiting for task memory service to process data...")
         time.sleep(10)
-
 
         # Phase 2: Testing (Performance Evaluation)
         test_results = test(
@@ -269,7 +283,7 @@ def main():
             max_workers=max_workers,
             num_runs=test_runs,
             num_test_maps=num_test_maps,
-            is_slippery=is_slippery
+            is_slippery=is_slippery,
         )
 
         # Summary

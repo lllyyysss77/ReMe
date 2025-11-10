@@ -1,12 +1,19 @@
+"""Tool call result parsing and evaluation operation.
+
+This module provides operations to parse, validate, and evaluate tool call results,
+extracting summaries, evaluations, and scores for each tool call.
+"""
+
 import asyncio
 from collections import defaultdict
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message
-from flowllm.schema.vector_node import VectorNode
-from flowllm.utils.common_utils import extract_content
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
+from flowllm.core.schema import VectorNode
+from flowllm.core.utils import extract_content
 from loguru import logger
 
 from reme_ai.schema.memory import ToolMemory, ToolCallResult, vector_node_to_memory
@@ -14,12 +21,28 @@ from reme_ai.schema.memory import ToolMemory, ToolCallResult, vector_node_to_mem
 
 @C.register_op()
 class ParseToolCallResultOp(BaseAsyncOp):
+    """Parse and evaluate tool call results using LLM.
+
+    This operation processes tool call results, validates them, evaluates their
+    quality using LLM, and organizes them into tool memories. It handles
+    deduplication and maintains a history of tool calls per tool.
+    """
+
     file_path: str = __file__
 
-    def __init__(self,
-                 max_history_tool_call_cnt: int = 100,
-                 evaluation_sleep_interval: float = 1.0,
-                 **kwargs):
+    def __init__(
+        self,
+        max_history_tool_call_cnt: int = 100,
+        evaluation_sleep_interval: float = 1.0,
+        **kwargs,
+    ):
+        """Initialize ParseToolCallResultOp.
+
+        Args:
+            max_history_tool_call_cnt: Maximum number of tool call results to keep per tool
+            evaluation_sleep_interval: Sleep interval between concurrent evaluation tasks
+            **kwargs: Additional arguments passed to base class
+        """
         super().__init__(**kwargs)
         self.max_history_tool_call_cnt: int = max_history_tool_call_cnt
         self.evaluation_sleep_interval: float = evaluation_sleep_interval
@@ -28,10 +51,10 @@ class ParseToolCallResultOp(BaseAsyncOp):
     def _is_valid_tool_call_result(tool_call_result: ToolCallResult) -> bool:
         """
         Validate if a tool call result is valid and should be processed.
-        
+
         Args:
             tool_call_result: The tool call result to validate
-            
+
         Returns:
             True if valid, False otherwise
         """
@@ -46,10 +69,10 @@ class ParseToolCallResultOp(BaseAsyncOp):
             return False
 
         # Check if input is provided
-        if tool_call_result.input is None or (
-                isinstance(tool_call_result.input, str) and not tool_call_result.input.strip()
-        ) or (
-                isinstance(tool_call_result.input, dict) and not tool_call_result.input
+        if (
+            tool_call_result.input is None
+            or (isinstance(tool_call_result.input, str) and not tool_call_result.input.strip())
+            or (isinstance(tool_call_result.input, dict) and not tool_call_result.input)
         ):
             logger.warning(f"Skipping tool_call_result for {tool_call_result.tool_name}: input is empty")
             return False
@@ -61,10 +84,10 @@ class ParseToolCallResultOp(BaseAsyncOp):
         """
         Estimate token cost based on input and output length.
         Uses the approximation: token_count ≈ char_count / 4
-        
+
         Args:
             tool_call_result: The tool call result to estimate tokens for
-            
+
         Returns:
             Estimated token count as an integer
         """
@@ -89,36 +112,46 @@ class ParseToolCallResultOp(BaseAsyncOp):
     def _format_tool_memories_summary(memory_list: List[ToolMemory], deleted_memory_ids: List[str]) -> str:
         """Format tool memories update summary"""
         lines = []
-        
+
         # 统计信息
         total_tools = len(memory_list)
         updated_tools = len(deleted_memory_ids)
         new_tools = total_tools - updated_tools
-        
+
         lines.append(f"Processed {total_tools} tool(s): {updated_tools} updated, {new_tools} newly created\n")
-        
+
         # 详细信息
         for idx, memory in enumerate(memory_list, 1):
             is_updated = memory.memory_id in deleted_memory_ids
             status = "Updated" if is_updated else "New"
-            
+
             lines.append(f"[{status}] {memory.when_to_use}")
             lines.append(f"  Total calls: {len(memory.tool_call_results)}")
-            
+
             # 显示最近添加的调用结果统计
             if memory.tool_call_results:
                 recent_results = memory.tool_call_results[-3:]
                 success_count = sum(1 for r in recent_results if r.success)
                 avg_score = sum(r.score for r in recent_results) / len(recent_results)
-                lines.append(f"  Recent calls: {success_count}/{len(recent_results)} successful, avg score: {avg_score:.2f}")
-            
+                lines.append(
+                    f"  Recent calls: {success_count}/{len(recent_results)} successful, avg score: {avg_score:.2f}",
+                )
+
             if idx < len(memory_list):
                 lines.append("")
-        
+
         return "\n".join(lines)
 
     async def _evaluate_single_tool_call(self, tool_call_result: ToolCallResult, index: int) -> ToolCallResult:
-        await asyncio.sleep(self.evaluation_sleep_interval * index)
+        """Evaluate a single tool call result using LLM.
+
+        Args:
+            tool_call_result: The tool call result to evaluate
+            index: Index for sleep interval calculation
+
+        Returns:
+            Tool call result with added summary, evaluation, and score
+        """
 
         prompt = self.prompt_format(
             prompt_name="evaluate_tool_call_prompt",
@@ -127,9 +160,18 @@ class ParseToolCallResultOp(BaseAsyncOp):
             output=tool_call_result.output,
             success_flag=str(tool_call_result.success),
             time_cost=tool_call_result.time_cost,
-            token_cost=tool_call_result.token_cost)
+            token_cost=tool_call_result.token_cost,
+        )
 
         def parse_evaluation(message: Message) -> ToolCallResult:
+            """Parse LLM evaluation response and update tool call result.
+
+            Args:
+                message: LLM response message containing evaluation data
+
+            Returns:
+                Updated tool call result with summary, evaluation, and score
+            """
             content = message.content.strip()
             eval_data = extract_content(content, "json")
 
@@ -146,11 +188,13 @@ class ParseToolCallResultOp(BaseAsyncOp):
                     tool_call_result.score = 1.0
 
             # 打印完整的prompt和result
-            logger.info(f"\n{'='*80}\nLLM Evaluation [Index {index}]\n{'='*80}\n"
-                       f"PROMPT:\n{prompt}\n\n"
-                       f"RESULT:\n{content}\n"
-                       f"{'='*80}\n")
-            
+            logger.info(
+                f"\n{'=' * 80}\nLLM Evaluation [Index {index}]\n{'=' * 80}\n"
+                f"PROMPT:\n{prompt}\n\n"
+                f"RESULT:\n{content}\n"
+                f"{'=' * 80}\n",
+            )
+
             return tool_call_result
 
         # 调用 LLM 进行评估
@@ -158,7 +202,153 @@ class ParseToolCallResultOp(BaseAsyncOp):
 
         return result
 
+    def _validate_and_prepare_tool_call_results(
+        self,
+        tool_call_results: list,
+    ) -> tuple[list[ToolCallResult], int]:
+        """Validate and prepare tool call results.
+
+        Args:
+            tool_call_results: List of tool call results to validate
+
+        Returns:
+            Tuple of (valid_tool_call_results, filtered_count)
+        """
+        original_count = len(tool_call_results)
+        valid_tool_call_results = []
+
+        for tool_call_result in tool_call_results:
+            if not self._is_valid_tool_call_result(tool_call_result):
+                continue
+
+            tool_call_result.ensure_hash()
+
+            if tool_call_result.token_cost < 0:
+                token_cost = self._estimate_token_cost(tool_call_result)
+                tool_call_result.token_cost = token_cost
+                logger.info(f"Auto-calculated token_cost={token_cost} for tool={tool_call_result.tool_name}")
+
+            valid_tool_call_results.append(tool_call_result)
+
+        filtered_count = original_count - len(valid_tool_call_results)
+        if filtered_count > 0:
+            logger.warning(f"Filtered out {filtered_count} invalid tool_call_results out of {original_count}")
+
+        return valid_tool_call_results, filtered_count
+
+    async def _process_tool_memory(
+        self,
+        tool_name: str,
+        tool_call_results: list[ToolCallResult],
+        workspace_id: str,
+    ) -> tuple[ToolMemory, bool, dict]:
+        """Process tool memory for a specific tool.
+
+        Args:
+            tool_name: Name of the tool
+            tool_call_results: List of tool call results for this tool
+            workspace_id: Workspace ID
+
+        Returns:
+            Tuple of (tool_memory, exist_node, deduplication_stats)
+        """
+        nodes: List[VectorNode] = await self.vector_store.async_search(
+            query=tool_name,
+            workspace_id=workspace_id,
+            top_k=1,
+        )
+
+        tool_memory: ToolMemory | None = None
+        exist_node: bool = False
+
+        if nodes:
+            top_node = nodes[0]
+            memory: ToolMemory = vector_node_to_memory(top_node)
+
+            if isinstance(memory, ToolMemory) and memory.when_to_use == tool_name:
+                tool_memory = memory
+                exist_node = True
+
+        if tool_memory is None:
+            tool_memory = ToolMemory(workspace_id=workspace_id, when_to_use=tool_name)
+
+        existing_hashes = {result.call_hash for result in tool_memory.tool_call_results if result.call_hash}
+
+        new_results = []
+        deduplication_stats = {"total_new": 0, "deduplicated": 0, "added": 0}
+
+        for result in tool_call_results:
+            deduplication_stats["total_new"] += 1
+            if result.call_hash not in existing_hashes:
+                new_results.append(result)
+                existing_hashes.add(result.call_hash)
+                deduplication_stats["added"] += 1
+            else:
+                deduplication_stats["deduplicated"] += 1
+                logger.info(f"Skipping duplicate tool call for {tool_name} with hash {result.call_hash}")
+
+        tool_memory.tool_call_results.extend(new_results)
+
+        if len(tool_memory.tool_call_results) > self.max_history_tool_call_cnt:
+            tool_memory.tool_call_results = tool_memory.tool_call_results[-self.max_history_tool_call_cnt :]
+
+        tool_memory.update_modified_time()
+
+        return tool_memory, exist_node, deduplication_stats
+
+    def _build_response(
+        self,
+        all_memory_list: list[ToolMemory],
+        all_deleted_memory_ids: list[str],
+        original_count: int,
+        valid_count: int,
+        filtered_count: int,
+        deduplication_stats: dict,
+    ) -> str:
+        """Build formatted response string.
+
+        Args:
+            all_memory_list: List of all tool memories
+            all_deleted_memory_ids: List of deleted memory IDs
+            original_count: Original count of tool call results
+            valid_count: Count of valid tool call results
+            filtered_count: Count of filtered tool call results
+            deduplication_stats: Deduplication statistics
+
+        Returns:
+            Formatted answer string
+        """
+        formatted_answer = self._format_tool_memories_summary(all_memory_list, all_deleted_memory_ids)
+
+        if filtered_count > 0:
+            filter_info = (
+                f"\n\nValidation Summary:\n"
+                f"  Total input: {original_count}\n"
+                f"  Valid: {valid_count}\n"
+                f"  Filtered (invalid): {filtered_count}"
+            )
+            formatted_answer += filter_info
+
+        dedup_info = (
+            f"\n\nDeduplication Summary:\n"
+            f"  Total new calls: {deduplication_stats['total_new']}\n"
+            f"  Added: {deduplication_stats['added']}\n"
+            f"  Deduplicated: {deduplication_stats['deduplicated']}"
+        )
+        formatted_answer += dedup_info
+
+        return formatted_answer
+
     async def async_execute(self):
+        """Execute the tool call result parsing and evaluation operation.
+
+        This method processes tool call results by:
+        1. Validating and filtering invalid results
+        2. Evaluating results using LLM
+        3. Grouping results by tool name
+        4. Handling deduplication and memory updates
+        5. Building and returning formatted response
+        """
         tool_call_results: list = self.context.get("tool_call_results", [])
         tool_call_results = [ToolCallResult(**x) if isinstance(x, dict) else x for x in tool_call_results]
         workspace_id: str = self.context.workspace_id
@@ -168,32 +358,9 @@ class ParseToolCallResultOp(BaseAsyncOp):
             self.context.response.success = False
             return
 
-        # 过滤和验证 tool_call_results
         original_count = len(tool_call_results)
-        valid_tool_call_results = []
-        
-        for tool_call_result in tool_call_results:
-            # 验证数据是否有效
-            if not self._is_valid_tool_call_result(tool_call_result):
-                continue
+        valid_tool_call_results, filtered_count = self._validate_and_prepare_tool_call_results(tool_call_results)
 
-            # 确保有 hash 值
-            tool_call_result.ensure_hash()
-
-            # 如果 token_cost 未设置（默认值 -1），则自动计算
-            if tool_call_result.token_cost < 0:
-                token_cost = self._estimate_token_cost(tool_call_result)
-                tool_call_result.token_cost = token_cost
-                logger.info(f"Auto-calculated token_cost={token_cost} for tool={tool_call_result.tool_name}")
-
-            valid_tool_call_results.append(tool_call_result)
-
-        # 记录过滤统计
-        filtered_count = original_count - len(valid_tool_call_results)
-        if filtered_count > 0:
-            logger.warning(f"Filtered out {filtered_count} invalid tool_call_results out of {original_count}")
-
-        # 如果所有记录都被过滤了
         if not valid_tool_call_results:
             self.context.response.answer = f"All {original_count} tool_call_results were invalid and filtered out"
             self.context.response.success = False
@@ -201,94 +368,43 @@ class ParseToolCallResultOp(BaseAsyncOp):
 
         logger.info(f"Processing {len(valid_tool_call_results)} valid tool_call_results")
 
-        # 使用基类的 submit_async_task 提交所有评估任务
         for index, tool_call_result in enumerate(valid_tool_call_results):
             self.submit_async_task(self._evaluate_single_tool_call, tool_call_result, index)
 
-        # 使用基类的 join_async_task 等待所有任务完成
-        # 注意: 基类已经过滤掉异常,返回的只包含成功的结果
         evaluated_results = await self.join_async_task(return_exceptions=True)
 
         tool_results_by_name = defaultdict(list)
         for result in evaluated_results:
             tool_results_by_name[result.tool_name].append(result)
 
-        # 处理每个 tool_name 的结果
         all_memory_list = []
         all_deleted_memory_ids = []
-        deduplication_stats = {"total_new": 0, "deduplicated": 0, "added": 0}
+        total_dedup_stats = {"total_new": 0, "deduplicated": 0, "added": 0}
 
-        for tool_name, tool_call_results in tool_results_by_name.items():
-            nodes: List[VectorNode] = await self.vector_store.async_search(query=tool_name,
-                                                                           workspace_id=workspace_id,
-                                                                           top_k=1)
+        for tool_name, results in tool_results_by_name.items():
+            tool_memory, exist_node, dedup_stats = await self._process_tool_memory(
+                tool_name,
+                results,
+                workspace_id,
+            )
 
-            tool_memory: ToolMemory | None = None
-            exist_node: bool = False
-
-            if nodes:
-                top_node = nodes[0]
-                memory: ToolMemory = vector_node_to_memory(top_node)
-
-                # 确保是 ToolMemory 类型且 when_to_use 与 tool_name 匹配
-                if isinstance(memory, ToolMemory) and memory.when_to_use == tool_name:
-                    tool_memory = memory
-                    exist_node = True
-
-            # 如果没有找到匹配的 memory，创建新的
-            if tool_memory is None:
-                tool_memory = ToolMemory(workspace_id=workspace_id, when_to_use=tool_name)
-
-            # 获取现有的所有 hash 值用于去重
-            existing_hashes = {result.call_hash for result in tool_memory.tool_call_results if result.call_hash}
-            
-            # 过滤掉重复的 tool_call_results
-            new_results = []
-            for result in tool_call_results:
-                deduplication_stats["total_new"] += 1
-                if result.call_hash not in existing_hashes:
-                    new_results.append(result)
-                    existing_hashes.add(result.call_hash)
-                    deduplication_stats["added"] += 1
-                else:
-                    deduplication_stats["deduplicated"] += 1
-                    logger.info(f"Skipping duplicate tool call for {tool_name} with hash {result.call_hash}")
-            
-            # 只添加非重复的结果
-            tool_memory.tool_call_results.extend(new_results)
-
-            # 保留最近的 n 个
-            if len(tool_memory.tool_call_results) > self.max_history_tool_call_cnt:
-                tool_memory.tool_call_results = tool_memory.tool_call_results[-self.max_history_tool_call_cnt:]
-
-            # 更新修改时间
-            tool_memory.update_modified_time()
-
-            # 如果是更新现有的 memory，需要先删除旧的
             if exist_node:
                 all_deleted_memory_ids.append(tool_memory.memory_id)
 
             all_memory_list.append(tool_memory)
 
-        # 格式化结果信息
-        formatted_answer = self._format_tool_memories_summary(all_memory_list, all_deleted_memory_ids)
+            for key in total_dedup_stats:
+                total_dedup_stats[key] += dedup_stats[key]
 
-        # 添加过滤统计信息
-        if filtered_count > 0:
-            filter_info = (f"\n\nValidation Summary:\n"
-                           f"  Total input: {original_count}\n"
-                           f"  Valid: {len(valid_tool_call_results)}\n"
-                           f"  Filtered (invalid): {filtered_count}")
-            formatted_answer += filter_info
-        
-        # 添加去重统计信息
-        dedup_info = (f"\n\nDeduplication Summary:\n"
-                     f"  Total new calls: {deduplication_stats['total_new']}\n"
-                     f"  Added: {deduplication_stats['added']}\n"
-                     f"  Deduplicated: {deduplication_stats['deduplicated']}")
-        formatted_answer += dedup_info
-        
-        # 设置返回结果
+        formatted_answer = self._build_response(
+            all_memory_list,
+            all_deleted_memory_ids,
+            original_count,
+            len(valid_tool_call_results),
+            filtered_count,
+            total_dedup_stats,
+        )
+
         self.context.response.answer = formatted_answer
         self.context.response.success = True
         self.context.response.metadata["deleted_memory_ids"] = all_deleted_memory_ids
@@ -296,16 +412,16 @@ class ParseToolCallResultOp(BaseAsyncOp):
         self.context.response.metadata["validation_stats"] = {
             "total_input": original_count,
             "valid": len(valid_tool_call_results),
-            "filtered": filtered_count
+            "filtered": filtered_count,
         }
-        self.context.response.metadata["deduplication_stats"] = deduplication_stats
+        self.context.response.metadata["deduplication_stats"] = total_dedup_stats
 
 
 async def main():
     """Simple test for ParseToolCallResultOp"""
     from datetime import datetime
 
-    from reme_ai.app import ReMeApp
+    from reme_ai.main import ReMeApp
 
     async with ReMeApp():
         op = ParseToolCallResultOp()
@@ -320,12 +436,17 @@ async def main():
                     "query": "search for python asyncio documentation",
                     "max_results": 10,
                     "filter_type": "official_docs",
-                    "language": "en"
+                    "language": "en",
                 },
-                "output": "Found 10 relevant documentation pages for Python asyncio. Top results include: 1) Official Python docs for asyncio module, 2) Real Python asyncio tutorial, 3) Stack Overflow asyncio examples. All results are from official sources as requested.",
+                "output": (
+                    "Found 10 relevant documentation pages for Python asyncio. "
+                    "Top results include: 1) Official Python docs for asyncio module, "
+                    "2) Real Python asyncio tutorial, 3) Stack Overflow asyncio examples. "
+                    "All results are from official sources as requested."
+                ),
                 "token_cost": 150,
                 "success": True,
-                "time_cost": 2.3
+                "time_cost": 2.3,
             },
             # Test 2: Valid without token_cost (should auto-calculate)
             {
@@ -333,12 +454,14 @@ async def main():
                 "tool_name": "test_tool_auto_token",
                 "input": {
                     "query": "get weather information for San Francisco",
-                    "units": "celsius"
+                    "units": "celsius",
                 },
-                "output": "Current weather in San Francisco: Temperature: 18°C, Humidity: 65%, Conditions: Partly cloudy",
+                "output": (
+                    "Current weather in San Francisco: Temperature: 18°C, " "Humidity: 65%, Conditions: Partly cloudy"
+                ),
                 # token_cost not provided, will be auto-calculated
                 "success": True,
-                "time_cost": 1.5
+                "time_cost": 1.5,
             },
             # Test 3: Invalid - empty output (should be filtered)
             {
@@ -347,7 +470,7 @@ async def main():
                 "input": {"query": "test"},
                 "output": "",  # Empty output
                 "success": False,
-                "time_cost": 0.1
+                "time_cost": 0.1,
             },
             # Test 4: Invalid - empty input (should be filtered)
             {
@@ -356,7 +479,7 @@ async def main():
                 "input": {},  # Empty dict input
                 "output": "Some output",
                 "success": True,
-                "time_cost": 0.2
+                "time_cost": 0.2,
             },
             # Test 5: Invalid - missing tool_name (should be filtered)
             {
@@ -365,13 +488,13 @@ async def main():
                 "input": {"test": "data"},
                 "output": "Result",
                 "success": True,
-                "time_cost": 0.3
-            }
+                "time_cost": 0.3,
+            },
         ]
 
         logger.info(f"\n{'=' * 60}")
         logger.info(f"Testing with {len(tool_call_results)} tool_call_results")
-        logger.info(f"Expected: 2 valid, 3 filtered")
+        logger.info("Expected: 2 valid, 3 filtered")
         logger.info(f"{'=' * 60}\n")
         workspace_id = "test_workspace1"
 

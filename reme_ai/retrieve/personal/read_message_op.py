@@ -1,7 +1,14 @@
+"""Message reading operation for personal memories.
+
+This module provides functionality to read and filter unmemorized chat messages
+from the context for processing.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 
@@ -10,6 +17,7 @@ class ReadMessageOp(BaseAsyncOp):
     """
     Fetches unmemorized chat messages.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -19,20 +27,20 @@ class ReadMessageOp(BaseAsyncOp):
         # Get chat messages from context
         chat_messages = self.context.chat_messages
         target_name = self.context.target_name
-        contextual_msg_max_count = self.op_params.get('contextual_msg_max_count', 10)
+        contextual_msg_max_count = self.op_params.get("contextual_msg_max_count", 10)
 
         chat_messages_not_memorized: List[List[Message]] = []
         for messages in chat_messages:
             if not messages:
                 continue
 
-            if hasattr(messages[0], 'memorized') and messages[0].memorized:
+            if hasattr(messages[0], "memorized") and messages[0].memorized:
                 continue
 
             contain_flag = False
 
             for msg in messages:
-                if hasattr(msg, 'role_name') and msg.role_name == target_name:
+                if hasattr(msg, "role_name") and msg.role_name == target_name:
                     contain_flag = True
                     break
 
@@ -44,7 +52,7 @@ class ReadMessageOp(BaseAsyncOp):
             chat_message_scatter.extend(messages)
 
         # Sort by time_created if available
-        if chat_message_scatter and hasattr(chat_message_scatter[0], 'time_created'):
+        if chat_message_scatter and hasattr(chat_message_scatter[0], "time_created"):
             chat_message_scatter.sort(key=lambda _: _.time_created)
 
         # Store result in context

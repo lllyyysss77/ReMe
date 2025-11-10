@@ -14,7 +14,7 @@ http:
 
 flow:
   retrieve_task_memory:
-    flow_content: build_query_op >> recall_vector_store_op >> rerank_memory_op >> rewrite_memory_op
+    flow_content: BuildQueryOp() >> RecallVectorStoreOp() >> RerankMemoryOp(enable_llm_rerank=True, enable_score_filter=False, top_k=5) >> RewriteMemoryOp(enable_llm_rewrite=True)
     description: "Retrieves the most relevant top-k memory experiences from historical data based on the current query to enhance task-solving capabilities"
     input_schema:
       query:
@@ -23,7 +23,7 @@ flow:
         required: true
 
   summary_task_memory:
-    flow_content: trajectory_preprocess_op >> (success_extraction_op|failure_extraction_op|comparative_extraction_op) >> memory_validation_op >> update_vector_store_op
+    flow_content: TrajectoryPreprocessOp(success_threshold=1.0) >> (SuccessExtractionOp()|FailureExtractionOp()|ComparativeExtractionOp(enable_soft_comparison=True)) >> MemoryValidationOp(validation_threshold=0.5) >> UpdateVectorStoreOp()
     description: "Summarizes conversation trajectories or messages into structured memory representations for long-term storage"
     input_schema:
       trajectories:
@@ -32,7 +32,7 @@ flow:
         required: false
 
   retrieve_task_memory_simple:
-    flow_content: build_query_op >> recall_vector_store_op >> merge_memory_op
+    flow_content: BuildQueryOp() >> RecallVectorStoreOp() >> MergeMemoryOp()
     description: "Retrieves the most relevant top-k memory experiences from historical data based on the current query to enhance task-solving capabilities"
     input_schema:
       query:
@@ -41,7 +41,7 @@ flow:
         required: true
 
   summary_task_memory_simple:
-    flow_content: simple_summary_op >> update_vector_store_op
+    flow_content: SimpleSummaryOp() >> UpdateVectorStoreOp()
     description: "Summarizes conversation trajectories or messages into structured memory representations for long-term storage"
     input_schema:
       trajectories:
@@ -50,7 +50,7 @@ flow:
         required: false
 
   retrieve_personal_memory:
-    flow_content: set_query_op >> (extract_time_op | (retrieve_memory_op >> semantic_rank_op)) >> fuse_rerank_op
+    flow_content: SetQueryOp() >> (ExtractTimeOp() | (RetrieveMemoryOp() >> SemanticRankOp())) >> FuseRerankOp()
     description: "Retrieves the most relevant personal memories from historical data based on the query to enhance response quality"
     input_schema:
       query:
@@ -59,7 +59,7 @@ flow:
         required: true
 
   summary_personal_memory:
-    flow_content: info_filter_op >> (get_observation_op | get_observation_with_time_op | load_today_memory_op) >> contra_repeat_op >> update_vector_store_op
+    flow_content: InfoFilterOp() >> (GetObservationOp() | GetObservationWithTimeOp() | LoadTodayMemoryOp()) >> ContraRepeatOp() >> UpdateVectorStoreOp()
     description: "Consolidates user observations and memories by filtering information and removing redundancies for efficient storage"
     input_schema:
       trajectories:
@@ -68,7 +68,7 @@ flow:
         required: false
 
   retrieve_tool_memory:
-    flow_content: retrieve_tool_memory_op
+    flow_content: RetrieveToolMemoryOp()
     description: "Retrieves tool memories from the vector database based on tool names to provide tool usage patterns and best practices"
     input_schema:
       tool_names:
@@ -77,7 +77,7 @@ flow:
         required: true
 
   add_tool_call_result:
-    flow_content: parse_tool_call_result_op >> update_vector_store_op
+    flow_content: ParseToolCallResultOp(max_history_tool_call_cnt=100, evaluation_sleep_interval=1.0) >> UpdateVectorStoreOp()
     description: "Evaluates and adds tool call results to the tool memory database, creating new memory or updating existing memory for the specified tool"
     input_schema:
       tool_call_results:
@@ -86,7 +86,7 @@ flow:
         required: true
 
   summary_tool_memory:
-    flow_content: summary_tool_memory_op >> update_vector_store_op
+    flow_content: SummaryToolMemoryOp(recent_call_count=20, summary_sleep_interval=1.0) >> UpdateVectorStoreOp()
     description: "Analyzes tool call history and generates comprehensive usage patterns, best practices, and recommendations for the specified tools"
     input_schema:
       tool_names:
@@ -95,7 +95,7 @@ flow:
         required: true
 
   use_mock_search:
-    flow_content: use_mock_search_op
+    flow_content: UseMockSearchOp()
     description: "Simulates intelligent search tool selection and execution based on query complexity, with automatic tool memory recording"
     input_schema:
       query:
@@ -104,7 +104,7 @@ flow:
         required: true
 
   vector_store:
-    flow_content: vector_store_action_op
+    flow_content: VectorStoreActionOp()
     description: "Directly operates on the vector store with various management actions"
     input_schema:
       action:
@@ -114,7 +114,7 @@ flow:
         enum: [ copy, delete, delete_ids, dump, load, list]
 
   record_task_memory:
-    flow_content: update_memory_freq_op >> update_memory_utility_op >> update_vector_store_op
+    flow_content: UpdateMemoryFreqOp() >> UpdateMemoryUtilityOp() >> UpdateVectorStoreOp()
     description: "Update the freq & utility attributes of retrieved task memories"
     input_schema:
       workspace_id:
@@ -131,7 +131,7 @@ flow:
         required: true
 
   delete_task_memory:
-    flow_content: delete_memory_op >> update_vector_store_op
+    flow_content: DeleteMemoryOp() >> UpdateVectorStoreOp()
     description: "Delete task memories when utility/freq < utility_threshold and freq >= freq_threshold"
     input_schema:
       workspace_id:
@@ -148,76 +148,13 @@ flow:
         required: true
 
   react:
-    flow_content: simple_react_op
+    flow_content: SimpleReactOp()
     description: "React to the current task with an agent"
     input_schema:
       query:
         type: string
         description: "user query"
         required: true
-
-op:
-  # retriever ops
-  rerank_memory_op:
-    backend: rerank_memory_op
-    llm: default
-    params:
-      enable_llm_rerank: true
-      enable_score_filter: false
-      top_k: 5
-
-  rewrite_memory_op:
-    backend: rewrite_memory_op
-    llm: default
-    params:
-      enable_llm_rewrite: true
-
-  #summarizer ops
-  trajectory_preprocess_op:
-    backend: trajectory_preprocess_op
-    params:
-      success_threshold: 1.0
-
-  success_extraction_op:
-    backend: success_extraction_op
-    llm: default
-
-  failure_extraction_op:
-    backend: failure_extraction_op
-    llm: default
-
-  comparative_extraction_op:
-    backend: comparative_extraction_op
-    llm: default
-    params:
-      enable_soft_comparison: true
-
-  memory_validation_op:
-    backend: memory_validation_op
-    llm: default
-    params:
-      validation_threshold: 0.5
-
-  memory_deduplication_op:
-    backend: memory_deduplication_op
-    vector_store: default
-    params:
-      similarity_threshold: 0.5
-      
-  # tool memory ops
-  parse_tool_call_result_op:
-    backend: parse_tool_call_result_op
-    llm: default
-    params:
-      max_history_tool_call_cnt: 100
-      evaluation_sleep_interval: 1.0
-
-  summary_tool_memory_op:
-    backend: summary_tool_memory_op
-    llm: default
-    params:
-      recent_call_count: 20
-      summary_sleep_interval: 1.0
 
 llm:
   default:

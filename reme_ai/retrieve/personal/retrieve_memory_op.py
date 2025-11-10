@@ -1,7 +1,14 @@
+"""Memory retrieval operation for personal memories.
+
+This module provides functionality to retrieve memories from a vector store
+based on query similarity and score thresholds.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.vector_node import VectorNode
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import VectorNode
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory, vector_node_to_memory
@@ -16,6 +23,15 @@ class RetrieveMemoryOp(BaseAsyncOp):
     """
 
     async def async_execute(self):
+        """
+        Executes the memory retrieval operation.
+
+        This method:
+        1. Retrieves memories from vector store based on query similarity
+        2. Removes duplicate memories based on content
+        3. Filters memories by score threshold if specified
+        4. Stores the retrieved memories in context metadata
+        """
         recall_key: str = self.op_params.get("recall_key", "query")
         top_k: int = self.context.get("top_k", 3)
 
@@ -23,9 +39,11 @@ class RetrieveMemoryOp(BaseAsyncOp):
         assert query, "query should be not empty!"
 
         workspace_id: str = self.context.workspace_id
-        nodes: List[VectorNode] = await self.vector_store.async_search(query=query,
-                                                                       workspace_id=workspace_id,
-                                                                       top_k=top_k)
+        nodes: List[VectorNode] = await self.vector_store.async_search(
+            query=query,
+            workspace_id=workspace_id,
+            top_k=top_k,
+        )
         memory_list: List[BaseMemory] = []
         memory_content_list: List[str] = []
         for node in nodes:

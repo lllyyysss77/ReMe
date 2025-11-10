@@ -1,3 +1,10 @@
+"""Datetime handling utilities for parsing and formatting dates and times.
+
+This module provides the DatetimeHandler class for working with datetime objects,
+extracting date components from text in multiple languages (Chinese and English),
+and formatting datetime information according to various patterns.
+"""
+
 import datetime
 import re
 from typing import List
@@ -6,7 +13,7 @@ from reme_ai.constants.language_constants import LanguageEnum
 from reme_ai.constants.language_constants import WEEKDAYS, DATATIME_WORD_LIST, MONTH_DICT
 
 
-class DatetimeHandler(object):
+class DatetimeHandler:
     """
     Handles operations related to datetime such as parsing, extraction, and formatting,
     with support for both Chinese and English contexts including weekday names and
@@ -31,7 +38,7 @@ class DatetimeHandler(object):
             if isinstance(dt, str):
                 try:
                     dt = float(dt)
-                except:
+                except Exception:
                     dt = datetime.datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
                     dt = dt.timestamp()
             self._dt: datetime.datetime = datetime.datetime.fromtimestamp(dt)
@@ -44,6 +51,14 @@ class DatetimeHandler(object):
 
     @staticmethod
     def language_transform(language: str | LanguageEnum) -> LanguageEnum:
+        """Transform language string to LanguageEnum.
+
+        Args:
+            language: Language string (e.g., "zh", "en", "cn") or LanguageEnum instance.
+
+        Returns:
+            LanguageEnum: The corresponding LanguageEnum value. Defaults to EN if not provided.
+        """
         if not language:
             language = LanguageEnum.EN
         elif language == "zh":
@@ -55,7 +70,16 @@ class DatetimeHandler(object):
 
     @classmethod
     def get_language_value(cls, language: str, value_dict: dict):
-        return value_dict.get(cls.get_language_value(language))
+        """Get value from dictionary based on language.
+
+        Args:
+            language: Language string to look up.
+            value_dict: Dictionary containing language-specific values.
+
+        Returns:
+            The value from value_dict corresponding to the language, or None if not found.
+        """
+        return value_dict.get(language, value_dict.get("en"))
 
     def _parse_dt_info(self, language: LanguageEnum | str):
         """
@@ -119,7 +143,7 @@ class DatetimeHandler(object):
             "month": r"(\d+|每)月",
             "day": r"(\d+|每)日",
             "weekday": r"周([一二三四五六日])",
-            "hour": r"(\d+)点"
+            "hour": r"(\d+)点",
         }
         weekday_dict = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "日": 7}
         extracted_data = {}
@@ -130,7 +154,7 @@ class DatetimeHandler(object):
             if match:  # If there is a match, include it in the output dictionary
                 if match.group(1) == "每":
                     extracted_data[key] = -1
-                elif match.group(1) in weekday_dict.keys():
+                elif match.group(1) in weekday_dict:
                     extracted_data[key] = weekday_dict[match.group(1)]
                 else:
                     extracted_data[key] = int(match.group(1))
@@ -158,7 +182,7 @@ class DatetimeHandler(object):
             "hour": -1,
             "minute": -1,
             "second": -1,
-            "weekday": -1
+            "weekday": -1,
         }
 
         # Patterns to extract the parts of the date/time
@@ -166,20 +190,36 @@ class DatetimeHandler(object):
             "year": r"\b(\d{4})\b",
             "month": r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b",
             "day_month_year": r"\b(?P<month>January|February|March|April|May|June|July|August|September|October"
-                              r"|November|December) (?P<day>\d{1,2}),? (?P<year>\d{4})\b",
+            r"|November|December) (?P<day>\d{1,2}),? (?P<year>\d{4})\b",
             "day_month": r"\b(?P<month>January|February|March|April|May|June|July|August|September|October|November"
-                         r"|December) (?P<day>\d{1,2})\b",
+            r"|December) (?P<day>\d{1,2})\b",
             "hour_12": r"\b(\d{1,2})\s*(AM|PM|am|pm)\b",
-            "hour_24": r"\b(\d{1,2}):(\d{2}):(\d{2})\b"
+            "hour_24": r"\b(\d{1,2}):(\d{2}):(\d{2})\b",
         }
 
         month_mapping = {
-            "January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6, "July": 7, "August": 8,
-            "September": 9, "October": 10, "November": 11, "December": 12
+            "January": 1,
+            "February": 2,
+            "March": 3,
+            "April": 4,
+            "May": 5,
+            "June": 6,
+            "July": 7,
+            "August": 8,
+            "September": 9,
+            "October": 10,
+            "November": 11,
+            "December": 12,
         }
 
         weekday_mapping = {
-            "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7
+            "Monday": 1,
+            "Tuesday": 2,
+            "Wednesday": 3,
+            "Thursday": 4,
+            "Friday": 5,
+            "Saturday": 6,
+            "Sunday": 7,
         }
 
         # Attempt to match full date (day month year)
@@ -212,9 +252,9 @@ class DatetimeHandler(object):
         hour_12_match = re.search(patterns["hour_12"], input_string)
         if hour_12_match:
             hour, period = int(hour_12_match.group(1)), hour_12_match.group(2).lower()
-            if period == 'pm' and hour != 12:
+            if period == "pm" and hour != 12:
                 hour += 12
-            elif period == 'am' and hour == 12:
+            elif period == "am" and hour == 12:
                 hour = 0
             date_info["hour"] = hour
 
@@ -286,14 +326,28 @@ class DatetimeHandler(object):
         for datetime_word in datetime_word_list:
             datetime_word = datetime_word.lower()
             # TODO fix strip
-            if datetime_word in [x.strip().lower().strip(",").strip(".").strip("?").strip(":")
-                                 for x in query.split(" ")]:
+            if datetime_word in [
+                x.strip().lower().strip(",").strip(".").strip("?").strip(":") for x in query.split(" ")
+            ]:
                 contain_datetime = True
                 break
         return contain_datetime
 
     @classmethod
     def has_time_word(cls, query: str, language: LanguageEnum | str) -> bool:
+        """Check if the input query contains any datetime-related words based on the language context.
+
+        This method dynamically selects a language-specific function to check for datetime-related
+        words in the query. If the function for the current language context does not exist or
+        the language is not in DATATIME_WORD_LIST, it returns False.
+
+        Args:
+            query: The input string to check for datetime-related words.
+            language: Language string or LanguageEnum instance.
+
+        Returns:
+            bool: True if the query contains at least one datetime-related word, False otherwise.
+        """
         language = cls.language_transform(language=language)
 
         func_name = f"has_time_word_{language.value}"

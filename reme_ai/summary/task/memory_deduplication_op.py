@@ -1,6 +1,13 @@
+"""Memory deduplication operation for task memory management.
+
+This module provides operations to remove duplicate or highly similar task
+memories by comparing embeddings and calculating similarity scores.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory
@@ -8,6 +15,13 @@ from reme_ai.schema.memory import BaseMemory
 
 @C.register_op()
 class MemoryDeduplicationOp(BaseAsyncOp):
+    """Remove duplicate task memories using embedding similarity.
+
+    This operation identifies and removes duplicate or highly similar task
+    memories by comparing their embeddings against both existing memories
+    in the vector store and other memories in the current batch.
+    """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -25,7 +39,9 @@ class MemoryDeduplicationOp(BaseAsyncOp):
         deduplicated_task_memories = await self._deduplicate_task_memories(task_memories)
 
         logger.info(
-            f"Deduplication complete: {len(deduplicated_task_memories)} deduplicated task memories out of {len(task_memories)}")
+            f"Deduplication complete: {len(deduplicated_task_memories)} deduplicated "
+            f"task memories out of {len(task_memories)}",
+        )
 
         # Update context
         self.context.response.metadata["memory_list"] = deduplicated_task_memories
@@ -70,24 +86,25 @@ class MemoryDeduplicationOp(BaseAsyncOp):
     async def _get_existing_task_memory_embeddings(self, workspace_id: str) -> List[List[float]]:
         """Get embeddings of existing task memories"""
         try:
-            if not hasattr(self, 'vector_store') or not self.vector_store or not workspace_id:
+            if not hasattr(self, "vector_store") or not self.vector_store or not workspace_id:
                 return []
 
             # Query existing task memory nodes
             existing_nodes = await self.vector_store.async_search(
                 query="...",  # Empty query to get all
                 workspace_id=workspace_id,
-                top_k=self.op_params.get("max_existing_task_memories", 1000)
+                top_k=self.op_params.get("max_existing_task_memories", 1000),
             )
 
             # Extract embeddings
             existing_embeddings = []
             for node in existing_nodes:
-                if hasattr(node, 'embedding') and node.embedding:
+                if hasattr(node, "embedding") and node.embedding:
                     existing_embeddings.append(node.embedding)
 
             logger.debug(
-                f"Retrieved {len(existing_embeddings)} existing task memory embeddings from workspace {workspace_id}")
+                f"Retrieved {len(existing_embeddings)} existing task memory embeddings from workspace {workspace_id}",
+            )
             return existing_embeddings
 
         except Exception as e:
@@ -112,9 +129,12 @@ class MemoryDeduplicationOp(BaseAsyncOp):
             logger.error(f"Error generating embedding for task memory: {e}")
             return None
 
-    def _is_similar_to_existing_task_memories(self, current_embedding: List[float],
-                                              existing_embeddings: List[List[float]],
-                                              threshold: float) -> bool:
+    def _is_similar_to_existing_task_memories(
+        self,
+        current_embedding: List[float],
+        existing_embeddings: List[List[float]],
+        threshold: float,
+    ) -> bool:
         """Check if current embedding is similar to existing embeddings"""
         for existing_embedding in existing_embeddings:
             similarity = self._calculate_cosine_similarity(current_embedding, existing_embedding)
@@ -123,9 +143,13 @@ class MemoryDeduplicationOp(BaseAsyncOp):
                 return True
         return False
 
-    def _is_similar_to_current_task_memories(self, current_embedding: List[float],
-                                             current_task_memories: List[BaseMemory],
-                                             threshold: float) -> bool:
+    def _is_similar_to_current_task_memories(
+        self,
+        current_embedding: List[float],
+        current_task_memories: List[BaseMemory],
+        threshold: float,
+    ) -> bool:
+        """Check if current embedding is similar to other memories in current batch."""
         for existing_task_memory in current_task_memories:
             existing_embedding = self._get_task_memory_embedding(existing_task_memory)
             if existing_embedding is None:

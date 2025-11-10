@@ -1,8 +1,17 @@
+"""Module for updating personal insight memories based on new observations.
+
+This module provides the UpdateInsightOp class which updates insight values
+in a memory system by filtering insight nodes based on their association with
+observed nodes, utilizing a ranking model to prioritize them, generating
+refreshed insights via an LLM, and managing node statuses and content updates.
+"""
+
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import PersonalMemory
@@ -15,12 +24,13 @@ class UpdateInsightOp(BaseAsyncOp):
     based on their association with observed nodes, utilizes a ranking model to prioritize them,
     generates refreshed insights via an LLM, and manages node statuses and content updates.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
         """
         Update insight values based on new observation memories.
-        
+
         Process:
         1. Get insight subjects and personal memories from context
         2. Find relevant observations for each insight subject
@@ -50,7 +60,9 @@ class UpdateInsightOp(BaseAsyncOp):
 
         # Score and filter insights based on relevance to observations
         scored_insights = self._score_insights_by_relevance(
-            insight_memories, personal_memories, update_insight_threshold
+            insight_memories,
+            personal_memories,
+            update_insight_threshold,
         )
 
         if not scored_insights:
@@ -64,9 +76,11 @@ class UpdateInsightOp(BaseAsyncOp):
 
         # Update each selected insight
         updated_insights = []
-        for insight_memory, relevance_score, relevant_observations in top_insights:
+        for insight_memory, _relevance_score, relevant_observations in top_insights:
             updated_insight = await self._update_insight_with_observations(
-                insight_memory, relevant_observations, user_name
+                insight_memory,
+                relevant_observations,
+                user_name,
             )
             if updated_insight:
                 updated_insights.append(updated_insight)
@@ -75,17 +89,20 @@ class UpdateInsightOp(BaseAsyncOp):
         self.context.response.metadata["updated_insight_memories"] = updated_insights
         logger.info(f"Successfully updated {len(updated_insights)} insight memories")
 
-    def _score_insights_by_relevance(self, insight_memories: List[PersonalMemory],
-                                     observation_memories: List[PersonalMemory],
-                                     threshold: float) -> List[tuple]:
+    def _score_insights_by_relevance(
+        self,
+        insight_memories: List[PersonalMemory],
+        observation_memories: List[PersonalMemory],
+        threshold: float,
+    ) -> List[tuple]:
         """
         Score insight memories based on relevance to observation memories.
-        
+
         Args:
             insight_memories: List of insight memories to score
             observation_memories: List of observation memories for comparison
             threshold: Minimum relevance score threshold
-            
+
         Returns:
             List[tuple]: List of (insight_memory, relevance_score, relevant_observations)
         """
@@ -95,13 +112,15 @@ class UpdateInsightOp(BaseAsyncOp):
             relevant_observations = []
             max_relevance = 0.0
 
-            insight_subject = getattr(insight_memory, 'reflection_subject', '') or insight_memory.content
+            insight_subject = getattr(insight_memory, "reflection_subject", "") or insight_memory.content
             insight_keywords = set(insight_memory.content.lower().split())
 
             # Find observations relevant to this insight
             for obs_memory in observation_memories:
                 relevance_score = self._calculate_relevance_score(
-                    insight_memory, obs_memory, insight_keywords
+                    insight_memory,
+                    obs_memory,
+                    insight_keywords,
                 )
 
                 if relevance_score >= threshold:
@@ -112,18 +131,36 @@ class UpdateInsightOp(BaseAsyncOp):
             if relevant_observations:
                 scored_insights.append((insight_memory, max_relevance, relevant_observations))
                 logger.info(
-                    f"Insight '{insight_subject[:40]}...' scored {max_relevance:.3f} with {len(relevant_observations)} observations"
+                    f"Insight '{insight_subject[:40]}...' scored {max_relevance:.3f} "
+                    f"with {len(relevant_observations)} observations",
                 )
 
         return scored_insights
 
     @staticmethod
-    def _calculate_relevance_score(insight_memory: PersonalMemory,
-                                   obs_memory: PersonalMemory, insight_keywords: set) -> float:
-        """Calculate relevance score between insight and observation memory"""
+    def _calculate_relevance_score(
+        insight_memory: PersonalMemory,
+        obs_memory: PersonalMemory,
+        insight_keywords: set,
+    ) -> float:
+        """Calculate relevance score between insight and observation memory.
+
+        The relevance score is calculated based on:
+        - High relevance (0.9) if both memories share the same reflection subject
+        - Medium relevance based on keyword overlap using Jaccard similarity
+
+        Args:
+            insight_memory: The insight memory to compare
+            obs_memory: The observation memory to compare against
+            insight_keywords: Set of keywords extracted from insight memory content
+
+        Returns:
+            float: Relevance score between 0.0 and 1.0, where higher values
+            indicate greater relevance
+        """
         # High relevance for same reflection subject
-        insight_subject = getattr(insight_memory, 'reflection_subject', '')
-        obs_subject = getattr(obs_memory, 'reflection_subject', '')
+        insight_subject = getattr(insight_memory, "reflection_subject", "")
+        obs_subject = getattr(obs_memory, "reflection_subject", "")
 
         if insight_subject and obs_subject and insight_subject == obs_subject:
             return 0.9
@@ -135,22 +172,26 @@ class UpdateInsightOp(BaseAsyncOp):
 
         return intersection / union if union > 0 else 0.0
 
-    async def _update_insight_with_observations(self, insight_memory: PersonalMemory,
-                                          relevant_observations: List[PersonalMemory],
-                                          user_name: str) -> PersonalMemory:
+    async def _update_insight_with_observations(
+        self,
+        insight_memory: PersonalMemory,
+        relevant_observations: List[PersonalMemory],
+        user_name: str,
+    ) -> PersonalMemory:
         """
         Update a single insight memory based on relevant observations using LLM.
-        
+
         Args:
             insight_memory: The insight memory to update
             relevant_observations: List of relevant observation memories
             user_name: The target username
-            
+
         Returns:
             PersonalMemory: Updated insight memory or None if update failed
         """
         logger.info(
-            f"Updating insight: {insight_memory.content[:50]}... with {len(relevant_observations)} observations")
+            f"Updating insight: {insight_memory.content[:50]}... with {len(relevant_observations)} observations",
+        )
 
         # Build observation context
         observation_texts = [obs.content for obs in relevant_observations]
@@ -161,10 +202,12 @@ class UpdateInsightOp(BaseAsyncOp):
 
         system_prompt = self.prompt_format(prompt_name="update_insight_system", user_name=user_name)
         few_shot = self.prompt_format(prompt_name="update_insight_few_shot", user_name=user_name)
-        user_query = self.prompt_format(prompt_name="update_insight_user_query",
-                                        user_query="\n".join(observation_texts),
-                                        insight_key=insight_key,
-                                        insight_key_value=insight_key_value)
+        user_query = self.prompt_format(
+            prompt_name="update_insight_user_query",
+            user_query="\n".join(observation_texts),
+            insight_key=insight_key,
+            insight_key_value=insight_key_value,
+        )
 
         full_prompt = f"{system_prompt}\n\n{few_shot}\n\n{user_query}"
         logger.info(f"update_insight_prompt={full_prompt}")
@@ -177,7 +220,7 @@ class UpdateInsightOp(BaseAsyncOp):
             # Parse the response to extract updated insight
             updated_content = UpdateInsightOp.parse_update_insight_response(response_text, self.language)
 
-            if not updated_content or updated_content.lower() in ['无', 'none', '']:
+            if not updated_content or updated_content.lower() in ["无", "none", ""]:
                 logger.info(f"No update needed for insight: {insight_memory.content[:50]}...")
                 return insight_memory
 
@@ -198,8 +241,8 @@ class UpdateInsightOp(BaseAsyncOp):
                     **insight_memory.metadata,
                     "updated_by": "update_insight_op",
                     "original_content": insight_memory.content,
-                    "update_reason": "integrated_new_observations"
-                }
+                    "update_reason": "integrated_new_observations",
+                },
             )
             updated_insight.update_time_modified()
 

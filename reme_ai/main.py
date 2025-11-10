@@ -12,50 +12,57 @@ which extends FlowLLM with specialized memory management capabilities including:
 import asyncio
 import sys
 
-from flowllm import FlowLLMApp, C
-from flowllm.schema.flow_response import FlowResponse
+from flowllm.core.application import Application
+from flowllm.core.context import C
+from flowllm.core.schema import FlowResponse
 
 from reme_ai.config.config_parser import ConfigParser
 
 
-class ReMeApp(FlowLLMApp):
+class ReMeApp(Application):
     """
     ReMeApp - Main application class for Reflexive Memory system.
-    
+
     ReMeApp extends FlowLLMApp to provide enhanced memory capabilities for AI agents.
     It manages multiple types of memories and provides both synchronous and asynchronous
     execution interfaces for memory-enhanced workflows.
     """
 
-    def __init__(self,
-                 *args,
-                 llm_api_key: str = None,
-                 llm_api_base: str = None,
-                 embedding_api_key: str = None,
-                 embedding_api_base: str = None,
-                 config_path: str = None,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        llm_api_key: str = None,
+        llm_api_base: str = None,
+        embedding_api_key: str = None,
+        embedding_api_base: str = None,
+        config_path: str = None,
+        **kwargs,
+    ):
         """
         Initialize ReMeApp with configuration for LLM, embeddings, and vector stores.
-        
-        ⚠️ IMPORTANT: The initialization parameters here are consistent with the command-line 
+
+        ⚠️ IMPORTANT: The initialization parameters here are consistent with the command-line
         startup parameters shown in README.md. You can use the same configuration in both ways:
-        
-        Command-line startup (from README):
-            $ reme \\
-                backend=http \\
-                http.port=8002 \\
-                llm.default.model_name=qwen3-30b-a3b-thinking-2507 \\
-                embedding_model.default.model_name=text-embedding-v4 \\
+
+        Command-line startup:
+            ```bash
+            reme \
+                backend=http \
+                http.port=8002 \
+                llm.default.model_name=qwen3-30b-a3b-thinking-2507 \
+                embedding_model.default.model_name=text-embedding-v4 \
                 vector_store.default.backend=memory
-        
+            ```
+
         Python API equivalent:
-            >>> app = ReMeApp(
-            ...     "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
-            ...     "embedding_model.default.model_name=text-embedding-v4",
-            ...     "vector_store.default.backend=memory"
-            ... )
-        
+            ```python
+            app = ReMeApp(
+                "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
+                "embedding_model.default.model_name=text-embedding-v4",
+                "vector_store.default.backend=memory"
+            )
+            ```
+
         Both approaches accept the same configuration parameters and produce identical results.
 
         Args:
@@ -101,40 +108,42 @@ class ReMeApp(FlowLLMApp):
                 This overrides the default configuration with your custom settings.
             **kwargs: Additional keyword arguments passed to parser. Same format as args but as key-value pairs.
                 Example: model_name="gpt-4", temperature=0.7
-        
+
         Raises:
             AssertionError: If required configurations are missing or invalid.
-            
+
         Note:
             - Parameters here mirror the command-line options in README.md exactly
             - API keys can be provided via arguments or environment variables (see example.env)
             - The parser (ConfigParser) handles merging default configs with custom overrides
             - Vector store configuration determines where memories are persisted
             - For detailed startup examples and all available parameters, refer to README.md Quick Start section
-        
+
         See Also:
             - README.md "Quick Start" section for command-line startup examples
             - README.md "Environment Configuration" for environment variable setup
             - example.env for all available environment variables
         """
-        super().__init__(*args,
-                         llm_api_key=llm_api_key,
-                         llm_api_base=llm_api_base,
-                         embedding_api_key=embedding_api_key,
-                         embedding_api_base=embedding_api_base,
-                         service_config=None,
-                         parser=ConfigParser,
-                         config_path=config_path,
-                         load_default_config=True,
-                         **kwargs)
+        super().__init__(
+            *args,
+            llm_api_key=llm_api_key,
+            llm_api_base=llm_api_base,
+            embedding_api_key=embedding_api_key,
+            embedding_api_base=embedding_api_base,
+            service_config=None,
+            parser=ConfigParser,
+            config_path=config_path,
+            load_default_config=True,
+            **kwargs,
+        )
 
     async def async_execute(self, name: str, **kwargs) -> dict:
         """
         Asynchronously execute a named flow with given parameters.
-        
+
         This method executes a registered flow (workflow) by name and returns the result.
         Flows are defined in the configuration and registered during app initialization.
-        
+
         Args:
             name: Name of the flow to execute. Must be registered in C.flow_dict.
                 Common flows in ReMe:
@@ -148,23 +157,25 @@ class ReMeApp(FlowLLMApp):
                 - context (dict): Additional context for the flow
                 - max_results (int): Maximum number of results to return
                 - threshold (float): Similarity threshold for retrieval
-        
+
         Returns:
             dict: Flow execution result as a dictionary containing:
                 - status: Execution status (success/failure)
                 - result: Flow output data
                 - metadata: Additional execution metadata
-        
+
         Raises:
             AssertionError: If the flow name is not registered in C.flow_dict.
-            
+
         Example:
-            >>> result = await app.async_execute(
-            ...     "task_memory_flow",
-            ...     query="Show me all Python debugging tasks",
-            ...     max_results=10
-            ... )
-            >>> print(result['result'])
+            ```python
+            result = await app.async_execute(
+                "task_memory_flow",
+                query="Show me all Python debugging tasks",
+                max_results=10
+            )
+            print(result['result'])
+            ```
         """
         assert name in C.flow_dict, f"Invalid flow_name={name} !"
         result: FlowResponse = await self.async_execute_flow(name=name, **kwargs)
@@ -173,28 +184,30 @@ class ReMeApp(FlowLLMApp):
     def execute(self, name: str, **kwargs) -> dict:
         """
         Synchronously execute a named flow with given parameters.
-        
+
         This is a convenience wrapper around async_execute() for synchronous contexts.
         It internally uses asyncio.run() to execute the async flow.
-        
+
         Args:
             name: Name of the flow to execute. See async_execute() for available flows.
             **kwargs: Keyword arguments passed to the flow. See async_execute() for details.
-        
+
         Returns:
             dict: Flow execution result. Same format as async_execute().
-        
+
         Raises:
             AssertionError: If the flow name is not registered.
-            
+
         Example:
-            >>> app = ReMeApp()
-            >>> result = app.execute(
-            ...     "tool_memory_flow",
-            ...     query="How to use the search tool effectively?"
-            ... )
-            >>> print(result)
-        
+            ```python
+            app = ReMeApp()
+            result = app.execute(
+                "tool_memory_flow",
+                query="How to use the search tool effectively?"
+            )
+            print(result)
+            ```
+
         Note:
             For better performance in async contexts, prefer using async_execute() directly.
             This method creates a new event loop for each call, which has overhead.
@@ -205,24 +218,25 @@ class ReMeApp(FlowLLMApp):
 def main():
     """
     Entry point for running ReMeApp as a service.
-    
+
     This function initializes ReMeApp with command-line arguments and starts the service.
     It's typically called when running the module directly (python -m reme_ai.app).
-    
+
     Command-line arguments are passed directly to ReMeApp.__init__(), allowing
     configuration via command line:
-    
+
     Example:
-        $ python -m reme_ai.app --llm_api_key=sk-xxx --config_path=config.yaml
-        
+        python -m reme_ai.app --llm_api_key=sk-xxx --config_path=config.yaml
+
     The app runs as a context manager, ensuring proper cleanup of resources
     (database connections, API clients, etc.) on shutdown.
-    
+
     Note:
         Press Ctrl+C to gracefully shutdown the service.
     """
     with ReMeApp(*sys.argv[1:]) as app:
         app.run_service()
+
 
 if __name__ == "__main__":
     main()

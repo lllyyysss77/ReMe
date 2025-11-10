@@ -1,8 +1,9 @@
 import json
-import pandas as pd
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 from typing import Dict, List, Tuple
+
+import pandas as pd
 from loguru import logger
 
 
@@ -24,7 +25,7 @@ def calculate_best_at_k(scores: List[float], k: int) -> float:
 
     group_maxs = []
     for i in range(0, len(scores), k):
-        group = scores[i:i + k]
+        group = scores[i : i + k]
         group_maxs.append(max(group))
 
     return sum(group_maxs) / len(group_maxs)
@@ -125,7 +126,7 @@ def process_single_result(data: Dict, condition_results: Dict):
             if part.startswith("map"):
                 try:
                     # Extract number from "mapXX"
-                    map_num = ''.join(filter(str.isdigit, part))
+                    map_num = "".join(filter(str.isdigit, part))
                     if map_num:
                         map_id = int(map_num)
                         break
@@ -189,8 +190,10 @@ def calculate_file_metrics(condition_results: Dict, filename: str) -> Dict:
 
         file_metrics[f"{condition}_map_details"] = map_success_rates
 
-        logger.info(f"{filename} - {condition}: {overall_success:.3f} success rate, "
-                    f"{len(map_results)} maps, {num_runs} runs each")
+        logger.info(
+            f"{filename} - {condition}: {overall_success:.3f} success rate, "
+            f"{len(map_results)} maps, {num_runs} runs each",
+        )
 
     return file_metrics
 
@@ -213,7 +216,7 @@ def generate_analysis_report(all_results: Dict):
 
     if summary_data:
         df_summary = pd.DataFrame(summary_data)
-        df_summary = df_summary.set_index('file')
+        df_summary = df_summary.set_index("file")
 
         print("\n" + "=" * 100)
         print("FROZENLAKE EXPERIMENT RESULTS SUMMARY")

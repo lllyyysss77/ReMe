@@ -10,7 +10,7 @@ We tested ReMe on Appworld using qwen3-8b:
 | with ReMe    | 0.109 **(+2.6%)** | 0.175 **(+3.5%)** | 0.281 **(+5.3%)** |
 
 Pass@K measures the probability that at least one of the K generated samples successfully completes the task (
-score=1).  
+score=1).
 The current experiment uses an internal AppWorld environment, which may have slight differences.
 
 You can find more details on reproducing the experiment in [quickstart.md](appworld/quickstart.md).
@@ -43,10 +43,10 @@ We tested ReMe on BFCL-V3 multi-turn-base (randomly split 50train/150val) using 
 
 We evaluated Tool Memory effectiveness using a controlled benchmark with three mock search tools using Qwen3-30B-Instruct:
 
-| Scenario              | Avg Score | Improvement        |
-|-----------------------|-----------|--------------------|
-| Train (No Memory)     | 0.650     | -                  |
-| Test (No Memory)      | 0.672     | Baseline           |
+| Scenario               | Avg Score | Improvement |
+|------------------------|-----------|-------------|
+| Train (No Memory)      | 0.650     | -           |
+| Test (No Memory)       | 0.672     | Baseline    |
 | **Test (With Memory)** | **0.772** | **+14.88%** |
 
 **Key Findings:**

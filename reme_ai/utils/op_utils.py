@@ -1,13 +1,27 @@
+"""Utility functions for operations and message processing.
+
+This module provides helper functions for merging messages, parsing JSON responses,
+extracting trajectory context, and parsing insight updates.
+"""
+
 import json
 import re
 from typing import List
 
-from flowllm.schema.message import Message, Trajectory
-from flowllm.utils.llm_utils import merge_messages_content as merge_messages_content_flowllm
+from flowllm.core.schema import Message, Trajectory
+from flowllm.core.utils import merge_messages_content as merge_messages_content_flowllm
 from loguru import logger
 
 
 def merge_messages_content(messages: List[Message | dict]) -> str:
+    """Merge content from a list of messages into a single string.
+
+    Args:
+        messages: List of Message objects or dictionaries containing message content.
+
+    Returns:
+        str: Merged content from all messages.
+    """
     return merge_messages_content_flowllm(messages)
 
 
@@ -15,7 +29,7 @@ def parse_json_experience_response(response: str) -> List[dict]:
     """Parse JSON formatted experience response"""
     try:
         # Extract JSON blocks
-        json_pattern = r'```json\s*([\s\S]*?)\s*```'
+        json_pattern = r"```json\s*([\s\S]*?)\s*```"
         json_blocks = re.findall(json_pattern, response)
 
         if json_blocks:
@@ -26,18 +40,17 @@ def parse_json_experience_response(response: str) -> List[dict]:
                 experiences = []
                 for exp_data in parsed:
                     if isinstance(exp_data, dict) and (
-                            ("when_to_use" in exp_data and "experience" in exp_data) or
-                            ("condition" in exp_data and "experience" in exp_data)
+                        ("when_to_use" in exp_data and "experience" in exp_data)
+                        or ("condition" in exp_data and "experience" in exp_data)
                     ):
                         experiences.append(exp_data)
 
                 return experiences
 
-
             # Handle single object
             elif isinstance(parsed, dict) and (
-                    ("when_to_use" in parsed and "experience" in parsed) or
-                    ("condition" in parsed and "experience" in parsed)
+                ("when_to_use" in parsed and "experience" in parsed)
+                or ("condition" in parsed and "experience" in parsed)
             ):
                 return [parsed]
 
@@ -65,14 +78,19 @@ def get_trajectory_context(trajectory: Trajectory, step_sequence: List[Message])
                 break
 
         # Extract before and after context
-        context_before = trajectory.messages[max(0, start_idx - 2):start_idx]
-        context_after = trajectory.messages[start_idx + len(step_sequence):start_idx + len(step_sequence) + 2]
+        context_before = trajectory.messages[max(0, start_idx - 2) : start_idx]
+        context_after = trajectory.messages[start_idx + len(step_sequence) : start_idx + len(step_sequence) + 2]
 
         context = f"Query: {trajectory.metadata.get('query', 'N/A')}\n"
 
         if context_before:
-            context += "Previous steps:\n" + "\n".join(
-                [f"- {step.content[:100]}..." for step in context_before]) + "\n"
+            context += (
+                "Previous steps:\n"
+                + "\n".join(
+                    [f"- {step.content[:100]}..." for step in context_before],
+                )
+                + "\n"
+            )
 
         if context_after:
             context += "Following steps:\n" + "\n".join([f"- {step.content[:100]}..." for step in context_after])
@@ -83,10 +101,9 @@ def get_trajectory_context(trajectory: Trajectory, step_sequence: List[Message])
         logger.error(f"Error getting trajectory context: {e}")
         return f"Query: {trajectory.metadata.get('query', 'N/A')}"
 
+
 def parse_update_insight_response(response_text: str, language: str = "en") -> str:
     """Parse update insight response to extract updated insight content"""
-    import re
-
     # Pattern to match both Chinese and English insight formats
     # Chinese: {user_name}的资料: <信息>
     # English: {user_name}'s profile: <Information>

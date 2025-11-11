@@ -14,6 +14,10 @@
   <em>Remember Me, Refine Me.</em>
 </p>
 
+<p align="center">
+  English | <a href="./README_zh.md">简体中文</a>
+</p>
+
 ---
 
 ReMe provides AI agents with a unified memory system—enabling the ability to extract, reuse, and share memories across

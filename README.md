@@ -11,9 +11,8 @@
 
 <p align="center">
   <strong>Memory Management Kit for Agents, Remember Me, Refine Me.</strong><br>
+  <em style="color:#808080;">⭐ Love ReMe? Star the repo to help more builders discover memory-first agents.</em>
 </p>
-
-> ⭐ **Love ReMe?** Star the repo to help more builders discover memory-first agents.<br>
 
 <p align="center">
   English | <a href="./README_zh.md">简体中文</a>

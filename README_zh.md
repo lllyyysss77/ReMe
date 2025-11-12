@@ -11,9 +11,8 @@
 
 <p align="center">
   <strong>面向智能体的记忆管理工具包, Remember Me, Refine Me.</strong><br>
+  <em style="color:#808080;">⭐ 喜欢 ReMe 吗？给仓库点个 Star，让更多开发者发现记忆驱动的智能体。</em>
 </p>
-
-> ⭐ 喜欢 ReMe 吗？给仓库点个 Star，让更多开发者发现记忆驱动的智能体。<br>
 
 <p align="center">
   <a href="./README.md">English</a> | 简体中文

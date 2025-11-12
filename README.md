@@ -10,12 +10,10 @@
 </p>
 
 <p align="center">
-  <strong>Agentscope ReMe: Memory Management Kit for Agents</strong><br>
-  <em>Remember Me, Refine Me.</em>
+  <strong>Memory Management Kit for Agents, Remember Me, Refine Me.</strong><br>
 </p>
 
 > ⭐ **Love ReMe?** Star the repo to help more builders discover memory-first agents.<br>
-> 📨 **Stay in the loop:** Watch for releases so you never miss a new capability.
 
 <p align="center">
   English | <a href="./README_zh.md">简体中文</a>

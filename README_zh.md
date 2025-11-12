@@ -10,12 +10,10 @@
 </p>
 
 <p align="center">
-  <strong>Agentscope ReMe：面向智能体的记忆管理工具包</strong><br>
-  <em>Remember Me, Refine Me.</em>
+  <strong>面向智能体的记忆管理工具包, Remember Me, Refine Me.</strong><br>
 </p>
 
 > ⭐ 喜欢 ReMe 吗？给仓库点个 Star，让更多开发者发现记忆驱动的智能体。<br>
-> 📨 想第一时间获知新功能？Watch 项目即可同步最新动态。
 
 <p align="center">
   <a href="./README.md">English</a> | 简体中文

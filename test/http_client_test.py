@@ -10,12 +10,12 @@ async def run1(session):
     workspace_id = "default1"
 
     async with session.post(
-            f"{base_url}/vector_store",
-            json={
-                "action": "delete",
-                "workspace_id": workspace_id,
-            },
-            headers={"Content-Type": "application/json"}
+        f"{base_url}/vector_store",
+        json={
+            "action": "delete",
+            "workspace_id": workspace_id,
+        },
+        headers={"Content-Type": "application/json"},
     ) as response:
         result = await response.json()
         print(json.dumps(result, ensure_ascii=False))
@@ -24,27 +24,27 @@ async def run1(session):
         {
             "task_id": "t1",
             "messages": [
-                {"role": "user", "content": "搜索可以使用websearch工具"}
+                {"role": "user", "content": "搜索可以使用websearch工具"},
             ],
             "score": 1,
         },
         {
             "task_id": "t1",
             "messages": [
-                {"role": "user", "content": "搜索可以使用code工具"}
+                {"role": "user", "content": "搜索可以使用code工具"},
             ],
             "score": 0,
-        }
+        },
     ]
 
     async with session.post(
-            # f"{base_url}/summary_task_memory",
-            f"{base_url}/summary_task_memory_simple",
-            json={
-                "trajectories": trajectories,
-                "workspace_id": workspace_id,
-            },
-            headers={"Content-Type": "application/json"}
+        # f"{base_url}/summary_task_memory",
+        f"{base_url}/summary_task_memory_simple",
+        json={
+            "trajectories": trajectories,
+            "workspace_id": workspace_id,
+        },
+        headers={"Content-Type": "application/json"},
     ) as response:
         result = await response.json()
         print(json.dumps(result, ensure_ascii=False))
@@ -52,13 +52,13 @@ async def run1(session):
     await asyncio.sleep(2)
 
     async with session.post(
-            # f"{base_url}/retrieve_task_memory",
-            f"{base_url}/retrieve_task_memory_simple",
-            json={
-                "query": "茅台怎么样？",
-                "workspace_id": workspace_id,
-            },
-            headers={"Content-Type": "application/json"}
+        # f"{base_url}/retrieve_task_memory",
+        f"{base_url}/retrieve_task_memory_simple",
+        json={
+            "query": "茅台怎么样？",
+            "workspace_id": workspace_id,
+        },
+        headers={"Content-Type": "application/json"},
     ) as response:
         result = await response.json()
         print(json.dumps(result, ensure_ascii=False))
@@ -68,12 +68,12 @@ async def run2(session):
     workspace_id = "default2"
 
     async with session.post(
-            f"{base_url}/vector_store",
-            json={
-                "action": "delete",
-                "workspace_id": workspace_id,
-            },
-            headers={"Content-Type": "application/json"}
+        f"{base_url}/vector_store",
+        json={
+            "action": "delete",
+            "workspace_id": workspace_id,
+        },
+        headers={"Content-Type": "application/json"},
     ) as response:
         result = await response.json()
         print(json.dumps(result, ensure_ascii=False))
@@ -87,12 +87,12 @@ async def run2(session):
     ]
 
     async with session.post(
-            f"{base_url}/summary_personal_memory",
-            json={
-                "messages": messages,
-                "workspace_id": workspace_id,
-            },
-            headers={"Content-Type": "application/json"}
+        f"{base_url}/summary_personal_memory",
+        json={
+            "messages": messages,
+            "workspace_id": workspace_id,
+        },
+        headers={"Content-Type": "application/json"},
     ) as response:
         result = await response.json()
         print(json.dumps(result, ensure_ascii=False))
@@ -100,12 +100,12 @@ async def run2(session):
     await asyncio.sleep(2)
 
     async with session.post(
-            f"{base_url}/retrieve_personal_memory",
-            json={
-                "query": "你知道我喜欢吃什么？",
-                "workspace_id": workspace_id,
-            },
-            headers={"Content-Type": "application/json"}
+        f"{base_url}/retrieve_personal_memory",
+        json={
+            "query": "你知道我喜欢吃什么？",
+            "workspace_id": workspace_id,
+        },
+        headers={"Content-Type": "application/json"},
     ) as response:
         result = await response.json()
         print(json.dumps(result, ensure_ascii=False))
@@ -115,15 +115,15 @@ async def run3(session):
     workspace_id = "default2"
 
     async with session.post(
-            f"{base_url}/add_tool_call_result",
-            json={
-                "tool_call_results": [
-                    {"a": 1},
-                    {"a": 2},
-                ],
-                "workspace_id": workspace_id,
-            },
-            headers={"Content-Type": "application/json"}
+        f"{base_url}/add_tool_call_result",
+        json={
+            "tool_call_results": [
+                {"a": 1},
+                {"a": 2},
+            ],
+            "workspace_id": workspace_id,
+        },
+        headers={"Content-Type": "application/json"},
     ) as response:
         result = await response.json()
         print(json.dumps(result, ensure_ascii=False))
@@ -139,6 +139,6 @@ async def main():
         # await run2(session)
         await run3(session)
 
+
 if __name__ == "__main__":
     asyncio.run(main())
-

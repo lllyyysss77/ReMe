@@ -88,7 +88,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Retriever: Get relevant memories
         result = await app.async_execute(
             name="retrieve_task_memory",
@@ -219,7 +219,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Memory Retrieval: Get personal memory fragments
         result = await app.async_execute(
             name="retrieve_personal_memory",
@@ -366,7 +366,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Generate usage guidelines from history
         result = await app.async_execute(
             name="summary_tool_memory",
@@ -374,7 +374,7 @@ async def main():
             tool_names="web_search"
         )
         print(result)
-        
+
         # Retrieve tool guidelines before use
         result = await app.async_execute(
             name="retrieve_tool_memory",

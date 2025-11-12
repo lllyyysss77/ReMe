@@ -1,13 +1,19 @@
+"""LLM-based mock search operation for simulating search tool behavior.
+
+This module provides a mock search operation that uses LLM to classify queries
+and generate realistic search results based on query complexity levels.
+"""
+
 import asyncio
 import json
 import random
 from typing import Dict, Any
 
-from flowllm.context import FlowContext, C
-from flowllm.enumeration.role import Role
-from flowllm.op.base_async_tool_op import BaseAsyncToolOp
-from flowllm.schema.message import Message
-from flowllm.schema.tool_call import ToolCall
+from flowllm.core.context import C, FlowContext
+from flowllm.core.enumeration.role import Role
+from flowllm.core.op import BaseAsyncToolOp
+from flowllm.core.schema import Message
+from flowllm.core.schema import ToolCall
 from loguru import logger
 
 
@@ -26,15 +32,18 @@ class LLMMockSearchOp(BaseAsyncToolOp):
     - extra_time: Extra sleep time in seconds to simulate latency
     - relevance_ratio: Probability of returning relevant results (vs random query results)
     """
+
     file_path: str = __file__
 
-    def __init__(self,
-                 llm: str = "qwen3_30b_instruct",
-                 simple_config: Dict[str, Any] = None,
-                 medium_config: Dict[str, Any] = None,
-                 complex_config: Dict[str, Any] = None,
-                 seed: int = 0,
-                 **kwargs):
+    def __init__(
+        self,
+        llm: str = "qwen3_30b_instruct",
+        simple_config: Dict[str, Any] = None,
+        medium_config: Dict[str, Any] = None,
+        complex_config: Dict[str, Any] = None,
+        seed: int = 0,
+        **kwargs,
+    ):
         """
         Initialize the LLM Mock Search Op.
 
@@ -55,7 +64,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
             seed: Random seed for deterministic behavior, default 0
         """
         super().__init__(llm=llm, **kwargs)
-        
+
         # Set random seed for deterministic behavior
         self.seed = seed
         random.seed(self.seed)
@@ -65,7 +74,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
             "success_rate": 0.95,
             "extra_time": 0.5,
             "relevance_ratio": 0.98,
-            "content_length": "short"
+            "content_length": "short",
         }
         if simple_config:
             self.simple_config.update(simple_config)
@@ -74,7 +83,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
             "success_rate": 0.85,
             "extra_time": 1.0,
             "relevance_ratio": 0.90,
-            "content_length": "medium"
+            "content_length": "medium",
         }
         if medium_config:
             self.medium_config.update(medium_config)
@@ -83,22 +92,29 @@ class LLMMockSearchOp(BaseAsyncToolOp):
             "success_rate": 0.70,
             "extra_time": 1.5,
             "relevance_ratio": 0.80,
-            "content_length": "long"
+            "content_length": "long",
         }
         if complex_config:
             self.complex_config.update(complex_config)
 
     def build_tool_call(self) -> ToolCall:
-        return ToolCall(**{
-            "description": "Use search keywords to retrieve relevant information from the internet.",
-            "input_schema": {
-                "query": {
-                    "type": "string",
-                    "description": "search keyword or query",
-                    "required": True
-                }
-            }
-        })
+        """Build the tool call schema for the search operation.
+
+        Returns:
+            ToolCall object defining the search tool interface
+        """
+        return ToolCall(
+            **{
+                "description": "Use search keywords to retrieve relevant information from the internet.",
+                "input_schema": {
+                    "query": {
+                        "type": "string",
+                        "description": "search keyword or query",
+                        "required": True,
+                    },
+                },
+            },
+        )
 
     async def classify_query(self, query: str) -> str:
         """
@@ -112,7 +128,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
         """
         classification_prompt = self.prompt_format(
             prompt_name="classification_prompt",
-            query=query
+            query=query,
         )
 
         messages = [Message(role=Role.USER, content=classification_prompt)]
@@ -146,7 +162,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
             prompt_name="generation_prompt",
             query=query,
             complexity=complexity,
-            content_length=content_length
+            content_length=content_length,
         )
 
         messages = [Message(role=Role.USER, content=generation_prompt)]
@@ -171,7 +187,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
             "breakthroughs in medical science",
             "architectural wonders",
             "wildlife conservation efforts",
-            "developments in artificial intelligence"
+            "developments in artificial intelligence",
         ]
 
         random_query = random.choice(random_topics)
@@ -179,7 +195,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
             prompt_name="generation_prompt",
             query=random_query,
             complexity="simple",
-            content_length="short"
+            content_length="short",
         )
 
         messages = [Message(role=Role.USER, content=generation_prompt)]
@@ -188,6 +204,11 @@ class LLMMockSearchOp(BaseAsyncToolOp):
         return f"[Low Relevance Result]\n{response.content}"
 
     async def async_execute(self):
+        """Execute the mock search operation.
+
+        This method classifies the query, applies the appropriate configuration,
+        simulates delays, and generates search results based on success and relevance rates.
+        """
         query: str = self.input_dict["query"]
         logger.info(f"LLMMockSearchOp processing query: {query}")
 
@@ -218,9 +239,9 @@ class LLMMockSearchOp(BaseAsyncToolOp):
                 "success": False,
                 "content": error_message,
                 "query": query,
-                "complexity": complexity
+                "complexity": complexity,
             }
-            self.set_result(json.dumps(result_dict, ensure_ascii=False))
+            self.set_output(json.dumps(result_dict, ensure_ascii=False))
             return
 
         # Step 5: Check relevance ratio
@@ -235,7 +256,7 @@ class LLMMockSearchOp(BaseAsyncToolOp):
                 "content": content,
                 "query": query,
                 "complexity": complexity,
-                "is_relevant": False  # Mark as irrelevant for debugging
+                "is_relevant": False,  # Mark as irrelevant for debugging
             }
         else:
             # Generate relevant result
@@ -246,14 +267,15 @@ class LLMMockSearchOp(BaseAsyncToolOp):
                 "content": content,
                 "query": query,
                 "complexity": complexity,
-                "is_relevant": True  # Mark as relevant for debugging
+                "is_relevant": True,  # Mark as relevant for debugging
             }
 
-        self.set_result(json.dumps(result_dict, ensure_ascii=False))
+        self.set_output(json.dumps(result_dict, ensure_ascii=False))
 
 
 async def async_main():
-    from reme_ai.app import ReMeApp
+    """Main function for testing the LLMMockSearchOp with various query types."""
+    from reme_ai.main import ReMeApp
 
     async with ReMeApp():
         # Test with different query types
@@ -267,25 +289,25 @@ async def async_main():
         custom_simple = {
             "success_rate": 1,
             "extra_time": 0,
-            "relevance_ratio": 1
+            "relevance_ratio": 1,
         }
 
         custom_medium = {
             "success_rate": 1,
             "extra_time": 0,
-            "relevance_ratio": 1
+            "relevance_ratio": 1,
         }
 
         custom_complex = {
             "success_rate": 1,
             "extra_time": 0,
-            "relevance_ratio": 1
+            "relevance_ratio": 1,
         }
 
         op = LLMMockSearchOp(
             simple_config=custom_simple,
             medium_config=custom_medium,
-            complex_config=custom_complex
+            complex_config=custom_complex,
         )
 
         for query in test_queries:

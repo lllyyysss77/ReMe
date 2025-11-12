@@ -1,11 +1,19 @@
+"""Semantic ranking operation for personal memories.
+
+This module provides functionality to rank memories semantically using LLM-based
+relevance scoring to improve retrieval quality.
+"""
+
 import json
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
-from reme_ai.schema import Message, Role
 from reme_ai.schema.memory import BaseMemory
 
 
@@ -17,6 +25,7 @@ class SemanticRankOp(BaseAsyncOp):
     assigning scores, sorting the nodes, and storing the ranked nodes back,
     while logging relevant information.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -73,7 +82,14 @@ class SemanticRankOp(BaseAsyncOp):
 
     async def _semantic_rank_memories(self, query: str, memories: List[BaseMemory]) -> List[BaseMemory]:
         """
-        Use LLM to semantically rank memories based on relevance to the query
+        Use LLM to semantically rank memories based on relevance to the query.
+
+        Args:
+            query: User query to rank memories against
+            memories: List of memories to rank
+
+        Returns:
+            List of memories with updated semantic scores
         """
         if not memories:
             return memories
@@ -84,7 +100,7 @@ class SemanticRankOp(BaseAsyncOp):
         # Create prompt for semantic ranking
         prompt = f"""Given the query: "{query}"
 
-Please rank the following memories by their semantic relevance to the query. 
+Please rank the following memories by their semantic relevance to the query.
 Rate each memory on a scale of 0.0 to 1.0 where 1.0 is most relevant.
 
 Memories:
@@ -112,10 +128,18 @@ Please respond in JSON format:
 
     @staticmethod
     def parse_llm_ranking_response(response: str) -> List[dict]:
-        """Parse LLM ranking response to extract rankings."""
+        """
+        Parse LLM ranking response to extract rankings.
+
+        Args:
+            response: Raw LLM response string containing ranking JSON
+
+        Returns:
+            List of ranking dictionaries with index and score
+        """
         try:
             # Try to extract JSON blocks
-            json_pattern = r'```json\s*([\s\S]*?)\s*```'
+            json_pattern = r"```json\s*([\s\S]*?)\s*```"
             json_blocks = re.findall(json_pattern, response)
 
             if json_blocks:
@@ -135,7 +159,16 @@ Please respond in JSON format:
 
     @staticmethod
     def apply_semantic_scores_to_memories(memories: List, rankings: List[dict]) -> int:
-        """Apply semantic ranking scores to memory objects."""
+        """
+        Apply semantic ranking scores to memory objects.
+
+        Args:
+            memories: List of memory objects to update
+            rankings: List of ranking dictionaries with index and score
+
+        Returns:
+            Number of memories successfully updated with scores
+        """
         applied_count = 0
 
         for ranking in rankings:
@@ -144,21 +177,29 @@ Please respond in JSON format:
 
             if 0 <= idx < len(memories):
                 # Set score on memory object
-                if hasattr(memories[idx], 'score'):
+                if hasattr(memories[idx], "score"):
                     memories[idx].score = score
                     applied_count += 1
                 else:
                     # Add score as metadata if score attribute doesn't exist
-                    if not hasattr(memories[idx], 'metadata'):
+                    if not hasattr(memories[idx], "metadata"):
                         memories[idx].metadata = {}
-                    memories[idx].metadata['semantic_score'] = score
+                    memories[idx].metadata["semantic_score"] = score
                     applied_count += 1
 
         return applied_count
 
     @staticmethod
     def format_memories_for_llm_ranking(memories: List) -> str:
-        """Format memories for LLM ranking input."""
+        """
+        Format memories for LLM ranking input.
+
+        Args:
+            memories: List of memory objects to format
+
+        Returns:
+            Formatted string representation of memories for LLM input
+        """
         formatted_memories = []
 
         for i, memory in enumerate(memories):

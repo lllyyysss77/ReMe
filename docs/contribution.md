@@ -22,6 +22,36 @@ git checkout -b your-feature-branch-name
 ### Making Changes
 With your new branch checked out, you can now make your changes to the code. Remember to keep your changes as focused as possible. If you're addressing multiple issues or features, it's better to create separate branches and pull requests for each.
 
+### Set Up Pre-commit Hooks
+Before committing your changes, you should set up pre-commit hooks to ensure code quality and consistency. Pre-commit hooks will automatically check your code for common issues and format it according to the project's standards.
+
+**Install pre-commit:**
+```bash
+pip install pre-commit
+```
+
+**Install the git hooks:**
+```bash
+pre-commit install
+```
+
+**Run pre-commit manually (optional):**
+If you want to run pre-commit checks on all files before committing, you can run:
+```bash
+pre-commit run --all-files
+```
+
+After installation, pre-commit will automatically run on `git commit` to check your code. The hooks will check for:
+- Code syntax and AST validation
+- YAML, XML, TOML, and JSON format validation
+- Trailing whitespace
+- Code formatting (Black)
+- Code style (Flake8)
+- Code quality (Pylint)
+- Package metadata (Pyroma)
+
+If any checks fail, please fix the issues before committing.
+
 ### Commit Your Changes
 Once you've made your changes, it's time to commit them. Write clear and concise commit messages that explain your changes.
 ```bash

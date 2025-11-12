@@ -12,7 +12,7 @@ kernelspec:
   name: python3
 ---
 
-# FrozenLake 
+# FrozenLake
 Experiment Quick Start Guide
 
 This guide helps you quickly set up and run FrozenLake experiments with ReMe integration. The FrozenLake experiment demonstrates how task memory can improve an agent's performance in a navigation task.

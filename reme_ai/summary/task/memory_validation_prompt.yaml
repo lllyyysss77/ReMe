@@ -9,11 +9,11 @@ task_memory_validation_prompt: |
   ● RELEVANCE: Is the task memory applicable to similar future scenarios?
   ● CLARITY: Is the task memory clearly articulated and understandable?
   ● UNIQUENESS: Does the task memory provide novel insights or common knowledge?
-  
+
   # Task Memory to Validate
   Condition: {condition}
   Task Memory Content: {task_memory_content}
-  
+
   OUTPUT FORMAT:
   Provide validation assessment:
   ```json
@@ -24,6 +24,6 @@ task_memory_validation_prompt: |
     "recommendations": "Suggestions for improvement if applicable"
   }}
   ```
-  
+
   Score should be between 0.0 (poor quality) and 1.0 (excellent quality).
   Mark as invalid if score is below 0.3 or if there are fundamental issues with the task memory.

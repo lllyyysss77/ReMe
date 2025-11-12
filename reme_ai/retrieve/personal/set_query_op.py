@@ -1,7 +1,14 @@
+"""Query setting operation for personal memories.
+
+This module provides functionality to set query and timestamp in the context
+for downstream memory retrieval operations.
+"""
+
 import datetime
 from typing import Tuple
 
-from flowllm import C, BaseAsyncOp
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
 from loguru import logger
 
 from reme_ai.constants.common_constants import QUERY_WITH_TS

@@ -1,7 +1,16 @@
+"""Module for generating reflection subjects from personal memories.
+
+This module provides the GetReflectionSubjectOp class which retrieves
+unreflected memory nodes, generates reflection prompts with current insights,
+invokes an LLM for fresh insights, parses the LLM responses, forms new
+insight nodes, and updates memory statuses accordingly.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory, PersonalMemory
@@ -14,6 +23,7 @@ class GetReflectionSubjectOp(BaseAsyncOp):
     generating reflection prompts with current insights, invoking an LLM for fresh insights,
     parsing the LLM responses, forming new insight nodes, and updating memory statuses accordingly.
     """
+
     file_path: str = __file__
 
     def new_insight_memory(self, insight_content: str, target: str) -> PersonalMemory:
@@ -35,8 +45,8 @@ class GetReflectionSubjectOp(BaseAsyncOp):
             author=getattr(self.llm, "model_name", "system"),
             metadata={
                 "insight_type": "reflection_subject",
-                "memory_type": "personal_topic"
-            }
+                "memory_type": "personal_topic",
+            },
         )
 
     async def async_execute(self):
@@ -68,15 +78,16 @@ class GetReflectionSubjectOp(BaseAsyncOp):
         # Extract existing insight subjects to avoid duplication
         existing_subjects = []
         if existing_insights:
-            existing_subjects = [memory.content for memory in existing_insights if
-                                 hasattr(memory, 'content') and memory.content]
+            existing_subjects = [
+                memory.content for memory in existing_insights if hasattr(memory, "content") and memory.content
+            ]
 
         logger.info(f"Found {len(existing_subjects)} existing insight subjects")
 
         # Prepare memory content for LLM analysis
         memory_contents = []
         for memory in personal_memories:
-            if hasattr(memory, 'content') and memory.content.strip():
+            if hasattr(memory, "content") and memory.content.strip():
                 memory_contents.append(memory.content.strip())
 
         if not memory_contents:
@@ -86,24 +97,32 @@ class GetReflectionSubjectOp(BaseAsyncOp):
 
         # Generate reflection subjects using LLM
         insight_memories = await self._generate_reflection_subjects(
-            memory_contents, existing_subjects, user_name, reflect_num_questions
+            memory_contents,
+            existing_subjects,
+            user_name,
+            reflect_num_questions,
         )
 
         # Store results in context
         self.context.response.metadata["insight_memories"] = insight_memories
         logger.info(f"Generated {len(insight_memories)} new reflection subject memories")
 
-    async def _generate_reflection_subjects(self, memory_contents: List[str], existing_subjects: List[str],
-                                      user_name: str, num_questions: int) -> List[BaseMemory]:
+    async def _generate_reflection_subjects(
+        self,
+        memory_contents: List[str],
+        existing_subjects: List[str],
+        user_name: str,
+        num_questions: int,
+    ) -> List[BaseMemory]:
         """
         Generate new reflection subjects using LLM analysis of memory contents.
-        
+
         Args:
             memory_contents: List of memory content strings
             existing_subjects: List of already existing subject strings
             user_name: Target username
             num_questions: Maximum number of new subjects to generate
-            
+
         Returns:
             List of PersonalMemory objects representing new reflection subjects
         """
@@ -111,17 +130,17 @@ class GetReflectionSubjectOp(BaseAsyncOp):
         system_prompt = self.prompt_format(
             prompt_name="get_reflection_subject_system",
             user_name=user_name,
-            num_questions=num_questions
+            num_questions=num_questions,
         )
         few_shot = self.prompt_format(
             prompt_name="get_reflection_subject_few_shot",
-            user_name=user_name
+            user_name=user_name,
         )
         user_query = self.prompt_format(
             prompt_name="get_reflection_subject_user_query",
             user_name=user_name,
             exist_keys=", ".join(existing_subjects) if existing_subjects else "None",
-            user_query="\n".join(memory_contents)
+            user_query="\n".join(memory_contents),
         )
 
         full_prompt = f"{system_prompt}\n\n{few_shot}\n\n{user_query}"
@@ -140,7 +159,7 @@ class GetReflectionSubjectOp(BaseAsyncOp):
             for subject in new_subjects:
                 insight_memory = self.new_insight_memory(
                     insight_content=subject,
-                    target=user_name
+                    target=user_name,
                 )
                 insight_memories.append(insight_memory)
                 logger.info(f"Created reflection subject: {subject}")
@@ -151,7 +170,15 @@ class GetReflectionSubjectOp(BaseAsyncOp):
         return await self.llm.achat(messages=[Message(content=full_prompt)], callback_fn=parse_reflection_response)
 
     def get_language_value(self, value_dict: dict):
-        """Get language-specific value from dictionary"""
+        """Get language-specific value from dictionary.
+
+        Args:
+            value_dict: Dictionary mapping language codes to values
+
+        Returns:
+            The value corresponding to the current language, or the English
+            value as fallback if the current language is not found
+        """
         return value_dict.get(self.language, value_dict.get("en"))
 
     @staticmethod
@@ -161,19 +188,20 @@ class GetReflectionSubjectOp(BaseAsyncOp):
             existing_subjects = []
 
         # Split response into lines and clean up
-        lines = response_text.strip().split('\n')
+        lines = response_text.strip().split("\n")
         subjects = []
 
         for line in lines:
             line = line.strip()
             # Skip empty lines, "None" responses, and existing subjects
-            if (line and
-                    line not in ['无', 'None', ''] and
-                    line not in existing_subjects and
-                    not line.startswith('新增') and  # Skip Chinese header
-                    not line.startswith('New ') and  # Skip English header
-                    len(line) > 1):  # Skip single character responses
-                subjects.append(line)
+            # Check basic validity first
+            if not line or line in ["无", "None", ""] or len(line) <= 1:
+                continue
+            # Check if it's a header or duplicate
+            is_header = line.startswith("新增") or line.startswith("New ")
+            if is_header or line in existing_subjects:
+                continue
+            subjects.append(line)
 
         logger.info(f"Parsed {len(subjects)} new reflection subjects from response")
         return subjects

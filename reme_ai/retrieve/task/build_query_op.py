@@ -1,15 +1,38 @@
-from flowllm import C, BaseAsyncOp
-from flowllm.utils.llm_utils import merge_messages_content
-from loguru import logger
+"""Query building operation module.
 
-from reme_ai.schema import Message, Role
+This module provides functionality to build retrieval queries from either
+explicit query strings or conversation messages, optionally using LLM to
+generate optimized queries.
+"""
+
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
+from flowllm.core.utils import merge_messages_content
+from loguru import logger
 
 
 @C.register_op()
 class BuildQueryOp(BaseAsyncOp):
+    """Build retrieval query from context or messages.
+
+    This operation constructs a query string for memory retrieval. It can use
+    an explicit query from context, or generate one from conversation messages
+    using either LLM-based generation or simple message concatenation.
+    """
+
     file_path: str = __file__
 
     async def async_execute(self):
+        """Execute the query building operation.
+
+        Builds a query string from either:
+        1. An explicit query in the context
+        2. Conversation messages (using LLM or simple concatenation)
+
+        Stores the built query in context.query.
+        """
         if "query" in self.context:
             query = self.context.query
 

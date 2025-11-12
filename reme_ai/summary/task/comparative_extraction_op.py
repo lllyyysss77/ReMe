@@ -1,8 +1,15 @@
+"""Comparative extraction operation for task memory generation.
+
+This module provides operations to extract comparative task memories by comparing
+different trajectories with varying scores or success/failure outcomes.
+"""
+
 from typing import List, Tuple, Optional
 
-from flowllm import C, BaseAsyncOp
-from flowllm.enumeration.role import Role
-from flowllm.schema.message import Message as FlowMessage
+from flowllm.core.context import C
+from flowllm.core.enumeration import Role
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message as FlowMessage
 from loguru import logger
 
 from reme_ai.schema import Message, Trajectory
@@ -12,6 +19,16 @@ from reme_ai.utils.op_utils import merge_messages_content, parse_json_experience
 
 @C.register_op()
 class ComparativeExtractionOp(BaseAsyncOp):
+    """Extract comparative task memories by comparing different scoring trajectories.
+
+    This operation performs two types of comparisons:
+    1. Soft comparison: Compares highest vs lowest scoring trajectories
+    2. Hard comparison: Compares similar success vs failure step sequences
+
+    The extracted memories help identify what makes some trajectories more successful
+    than others.
+    """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -27,20 +44,24 @@ class ComparativeExtractionOp(BaseAsyncOp):
             highest_traj, lowest_traj = self._find_highest_lowest_scoring_trajectories(all_trajectories)
             if highest_traj and lowest_traj and highest_traj.score > lowest_traj.score:
                 logger.info(
-                    f"Extracting soft comparative task memories: highest ({highest_traj.score:.2f}) vs lowest ({lowest_traj.score:.2f})")
+                    f"Extracting soft comparative task memories: "
+                    f"highest ({highest_traj.score:.2f}) vs lowest ({lowest_traj.score:.2f})",
+                )
                 soft_task_memories = await self._extract_soft_comparative_task_memory(highest_traj, lowest_traj)
                 comparative_task_memories.extend(soft_task_memories)
 
         # Hard comparison: success vs failure (if similarity search is enabled)
-        if (success_trajectories and failure_trajectories and
-                self.op_params.get("enable_similarity_comparison", False)):
+        if success_trajectories and failure_trajectories and self.op_params.get("enable_similarity_comparison", False):
 
             similar_pairs = self._find_similar_step_sequences(success_trajectories, failure_trajectories)
             logger.info(f"Found {len(similar_pairs)} similar pairs for hard comparison")
 
             for success_steps, failure_steps, similarity_score in similar_pairs:
-                hard_task_memories = await self._extract_hard_comparative_task_memory(success_steps, failure_steps,
-                                                                                similarity_score)
+                hard_task_memories = await self._extract_hard_comparative_task_memory(
+                    success_steps,
+                    failure_steps,
+                    similarity_score,
+                )
                 comparative_task_memories.extend(hard_task_memories)
 
         logger.info(f"Extracted {len(comparative_task_memories)} comparative task memories")
@@ -50,7 +71,9 @@ class ComparativeExtractionOp(BaseAsyncOp):
 
     @staticmethod
     def _find_highest_lowest_scoring_trajectories(trajectories: List[Trajectory]) -> Tuple[
-        Optional[Trajectory], Optional[Trajectory]]:
+        Optional[Trajectory],
+        Optional[Trajectory],
+    ]:
         """Find the highest and lowest scoring trajectories"""
         if len(trajectories) < 2:
             return None, None
@@ -75,8 +98,11 @@ class ComparativeExtractionOp(BaseAsyncOp):
         """Get trajectory score"""
         return trajectory.score
 
-    async def _extract_soft_comparative_task_memory(self, higher_traj: Trajectory, lower_traj: Trajectory) -> List[
-        BaseMemory]:
+    async def _extract_soft_comparative_task_memory(
+        self,
+        higher_traj: Trajectory,
+        lower_traj: Trajectory,
+    ) -> List[BaseMemory]:
         """Extract soft comparative task memory (high score vs low score)"""
         higher_steps = self._get_trajectory_steps(higher_traj)
         lower_steps = self._get_trajectory_steps(lower_traj)
@@ -88,7 +114,7 @@ class ComparativeExtractionOp(BaseAsyncOp):
             higher_steps=merge_messages_content(higher_steps),
             lower_steps=merge_messages_content(lower_steps),
             higher_score=f"{higher_score:.2f}",
-            lower_score=f"{lower_score:.2f}"
+            lower_score=f"{lower_score:.2f}",
         )
 
         def parse_task_memories(message: Message) -> List[BaseMemory]:
@@ -100,24 +126,30 @@ class ComparativeExtractionOp(BaseAsyncOp):
                     workspace_id=self.context.get("workspace_id", ""),
                     when_to_use=tm_data.get("when_to_use", tm_data.get("condition", "")),
                     content=tm_data.get("experience", ""),
-                    author=getattr(self.llm, 'model_name', 'system'),
-                    metadata=tm_data
+                    author=getattr(self.llm, "model_name", "system"),
+                    metadata=tm_data,
                 )
                 task_memories.append(task_memory)
 
             return task_memories
 
-        return await self.llm.achat(messages=[FlowMessage(role=Role.USER, content=prompt)], callback_fn=parse_task_memories)
+        return await self.llm.achat(
+            messages=[FlowMessage(role=Role.USER, content=prompt)],
+            callback_fn=parse_task_memories,
+        )
 
-    async def _extract_hard_comparative_task_memory(self, success_steps: List[Message],
-                                              failure_steps: List[Message], similarity_score: float) -> List[
-        BaseMemory]:
+    async def _extract_hard_comparative_task_memory(
+        self,
+        success_steps: List[Message],
+        failure_steps: List[Message],
+        similarity_score: float,
+    ) -> List[BaseMemory]:
         """Extract hard comparative task memory (success vs failure)"""
         prompt = self.prompt_format(
             prompt_name="hard_comparative_step_task_memory_prompt",
             success_steps=merge_messages_content(success_steps),
             failure_steps=merge_messages_content(failure_steps),
-            similarity_score=similarity_score
+            similarity_score=similarity_score,
         )
 
         def parse_task_memories(message: Message) -> List[BaseMemory]:
@@ -129,19 +161,22 @@ class ComparativeExtractionOp(BaseAsyncOp):
                     workspace_id=self.context.get("workspace_id", ""),
                     when_to_use=tm_data.get("when_to_use", tm_data.get("condition", "")),
                     content=tm_data.get("experience", ""),
-                    author=getattr(self.llm, 'model_name', 'system'),
-                    metadata=tm_data
+                    author=getattr(self.llm, "model_name", "system"),
+                    metadata=tm_data,
                 )
                 task_memories.append(task_memory)
 
             return task_memories
 
-        return await self.llm.achat(messages=[FlowMessage(role=Role.USER, content=prompt)], callback_fn=parse_task_memories)
+        return await self.llm.achat(
+            messages=[FlowMessage(role=Role.USER, content=prompt)],
+            callback_fn=parse_task_memories,
+        )
 
     @staticmethod
     def _get_trajectory_steps(trajectory: Trajectory) -> List[Message]:
         """Get trajectory steps, prioritizing segmented steps"""
-        if hasattr(trajectory, 'segments') and trajectory.segments:
+        if hasattr(trajectory, "segments") and trajectory.segments:
             # If there are segments, merge all segments
             all_steps = []
             for segment in trajectory.segments:
@@ -150,9 +185,11 @@ class ComparativeExtractionOp(BaseAsyncOp):
         else:
             return trajectory.messages
 
-    def _find_similar_step_sequences(self, success_trajectories: List[Trajectory],
-                                     failure_trajectories: List[Trajectory]) -> List[
-        Tuple[List[Message], List[Message], float]]:
+    def _find_similar_step_sequences(
+        self,
+        success_trajectories: List[Trajectory],
+        failure_trajectories: List[Trajectory],
+    ) -> List[Tuple[List[Message], List[Message], float]]:
         """Find similar step sequences for comparison"""
         if not self.op_params.get("enable_similarity_comparison", False):
             return []
@@ -163,14 +200,14 @@ class ComparativeExtractionOp(BaseAsyncOp):
             # Get step sequences
             success_step_sequences = []
             for traj in success_trajectories:
-                if hasattr(traj.metadata, 'segments') and traj.metadata["segments"]:
+                if hasattr(traj.metadata, "segments") and traj.metadata["segments"]:
                     success_step_sequences.extend(traj.metadata["segments"])
                 else:
                     success_step_sequences.append(traj.messages)
 
             failure_step_sequences = []
             for traj in failure_trajectories:
-                if hasattr(traj.metadata, 'segments') and traj.metadata["segments"]:
+                if hasattr(traj.metadata, "segments") and traj.metadata["segments"]:
                     failure_step_sequences.extend(traj.metadata["segments"])
                 else:
                     failure_step_sequences.append(traj.messages)
@@ -188,8 +225,14 @@ class ComparativeExtractionOp(BaseAsyncOp):
             failure_texts = [merge_messages_content(seq) for seq in failure_step_sequences]
 
             # Get embedding vectors
-            if hasattr(self, 'vector_store') and self.vector_store and hasattr(
-                    self.vector_store, 'embedding_model'):
+            if (
+                hasattr(self, "vector_store")
+                and self.vector_store
+                and hasattr(
+                    self.vector_store,
+                    "embedding_model",
+                )
+            ):
                 success_embeddings = self.vector_store.embedding_model.get_embeddings(success_texts)
                 failure_embeddings = self.vector_store.embedding_model.get_embeddings(failure_texts)
 
@@ -201,11 +244,13 @@ class ComparativeExtractionOp(BaseAsyncOp):
                         similarity = self._calculate_cosine_similarity(s_emb, f_emb)
 
                         if similarity > similarity_threshold:
-                            similar_pairs.append((
-                                success_step_sequences[i],
-                                failure_step_sequences[j],
-                                similarity
-                            ))
+                            similar_pairs.append(
+                                (
+                                    success_step_sequences[i],
+                                    failure_step_sequences[j],
+                                    similarity,
+                                ),
+                            )
 
                 # Return top most similar pairs
                 max_pairs = self.op_params.get("max_similarity_pairs", 3)

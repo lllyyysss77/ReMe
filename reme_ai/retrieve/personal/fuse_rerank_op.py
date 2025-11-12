@@ -1,6 +1,13 @@
+"""Fuse reranking operation for personal memories.
+
+This module provides functionality to rerank memory nodes by combining scores,
+memory types, and temporal relevance to improve retrieval quality.
+"""
+
 from typing import Dict, List
 
-from flowllm import C, BaseAsyncOp
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
 from loguru import logger
 
 from reme_ai.constants.common_constants import EXTRACT_TIME_DICT
@@ -12,12 +19,20 @@ class FuseRerankOp(BaseAsyncOp):
     """
     Reranks the memory nodes by scores, types, and temporal relevance. Formats the top-K reranked nodes to print.
     """
+
     file_path: str = __file__
 
     @staticmethod
     def match_memory_time(extract_time_dict: Dict[str, str], memory: BaseMemory):
         """
         Determines whether the memory is relevant based on time matching.
+
+        Args:
+            extract_time_dict: Dictionary containing extracted time information
+            memory: Memory object to check for time relevance
+
+        Returns:
+            Tuple of (match_event_flag, match_msg_flag) indicating temporal matches
         """
         if extract_time_dict:
             match_event_flag = True
@@ -25,18 +40,16 @@ class FuseRerankOp(BaseAsyncOp):
                 event_value = memory.metadata.get(f"event_{k}", "")
                 if event_value in ["-1", v]:
                     continue
-                else:
-                    match_event_flag = False
-                    break
+                match_event_flag = False
+                break
 
             match_msg_flag = True
             for k, v in extract_time_dict.items():
                 msg_value = memory.metadata.get(f"msg_{k}", "")
                 if msg_value == v:
                     continue
-                else:
-                    match_msg_flag = False
-                    break
+                match_msg_flag = False
+                break
         else:
             match_event_flag = False
             match_msg_flag = False
@@ -59,12 +72,15 @@ class FuseRerankOp(BaseAsyncOp):
         """
         # Get operation parameters
         fuse_score_threshold = self.op_params.get("fuse_score_threshold", 0.1)
-        fuse_ratio_dict = self.op_params.get("fuse_ratio_dict", {
-            "conversation": 0.5,
-            "observation": 1,
-            "obs_customized": 1.2,
-            "insight": 2.0
-        })
+        fuse_ratio_dict = self.op_params.get(
+            "fuse_ratio_dict",
+            {
+                "conversation": 0.5,
+                "observation": 1,
+                "obs_customized": 1.2,
+                "insight": 2.0,
+            },
+        )
         fuse_time_ratio = self.op_params.get("fuse_time_ratio", 2.0)
         output_memory_max_count = self.op_params.get("output_memory_max_count", 5)
 
@@ -83,14 +99,19 @@ class FuseRerankOp(BaseAsyncOp):
 
         # Perform reranking based on score, type, and time relevance
         reranked_memories = self._apply_fuse_reranking(
-            memory_list, extract_time_dict, fuse_score_threshold,
-            fuse_ratio_dict, fuse_time_ratio
+            memory_list,
+            extract_time_dict,
+            fuse_score_threshold,
+            fuse_ratio_dict,
+            fuse_time_ratio,
         )
 
         # Sort and select top-k memories
-        reranked_memories = sorted(reranked_memories,
-                                   key=lambda x: x.score or 0.0,
-                                   reverse=True)[:output_memory_max_count]
+        reranked_memories = sorted(
+            reranked_memories,
+            key=lambda x: x.score or 0.0,
+            reverse=True,
+        )[:output_memory_max_count]
 
         logger.info(f"Final reranked memories: {len(reranked_memories)}")
 
@@ -101,13 +122,27 @@ class FuseRerankOp(BaseAsyncOp):
         self.context.response.metadata["memory_list"] = reranked_memories
         self.context.response.answer = "\n".join(formatted_memories)
 
-    def _apply_fuse_reranking(self,
-                              memory_list: List[BaseMemory],
-                              extract_time_dict: Dict[str, str],
-                              fuse_score_threshold: float,
-                              fuse_ratio_dict: Dict[str, float],
-                              fuse_time_ratio: float) -> List[BaseMemory]:
-        """Apply fuse reranking logic to memories"""
+    def _apply_fuse_reranking(
+        self,
+        memory_list: List[BaseMemory],
+        extract_time_dict: Dict[str, str],
+        fuse_score_threshold: float,
+        fuse_ratio_dict: Dict[str, float],
+        fuse_time_ratio: float,
+    ) -> List[BaseMemory]:
+        """
+        Apply fuse reranking logic to memories.
+
+        Args:
+            memory_list: List of memories to rerank
+            extract_time_dict: Dictionary containing extracted time information
+            fuse_score_threshold: Minimum score threshold for memories
+            fuse_ratio_dict: Dictionary mapping memory types to score multipliers
+            fuse_time_ratio: Multiplier for time-relevant memories
+
+        Returns:
+            List of reranked memories with updated scores
+        """
         reranked_memories = []
 
         for memory in memory_list:
@@ -130,23 +165,35 @@ class FuseRerankOp(BaseAsyncOp):
             original_score = memory_score
             memory.score = memory_score * type_ratio * time_ratio
 
-            logger.debug(f"Memory reranked: {original_score:.3f} -> {memory.score:.3f} "
-                         f"(type={type_ratio}, time={time_ratio})")
+            logger.debug(
+                f"Memory reranked: {original_score:.3f} -> {memory.score:.3f} "
+                f"(type={type_ratio}, time={time_ratio})",
+            )
 
             reranked_memories.append(memory)
 
         return reranked_memories
 
     def _format_memories_for_output(self, memories: List[BaseMemory]) -> List[str]:
-        """Format memories for final output"""
+        """
+        Format memories for final output.
+
+        Args:
+            memories: List of memories to format
+
+        Returns:
+            List of formatted memory strings
+        """
         formatted_memories = []
 
         for memory in memories:
             # Log reranking details
-            logger.info(f"Final memory: Score={memory.score:.3f}, "
-                        f"Event={memory.metadata.get('match_event_flag', '0')}, "
-                        f"Msg={memory.metadata.get('match_msg_flag', '0')}, "
-                        f"Content={memory.content[:50]}...")
+            logger.info(
+                f"Final memory: Score={memory.score:.3f}, "
+                f"Event={memory.metadata.get('match_event_flag', '0')}, "
+                f"Msg={memory.metadata.get('match_msg_flag', '0')}, "
+                f"Content={memory.content[:50]}...",
+            )
 
             # Format memory with timestamp if available
             formatted_content = self._format_memory_with_timestamp(memory, self.language)
@@ -167,8 +214,9 @@ class FuseRerankOp(BaseAsyncOp):
             Formatted memory content string
         """
         try:
-            if hasattr(memory, 'timestamp') and memory.timestamp:
+            if hasattr(memory, "timestamp") and memory.timestamp:
                 from reme_ai.utils.datetime_handler import DatetimeHandler
+
                 dt_handler = DatetimeHandler(memory.timestamp)
                 datetime_str = dt_handler.datetime_format("%Y-%m-%d %H:%M:%S")
                 weekday = dt_handler.get_dt_info_dict(language)["weekday"]

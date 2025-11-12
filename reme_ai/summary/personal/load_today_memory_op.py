@@ -1,7 +1,16 @@
+"""Module for loading today's memories from vector store.
+
+This module provides the LoadTodayMemoryOp class which loads memories from
+the current date for deduplication purposes. It focuses specifically on
+retrieving and deduplicating memories from the current date using vector
+store search with date filtering.
+"""
+
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.vector_node import VectorNode
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import VectorNode
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory, vector_node_to_memory
@@ -14,12 +23,13 @@ class LoadTodayMemoryOp(BaseAsyncOp):
     Operation to load today's memories from vector store for deduplication.
     Focuses specifically on retrieving and deduplicating memories from the current date.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
         """
         Load today's memories from vector store and perform deduplication.
-        
+
         This operation:
         1. Retrieves memories from today using vector store search
         2. Converts vector nodes to memory objects
@@ -50,12 +60,12 @@ class LoadTodayMemoryOp(BaseAsyncOp):
     async def _retrieve_today_memories(self, workspace_id: str, user_name: str, top_k: int) -> List[BaseMemory]:
         """
         Retrieve memories from today using vector store with date filtering.
-        
+
         Args:
             workspace_id: Workspace identifier
             user_name: Target username
             top_k: Maximum number of memories to retrieve
-            
+
         Returns:
             List of today's memories
         """
@@ -70,7 +80,7 @@ class LoadTodayMemoryOp(BaseAsyncOp):
             filter_dict = {
                 "memory_type": "personal",
                 "target": user_name,
-                "created_date": today_date
+                "created_date": today_date,
             }
 
             # Search vector store with date filter
@@ -78,7 +88,8 @@ class LoadTodayMemoryOp(BaseAsyncOp):
                 query=" ",
                 workspace_id=workspace_id,
                 top_k=top_k,
-                filter_dict=filter_dict)
+                filter_dict=filter_dict,
+            )
 
             logger.info(f"Vector store returned {len(nodes)} nodes for today")
 
@@ -96,10 +107,10 @@ class LoadTodayMemoryOp(BaseAsyncOp):
     def _convert_nodes_to_memories(nodes: List[VectorNode]) -> List[BaseMemory]:
         """
         Convert vector nodes to memory objects.
-        
+
         Args:
             nodes: List of vector nodes from vector store
-            
+
         Returns:
             List of converted memory objects
         """

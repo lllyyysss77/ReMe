@@ -3,15 +3,19 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.12+-blue" alt="Python Version"></a>
-  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/pypi-v0.1.10.x-blue?logo=pypi" alt="PyPI Version"></a>
+  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python Version"></a>
+  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/pypi-0.2.0.0-blue?logo=pypi" alt="PyPI Version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="License"></a>
   <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/modelscope/ReMe?style=social" alt="GitHub Stars"></a>
 </p>
 
 <p align="center">
-  <strong>Agentscope ReMe: Memory Management Kit for Agents</strong><br>
-  <em>Remember Me, Refine Me.</em>
+  <strong>Memory Management Kit for Agents, Remember Me, Refine Me.</strong><br>
+  <em style="color:#808080;">⭐ Love ReMe? Star the repo to help more builders discover memory-first agents.</em>
+</p>
+
+<p align="center">
+  English | <a href="./README_zh.md">简体中文</a>
 </p>
 
 ---
@@ -24,6 +28,18 @@ Personal Memory + Task Memory + Tool Memory = Agent Memory
 ```
 
 Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**".
+
+---
+
+## 🚀 Why Teams Choose ReMe
+
+- **Ship smarter agents faster**: Plug-and-play memory primitives with configurable pipelines.
+- **Amplify success rates**: Validated lifts up to **+15%** on tool usage and **+9.7%** on multi-turn tasks (see Experiments).
+- **Scale with confidence**: Unified memory across users, tasks, and tools—no more babysitting embedding hacks.
+- **Deploy anywhere**: HTTP server, MCP service, or direct Python import—same config, same results.
+- **Team-ready workflows**: Pre-built libraries, audit trails, and guideline generation keep agents accountable.
+
+> **Quick win:** Try the Quick Start below, then drop a ⭐ if ReMe saves you tokens, time, or both.
 
 ---
 
@@ -72,22 +88,14 @@ Learn more about how to use tool memory from [tool memory](docs/tool_memory/tool
 
 ## 📰 Latest Updates
 
-- **[2025-10]** 🚀 ReMe v0.1.10 released! Core enhancement: direct Python import support. You can now use ReMe without starting an HTTP or MCP service - simply `from reme_ai import ReMeApp` and call methods directly in your Python code.
-- **[2025-10]** 🔧 Tool Memory support is now available! Enables data-driven tool selection and parameter optimization through historical performance tracking. Check out the [Tool Memory Guide](docs/tool_memory/tool_memory.md) and [benchmark results](docs/tool_memory/tool_bench.md).
-- **[2025-09]** 🎉 ReMe v0.1.9 has been officially released, adding support for asynchronous operations. It has also been
-  integrated into the memory service of agentscope-runtime.
-- **[2025-09]** 🎉 ReMe v0.1 officially released, integrating task memory and personal memory. If you want to use the
-  original memoryscope project, you can find it
-  in [MemoryScope](https://github.com/agentscope-ai/ReMe/tree/memoryscope_branch).
-- **[2025-09]** 🧪 We validated the effectiveness of task memory extraction and reuse in agents in appworld, bfcl(v3),
-  and frozenlake environments. For more information,
-  check [appworld exp](docs/cookbook/appworld/quickstart.md), [bfcl exp](docs/cookbook/bfcl/quickstart.md),
-  and [frozenlake exp](docs/cookbook/frozenlake/quickstart.md).
-- **[2025-08]** 🚀 MCP protocol support is now available -> [MCP Quick Start](docs/mcp_quick_start.md).
-- **[2025-06]** 🚀 Multiple backend vector storage support (Elasticsearch &
-  ChromaDB) -> [Vector DB quick start](docs/vector_store_api_guide.md).
-- **[2024-09]** 🧠 [MemoryScope](https://github.com/agentscope-ai/ReMe/tree/memoryscope_branch) v0.1 released,
-  personalized and time-aware memory storage and usage.
+- **[2025-10]** 🚀 Direct Python import support: use `from reme_ai import ReMeApp` without HTTP/MCP service
+- **[2025-10]** 🔧 Tool Memory: data-driven tool selection and parameter optimization ([Guide](docs/tool_memory/tool_memory.md))
+- **[2025-09]** 🎉 Async operations support, integrated into agentscope-runtime
+- **[2025-09]** 🎉 Task memory and personal memory integration
+- **[2025-09]** 🧪 Validated effectiveness in appworld, bfcl(v3), and frozenlake ([Experiments](docs/cookbook))
+- **[2025-08]** 🚀 MCP protocol support ([Quick Start](docs/mcp_quick_start.md))
+- **[2025-06]** 🚀 Multiple backend vector storage (Elasticsearch & ChromaDB) ([Guide](docs/vector_store_api_guide.md))
+- **[2024-09]** 🧠 Personalized and time-aware memory storage
 
 ---
 
@@ -194,7 +202,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Retriever: Get relevant memories
         result = await app.async_execute(
             name="retrieve_task_memory",
@@ -327,7 +335,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Memory Retrieval: Get personal memory fragments
         result = await app.async_execute(
             name="retrieve_personal_memory",
@@ -477,7 +485,7 @@ async def main():
             ]
         )
         print(result)
-        
+
         # Generate usage guidelines from history
         result = await app.async_execute(
             name="summary_tool_memory",
@@ -485,7 +493,7 @@ async def main():
             tool_names="web_search"
         )
         print(result)
-        
+
         # Retrieve tool guidelines before use
         result = await app.async_execute(
             name="retrieve_tool_memory",
@@ -651,7 +659,7 @@ async def main():
             path="./docs/library/"
         )
         print(result)
-        
+
         # Query relevant memories
         result = await app.async_execute(
             name="retrieve_task_memory",
@@ -679,7 +687,7 @@ We tested ReMe on Appworld using qwen3-8b:
 | with ReMe    | 0.109 **(+2.6%)** | 0.175 **(+3.5%)** | 0.281 **(+5.3%)** |
 
 Pass@K measures the probability that at least one of the K generated samples successfully completes the task (
-score=1).  
+score=1).
 The current experiment uses an internal AppWorld environment, which may have slight differences.
 
 You can find more details on reproducing the experiment in [quickstart.md](docs/cookbook/appworld/quickstart.md).
@@ -733,6 +741,14 @@ You can find more details in [tool_bench.md](docs/tool_memory/tool_bench.md) and
 - **[MCP Guide](docs/mcp_quick_start.md)**: Create MCP services
 - **[Personal Memory](docs/personal_memory)**, **[Task Memory](docs/task_memory)** & **[Tool Memory](docs/tool_memory)**: Operators used in personal memory, task memory and tool memory. You can modify the config to customize the pipelines.
 - **[Example Collection](./cookbook)**: Real use cases and best practices
+
+---
+
+## ⭐ Support & Community
+
+- **Star & Watch**: Stars surface ReMe to more agent builders; watching keeps you updated on new releases.
+- **Share your wins**: Open an issue or discussion with what ReMe unlocked for your agents—we love showcasing community builds.
+- **Need a feature?** File a request and we’ll help shape it together.
 
 ---
 

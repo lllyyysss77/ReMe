@@ -34,7 +34,7 @@ When an LLM faces numerous MCP tools, it relies heavily on tool descriptions to 
 Imagine an LLM choosing between three search tools:
 ```
 Tool A: "Search the web for information"
-Tool B: "Perform web searches with customizable parameters"  
+Tool B: "Perform web searches with customizable parameters"
 Tool C: "Query search engines and return results"
 ```
 
@@ -108,7 +108,7 @@ LLM: "I have 50 search tools, but Tool A has 95% success for technical queries"
 ```
 Before Tool Memory:
 - Success rate: 75%
-- Average time cost: 5.2s  
+- Average time cost: 5.2s
 - Token cost: 200+ per call
 - Repeated parameter errors
 - Random tool selection
@@ -636,7 +636,7 @@ op:
     params:
       max_history_tool_call_cnt: 200      # Keep more history
       evaluation_sleep_interval: 0.5      # Faster evaluation
-  
+
   summary_tool_memory_op:
     params:
       recent_call_count: 50               # Analyze more calls
@@ -649,7 +649,7 @@ op:
     params:
       max_history_tool_call_cnt: 50       # Less history needed
       evaluation_sleep_interval: 1.0      # Standard rate
-  
+
   summary_tool_memory_op:
     params:
       recent_call_count: 20               # Analyze fewer calls
@@ -661,10 +661,10 @@ op:
 ```{code-cell}
    memory = retrieve_tool_memory("web_search")['metadata']['memory_list'][0]
    stats = ToolMemory(**memory).statistic(recent_frequency=30)
-   
+
    print(f"Success Rate: {stats['success_rate']:.2%}")
    print(f"Avg Score: {stats['avg_score']:.2f}")
-   
+
    if stats['success_rate'] < 0.7:
        print("⚠️ Low success rate - investigate tool issues")
    ```

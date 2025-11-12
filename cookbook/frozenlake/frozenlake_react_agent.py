@@ -1,23 +1,21 @@
-import os
+import random
 import re
 import time
-import json
+from dataclasses import dataclass
+from typing import List, Dict, Any
 
+import gymnasium as gym
 import ray
 import requests
-import random
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
-import numpy as np
-import gymnasium as gym
-from gymnasium.envs.toy_text.frozen_lake import generate_random_map
-from openai import OpenAI
-from loguru import logger
 import yaml
 from dotenv import load_dotenv
+from gymnasium.envs.toy_text.frozen_lake import generate_random_map
+from loguru import logger
+from openai import OpenAI
 from tqdm import tqdm
 
 load_dotenv("../../.env")
+
 
 @dataclass
 class GameResult:
@@ -30,20 +28,23 @@ class GameResult:
     trajectory: List[Dict]
     map_config: Dict[str, Any]
 
+
 @ray.remote
 class FrozenLakeReactAgent:
     """A ReAct Agent for FrozenLake game with task memory learning."""
 
-    def __init__(self,
-                 index: int,
-                 task_configs: List[Dict],
-                 experiment_name: str,
-                 model_name: str = "qwen3-8b",
-                 temperature: float = 0.7,
-                 max_steps: int = 50,
-                 num_runs: int = 1,
-                 use_task_memory: bool = False,
-                 make_task_memory: bool = False):
+    def __init__(
+        self,
+        index: int,
+        task_configs: List[Dict],
+        experiment_name: str,
+        model_name: str = "qwen3-8b",
+        temperature: float = 0.7,
+        max_steps: int = 50,
+        num_runs: int = 1,
+        use_task_memory: bool = False,
+        make_task_memory: bool = False,
+    ):
 
         self.index = index
         self.task_configs = task_configs
@@ -64,11 +65,13 @@ class FrozenLakeReactAgent:
     def _load_prompts(self) -> Dict[str, str]:
         """Load prompts from yaml file"""
         try:
-            with open("frozenlake_prompts.yaml", 'r', encoding='utf-8') as f:
+            with open("frozenlake_prompts.yaml", "r", encoding="utf-8") as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
             logger.warning("Prompt file not found, using default prompts")
-            raise FileNotFoundError("Prompt file not found. Please check your current path (should be ./cook/frozenlake) and try again.")
+            raise FileNotFoundError(
+                "Prompt file not found. Please check your current path (should be ./cook/frozenlake) and try again.",
+            )
 
     def call_llm(self, messages: List[Dict]) -> str:
         """Call LLM with retry logic"""
@@ -79,7 +82,7 @@ class FrozenLakeReactAgent:
                     messages=messages,
                     temperature=self.temperature,
                     extra_body={"enable_thinking": False},
-                    seed=0
+                    seed=0,
                 )
                 return response.choices[0].message.content
             except Exception as e:
@@ -93,7 +96,7 @@ class FrozenLakeReactAgent:
         nrow, ncol = desc.shape
 
         # Convert to string grid
-        grid = [[cell.decode('utf-8') for cell in row] for row in desc]
+        grid = [[cell.decode("utf-8") for cell in row] for row in desc]
 
         # Get current position
         row, col = observation // ncol, observation % ncol
@@ -134,7 +137,7 @@ class FrozenLakeReactAgent:
                     "workspace_id": workspace_id,
                     "query": query,
                 },
-                timeout=60
+                timeout=60,
             )
 
             if response.status_code == 200:
@@ -155,7 +158,7 @@ class FrozenLakeReactAgent:
             r'["\']action["\']\s*:\s*["\']([0-3])["\']',
             r'"action"\s*:\s*"([0-3])"',
             r"'action'\s*:\s*'([0-3])'",
-            r'\baction["\']?\s*[:=]\s*["\']?([0-3])'
+            r'\baction["\']?\s*[:=]\s*["\']?([0-3])',
         ]
 
         for pattern in patterns:
@@ -190,8 +193,7 @@ class FrozenLakeReactAgent:
         env = gym.make("FrozenLake-v1", **env_kwargs)
 
         # Get map description for task memory
-        map_str = '\n'.join([''.join([cell.decode('utf-8') for cell in row])
-                             for row in env.unwrapped.desc])
+        map_str = "\n".join(["".join([cell.decode("utf-8") for cell in row]) for row in env.unwrapped.desc])
 
         # Build messages
         system_prompt = self.build_system_prompt(is_slippery)
@@ -203,7 +205,8 @@ class FrozenLakeReactAgent:
             memory_content = f"Here are some relevant tips from previous successful games:\n\n{task_memory}\n\nUse these tips to help you succeed."
             messages.append({"role": "user", "content": memory_content})
             messages.append(
-                {"role": "assistant", "content": "I'll use these tips to navigate the frozen lake successfully."})
+                {"role": "assistant", "content": "I'll use these tips to navigate the frozen lake successfully."},
+            )
 
         # Initialize game
         observation, info = env.reset()
@@ -230,16 +233,18 @@ class FrozenLakeReactAgent:
             done = terminated or truncated
 
             # Record trajectory step
-            trajectory.append({
-                "step": step,
-                "state": observation,
-                "action": action,
-                "action_name": self.action_map[action],
-                "reward": reward,
-                "next_state": next_observation,
-                "done": done,
-                "llm_response": response
-            })
+            trajectory.append(
+                {
+                    "step": step,
+                    "state": observation,
+                    "action": action,
+                    "action_name": self.action_map[action],
+                    "reward": reward,
+                    "next_state": next_observation,
+                    "done": done,
+                    "llm_response": response,
+                },
+            )
 
             if done:
                 if terminated and reward > 0:
@@ -275,8 +280,8 @@ class FrozenLakeReactAgent:
                 "map_id": map_id,
                 "is_slippery": is_slippery,
                 "map_size": map_size,
-                "use_task_memory": self.use_task_memory
-            }
+                "use_task_memory": self.use_task_memory,
+            },
         )
 
         return result, messages
@@ -311,9 +316,9 @@ class FrozenLakeReactAgent:
                     url=base_url + "summary_task_memory",
                     json={
                         "workspace_id": workspace_id,
-                        "trajectories": trajectories
+                        "trajectories": trajectories,
                     },
-                    timeout=300
+                    timeout=300,
                 )
 
                 if response.status_code == 200:
@@ -347,7 +352,7 @@ class FrozenLakeReactAgent:
                     "steps": result.steps,
                     "reward": result.reward,
                     "map_config": result.map_config,
-                    "trajectory": result.trajectory
+                    "trajectory": result.trajectory,
                 }
                 all_results[-1] = result_dict
 
@@ -364,7 +369,7 @@ class FrozenLakeReactAgent:
                     steps=result_dict["steps"],
                     reward=result_dict["reward"],
                     trajectory=result_dict["trajectory"],
-                    map_config=result_dict["map_config"]
+                    map_config=result_dict["map_config"],
                 )
                 game_results.append(game_result)
 

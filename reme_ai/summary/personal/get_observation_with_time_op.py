@@ -1,8 +1,18 @@
+"""Module for extracting observations with time information from chat messages.
+
+This module provides the GetObservationWithTimeOp class which extracts
+personal observations with time information from chat messages. It filters
+messages to only include those with time-related keywords and uses LLM-based
+extraction to generate structured observation memories with time information
+from the filtered messages.
+"""
+
 import re
 from typing import List
 
-from flowllm import C, BaseAsyncOp
-from flowllm.schema.message import Message
+from flowllm.core.context import C
+from flowllm.core.op import BaseAsyncOp
+from flowllm.core.schema import Message
 from loguru import logger
 
 from reme_ai.schema.memory import BaseMemory, PersonalMemory
@@ -14,6 +24,7 @@ class GetObservationWithTimeOp(BaseAsyncOp):
     """
     A specialized operation class to extract observations with time information from chat messages using BaseAsyncOp.
     """
+
     file_path: str = __file__
 
     async def async_execute(self):
@@ -77,13 +88,17 @@ class GetObservationWithTimeOp(BaseAsyncOp):
             user_query_list.append(f"{i + 1} {dt} {user_name}{colon}{msg.content}")
 
         # Create prompt using the prompt format method
-        system_prompt = self.prompt_format(prompt_name="get_observation_with_time_system",
-                                           num_obs=len(user_query_list),
-                                           user_name=user_name)
+        system_prompt = self.prompt_format(
+            prompt_name="get_observation_with_time_system",
+            num_obs=len(user_query_list),
+            user_name=user_name,
+        )
         few_shot = self.prompt_format(prompt_name="get_observation_with_time_few_shot", user_name=user_name)
-        user_query = self.prompt_format(prompt_name="get_observation_with_time_user_query",
-                                        user_query="\n".join(user_query_list),
-                                        user_name=user_name)
+        user_query = self.prompt_format(
+            prompt_name="get_observation_with_time_user_query",
+            user_query="\n".join(user_query_list),
+            user_name=user_name,
+        )
 
         full_prompt = f"{system_prompt}\n\n{few_shot}\n\n{user_query}"
         logger.info(f"get_observation_with_time_prompt={full_prompt}")
@@ -114,8 +129,8 @@ class GetObservationWithTimeOp(BaseAsyncOp):
                         "keywords": obs["keywords"],
                         "time_info": obs.get("time_info", ""),
                         "source_message": filtered_messages[idx].content,
-                        "observation_type": "personal_info_with_time"
-                    }
+                        "observation_type": "personal_info_with_time",
+                    },
                 )
                 observation_memories.append(observation)
                 logger.info(f"Created observation with time: {obs['content'][:50]}...")
@@ -135,8 +150,12 @@ class GetObservationWithTimeOp(BaseAsyncOp):
         """Parse observation with time response to extract structured data"""
         # Pattern to match both Chinese and English observation formats with time information
         # Chinese: 信息：<1> <时间信息或不输出> <明确的重要信息或"无"> <关键词>
-        # English: Information: <1> <Time information or do not output> <Clear important information or "None"> <Keywords>
-        pattern = r"信息：<(\d+)>\s*<([^<>]*)>\s*<([^<>]+)>\s*<([^<>]*)>|Information:\s*<(\d+)>\s*<([^<>]*)>\s*<([^<>]+)>\s*<([^<>]*)>"
+        # English: Information: <1> <Time information or do not output>
+        #          <Clear important information or "None"> <Keywords>
+        pattern = (
+            r"信息：<(\d+)>\s*<([^<>]*)>\s*<([^<>]+)>\s*<([^<>]*)>|"
+            r"Information:\s*<(\d+)>\s*<([^<>]*)>\s*<([^<>]+)>\s*<([^<>]*)>"
+        )
         matches = re.findall(pattern, response_text, re.IGNORECASE | re.MULTILINE)
 
         observations = []
@@ -144,20 +163,22 @@ class GetObservationWithTimeOp(BaseAsyncOp):
             # Handle both Chinese and English patterns
             if match[0]:  # Chinese pattern
                 idx_str, time_info, content, keywords = match[0], match[1], match[2], match[3]
-            else:  # English pattern  
+            else:  # English pattern
                 idx_str, time_info, content, keywords = match[4], match[5], match[6], match[7]
 
             try:
                 idx = int(idx_str)
                 # Skip if content indicates no meaningful observation
                 content_lower = content.lower().strip()
-                if content_lower not in ['无', 'none', '', 'repeat']:
-                    observations.append({
-                        "index": idx,
-                        "time_info": time_info.strip() if time_info else "",
-                        "content": content.strip(),
-                        "keywords": keywords.strip() if keywords else ""
-                    })
+                if content_lower not in ["无", "none", "", "repeat"]:
+                    observations.append(
+                        {
+                            "index": idx,
+                            "time_info": time_info.strip() if time_info else "",
+                            "content": content.strip(),
+                            "keywords": keywords.strip() if keywords else "",
+                        },
+                    )
             except ValueError:
                 logger.warning(f"Invalid index format: {idx_str}")
                 continue

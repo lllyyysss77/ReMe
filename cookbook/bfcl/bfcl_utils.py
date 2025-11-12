@@ -1,25 +1,19 @@
 import json
-import tempfile
 from pathlib import Path
 from typing import Dict, List, Any
 
-from bfcl_eval.constants.type_mappings import GORILLA_TO_OPENAPI
 from bfcl_eval.constants.default_prompts import (
     DEFAULT_USER_PROMPT_FOR_ADDITIONAL_FUNCTION_FC,
 )
-from bfcl_eval.model_handler.model_style import ModelStyle
-from bfcl_eval.model_handler.utils import (
-    convert_to_function_call,
-    convert_to_tool,
-    default_decode_ast_prompting,
-    default_decode_execute_prompting,
-    format_execution_results_prompting,
-    func_doc_language_specific_pre_processing,
-    retry_with_backoff,
-    system_prompt_pre_processing_chat_model,
-)
+from bfcl_eval.constants.type_mappings import GORILLA_TO_OPENAPI
 from bfcl_eval.eval_checker.multi_turn_eval.multi_turn_utils import (
     execute_multi_turn_func_call,
+)
+from bfcl_eval.model_handler.model_style import ModelStyle
+from bfcl_eval.model_handler.utils import (
+    convert_to_tool,
+    default_decode_execute_prompting,
+    func_doc_language_specific_pre_processing,
 )
 
 
@@ -44,8 +38,10 @@ def load_test_case(data_path: str, test_id: str | None) -> Dict[str, Any]:
                     return data
             raise ValueError(f"Test case id '{test_id}' not found in {data_path}")
 
+
 def handle_user_turn(
-    test_entry: Dict[str, Any], current_turn: int
+    test_entry: Dict[str, Any],
+    current_turn: int,
 ) -> Dict[str, Any]:
     """
     Handle user turn by returning appropriate content from test_entry["question"].
@@ -67,25 +63,24 @@ def handle_user_turn(
         if str(current_turn) in holdout_function:
             test_entry["function"].extend(holdout_function[str(current_turn)])
             tools = compile_tools(test_entry)
-            assert (
-                len(questions[current_turn]) == 0
-            ), "Holdout turn should not have user message."
+            assert len(questions[current_turn]) == 0, "Holdout turn should not have user message."
             current_turn_message = [
                 {
                     "role": "user",
                     "content": DEFAULT_USER_PROMPT_FOR_ADDITIONAL_FUNCTION_FC,
-                }
+                },
             ]
             return create_user_response(current_turn_message, tools)
         if current_turn >= len(questions):
             return create_completion_response()
-        
+
         current_turn_message = questions[current_turn]
 
         return create_user_response(current_turn_message, tools)
 
     except Exception as e:
         return create_error_response(f"Failed to process user message: {str(e)}")
+
 
 def handle_tool_calls(
     tool_calls: List[Dict[str, Any]],
@@ -111,9 +106,7 @@ def handle_tool_calls(
         involved_classes=test_entry["involved_classes"],
         model_name="env_handler",
         test_entry_id=test_entry["id"],
-        long_context=(
-            "long_context" in test_entry["id"] or "composite" in test_entry["id"]
-        ),
+        long_context=("long_context" in test_entry["id"] or "composite" in test_entry["id"]),
         is_evaL_run=False,
     )
     # print('execution_results in handler_tool_calls:', execution_results)
@@ -138,9 +131,11 @@ def compile_tools(test_entry: dict) -> list:
     tools = convert_to_tool(functions, GORILLA_TO_OPENAPI, ModelStyle.OpenAI_Completions)
 
     return tools
-    
+
+
 def create_tool_response(
-    tool_calls: List[Dict[str, Any]], execution_results: List[str]
+    tool_calls: List[Dict[str, Any]],
+    execution_results: List[str],
 ) -> Dict[str, Any]:
     """
     Create response for tool calls.
@@ -159,13 +154,15 @@ def create_tool_response(
                 "role": "tool",
                 "content": result,
                 "tool_call_id": tool_call.get("id", f"call_{i}"),
-            }
+            },
         )
 
     return {"messages": tool_messages}
 
+
 def create_user_response(
-    question_turn: List[Dict[str, Any]], tools: List[Dict[str, Any]]
+    question_turn: List[Dict[str, Any]],
+    tools: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """
     Create response containing user message.
@@ -173,7 +170,7 @@ def create_user_response(
     Args:
         question_turn: List of messages for current turn
         tools: List of available tools
-        
+
     Returns:
         Response containing user message and tools
     """
@@ -185,6 +182,7 @@ def create_user_response(
 
     return {"messages": [{"role": "user", "content": user_content}], "tools": tools}
 
+
 def create_completion_response() -> Dict[str, Any]:
     """
     Create response indicating conversation completion.
@@ -193,6 +191,7 @@ def create_completion_response() -> Dict[str, Any]:
         Response with completion message
     """
     return {"messages": [{"role": "env", "content": "[CONVERSATION_COMPLETED]"}]}
+
 
 def create_error_response(error_message: str) -> Dict[str, Any]:
     """
@@ -206,6 +205,7 @@ def create_error_response(error_message: str) -> Dict[str, Any]:
     """
     return {"messages": [{"role": "env", "content": f"[ERROR] {error_message}"}]}
 
+
 def decode_execute(result):
     """
     Decode execute results for compatibility with evaluation framework.
@@ -217,6 +217,7 @@ def decode_execute(result):
         List of decoded function calls
     """
     return default_decode_execute_prompting(result)
+
 
 def extract_single_turn_response(messages: List[Dict[str, Any]]) -> str:
     """
@@ -234,7 +235,7 @@ def extract_single_turn_response(messages: List[Dict[str, Any]]) -> str:
                 formatted_calls = []
                 for tool_call in message["tool_calls"]:
                     formatted_call = format_single_tool_call_for_eval(
-                        tool_call
+                        tool_call,
                     )
                     if formatted_call:
                         formatted_calls.append(formatted_call)
@@ -243,9 +244,10 @@ def extract_single_turn_response(messages: List[Dict[str, Any]]) -> str:
                 return message["content"]
 
     return ""
-    
+
+
 def extract_multi_turn_responses(
-    messages: List[Dict[str, Any]]
+    messages: List[Dict[str, Any]],
 ) -> List[List[str]]:
     """
     Extract multi-turn responses from conversation messages.
@@ -275,7 +277,7 @@ def extract_multi_turn_responses(
                 if "tool_calls" in assistant_msg and assistant_msg["tool_calls"]:
                     for tool_call in assistant_msg["tool_calls"]:
                         formatted_call = format_single_tool_call_for_eval(
-                            tool_call
+                            tool_call,
                         )
                         if formatted_call:
                             current_turn_responses.append(formatted_call)
@@ -292,10 +294,11 @@ def extract_multi_turn_responses(
 
     return turns_data
 
+
 def format_single_tool_call_for_eval(tool_call: Dict[str, Any]) -> str:
     """
     Format a single tool call into string representation for evaluation.
-    
+
     Args:
         tool_call: Single tool call in OpenAI format
 
@@ -315,11 +318,15 @@ def format_single_tool_call_for_eval(tool_call: Dict[str, Any]) -> str:
         args_str = ", ".join([f"{k}={repr(v)}" for k, v in args_dict.items()])
         return f"{function_name}({args_str})"
 
-    except Exception as e:
+    except Exception:
         return f"{function_name}()"
 
+
 def capture_and_print_score_files(
-    score_dir: Path, model_name: str, test_category: str, eval_type: str
+    score_dir: Path,
+    model_name: str,
+    test_category: str,
+    eval_type: str,
 ):
     """
     Capture and print contents of score files written to score_dir.
@@ -360,8 +367,10 @@ def capture_and_print_score_files(
                                     parsed = json.loads(line)
                                     formatted_lines.append(
                                         json.dumps(
-                                            parsed, ensure_ascii=False, indent=2
-                                        )
+                                            parsed,
+                                            ensure_ascii=False,
+                                            indent=2,
+                                        ),
                                     )
                             content = "\n".join(formatted_lines)
                         except json.JSONDecodeError:
@@ -379,7 +388,8 @@ def capture_and_print_score_files(
     except Exception as e:
         print(f"Error capturing evaluation result files: {str(e)}")
 
+
 def extract_tool_schema(tools):
     for i in range(len(tools)):
-        tools[i]['function'].pop("response")
+        tools[i]["function"].pop("response")
     return tools

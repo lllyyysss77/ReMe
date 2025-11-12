@@ -1,8 +1,8 @@
 import json
-from pathlib import Path
 from collections import defaultdict
-import pandas as pd
+from pathlib import Path
 
+import pandas as pd
 from loguru import logger
 
 
@@ -24,7 +24,7 @@ def calculate_best_at_k(scores: list, k: int) -> float:
 
     group_maxs = []
     for i in range(0, len(scores), k):
-        group = scores[i:i + k]
+        group = scores[i : i + k]
         group_maxs.append(max(group))
 
     return sum(group_maxs) / len(group_maxs)
@@ -36,8 +36,8 @@ def calculate_pass_at_k(scores: list, k: int) -> float:
 
     group_maxs = []
     for i in range(0, len(scores), k):
-        group = scores[i:i + k]
-        is_pass = 1.0 if max(group) >=1.0 else 0.0
+        group = scores[i : i + k]
+        is_pass = 1.0 if max(group) >= 1.0 else 0.0
         group_maxs.append(is_pass)
 
     return sum(group_maxs) / len(group_maxs)
@@ -133,7 +133,7 @@ def run_exp_statistic():
     # Create and display table
     if all_results:
         df = pd.DataFrame(list(all_results.values()))
-        df = df.set_index('file')
+        df = df.set_index("file")
 
         # Sort columns by the number in column name (best@8, best@4, best@2, best@1)
         # best_columns = [col for col in df.columns if col.startswith('best@')]

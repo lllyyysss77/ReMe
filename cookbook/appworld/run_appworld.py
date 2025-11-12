@@ -1,8 +1,9 @@
+# flake8: noqa: E402
 import os
 import time
-import requests
 
 import ray
+import requests
 from ray import logger
 
 os.environ["APPWORLD_ROOT"] = "."
@@ -35,7 +36,7 @@ def delete_workspace(workspace_id: str, api_url: str = "http://0.0.0.0:8002/"):
         json={
             "workspace_id": workspace_id,
             "action": "delete",
-        }
+        },
     )
 
     result = handle_api_response(response)
@@ -51,7 +52,7 @@ def dump_memory(workspace_id: str, path: str = "./", api_url: str = "http://0.0.
             "workspace_id": workspace_id,
             "action": "dump",
             "path": path,
-        }
+        },
     )
 
     result = handle_api_response(response)
@@ -67,7 +68,7 @@ def load_memory(workspace_id: str, path: str = "docs/library", api_url: str = "h
             "workspace_id": workspace_id,
             "action": "load",
             "path": path,
-        }
+        },
     )
 
     result = handle_api_response(response)
@@ -75,7 +76,16 @@ def load_memory(workspace_id: str, path: str = "docs/library", api_url: str = "h
         print(f"Memory loaded from {path}")
 
 
-def run_agent(dataset_name: str, experiment_suffix: str, max_workers: int, num_runs: int = 1, use_task_memory: bool = False, make_task_memory: bool = False, workspace_id: str="appworld_v1", api_url: str = "http://0.0.0.0:8002/") :
+def run_agent(
+    dataset_name: str,
+    experiment_suffix: str,
+    max_workers: int,
+    num_runs: int = 1,
+    use_task_memory: bool = False,
+    make_task_memory: bool = False,
+    workspace_id: str = "appworld_v1",
+    api_url: str = "http://0.0.0.0:8002/",
+):
     experiment_name = dataset_name + "_" + experiment_suffix
     path: Path = Path(f"./exp_result")
     path.mkdir(parents=True, exist_ok=True)
@@ -93,14 +103,16 @@ def run_agent(dataset_name: str, experiment_suffix: str, max_workers: int, num_r
         for i in range(max_workers):
             # Assign tasks to each worker, ensuring each task runs num_runs times
             worker_task_ids = task_ids[i::max_workers]
-            actor = AppworldReactAgent.remote(index=i,
-                                              task_ids=worker_task_ids,
-                                              experiment_name=experiment_name,
-                                              num_runs=num_runs,
-                                              use_task_memory=use_task_memory,
-                                              make_task_memory=make_task_memory,
-                                              workspace_id=workspace_id,
-                                              api_url=api_url)
+            actor = AppworldReactAgent.remote(
+                index=i,
+                task_ids=worker_task_ids,
+                experiment_name=experiment_name,
+                num_runs=num_runs,
+                use_task_memory=use_task_memory,
+                make_task_memory=make_task_memory,
+                workspace_id=workspace_id,
+                api_url=api_url,
+            )
             future = actor.execute.remote()
             future_list.append(future)
             time.sleep(1)
@@ -119,14 +131,16 @@ def run_agent(dataset_name: str, experiment_suffix: str, max_workers: int, num_r
 
     else:
         for index, task_id in enumerate(task_ids):
-            agent = AppworldReactAgent(index=index,
-                                     task_ids=[task_id],
-                                     experiment_name=experiment_name,
-                                     num_runs=num_runs,
-                                     use_task_memory=use_task_memory,
-                                     make_task_memory=make_task_memory,
-                                     workspace_id=workspace_id,
-                                     api_url=api_url)
+            agent = AppworldReactAgent(
+                index=index,
+                task_ids=[task_id],
+                experiment_name=experiment_name,
+                num_runs=num_runs,
+                use_task_memory=use_task_memory,
+                make_task_memory=make_task_memory,
+                workspace_id=workspace_id,
+                api_url=api_url,
+            )
             task_results = agent.execute()
             if isinstance(task_results, list):
                 result.extend(task_results)
@@ -140,14 +154,14 @@ def main():
     num_runs = 1  # Run each task once
     workspace_id = "appworld"
     api_url = "http://0.0.0.0:8002/"
-    
+
     if max_workers > 1:
         ray.init(num_cpus=8)
-    
+
     # Clean up workspace before starting
     logger.info("Deleting workspace...")
     delete_workspace(workspace_id=workspace_id, api_url=api_url)
-    
+
     # First run to build task memories
     logger.info("Start load experiments to build task memories")
     load_memory(workspace_id=workspace_id, api_url=api_url)
@@ -160,18 +174,29 @@ def main():
 
         # Run experiments with task memory
         logger.info("Start running experiments with task memory")
-        run_agent(dataset_name="dev", experiment_suffix=f"with-memory", 
-                  max_workers=max_workers, num_runs=1, 
-                  use_task_memory=True, make_task_memory=False,
-                  workspace_id=workspace_id, api_url=api_url)
+        run_agent(
+            dataset_name="dev",
+            experiment_suffix=f"with-memory",
+            max_workers=max_workers,
+            num_runs=1,
+            use_task_memory=True,
+            make_task_memory=False,
+            workspace_id=workspace_id,
+            api_url=api_url,
+        )
 
         # Run experiments without task memory
         logger.info("Start running experiments without task memory")
-        run_agent(dataset_name="dev", experiment_suffix=f"no-memory",
-                  max_workers=max_workers, num_runs=1,
-                  use_task_memory=False, make_task_memory=False,
-                  workspace_id=workspace_id, api_url=api_url)
-
+        run_agent(
+            dataset_name="dev",
+            experiment_suffix=f"no-memory",
+            max_workers=max_workers,
+            num_runs=1,
+            use_task_memory=False,
+            make_task_memory=False,
+            workspace_id=workspace_id,
+            api_url=api_url,
+        )
 
 
 if __name__ == "__main__":

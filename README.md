@@ -14,6 +14,9 @@
   <em>Remember Me, Refine Me.</em>
 </p>
 
+> ⭐ **Love ReMe?** Star the repo to help more builders discover memory-first agents.<br>
+> 📨 **Stay in the loop:** Watch for releases so you never miss a new capability.
+
 <p align="center">
   English | <a href="./README_zh.md">简体中文</a>
 </p>
@@ -28,6 +31,18 @@ Personal Memory + Task Memory + Tool Memory = Agent Memory
 ```
 
 Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**".
+
+---
+
+## 🚀 Why Teams Choose ReMe
+
+- **Ship smarter agents faster**: Plug-and-play memory primitives with configurable pipelines.
+- **Amplify success rates**: Validated lifts up to **+15%** on tool usage and **+9.7%** on multi-turn tasks (see Experiments).
+- **Scale with confidence**: Unified memory across users, tasks, and tools—no more babysitting embedding hacks.
+- **Deploy anywhere**: HTTP server, MCP service, or direct Python import—same config, same results.
+- **Team-ready workflows**: Pre-built libraries, audit trails, and guideline generation keep agents accountable.
+
+> **Quick win:** Try the Quick Start below, then drop a ⭐ if ReMe saves you tokens, time, or both.
 
 ---
 
@@ -729,6 +744,14 @@ You can find more details in [tool_bench.md](docs/tool_memory/tool_bench.md) and
 - **[MCP Guide](docs/mcp_quick_start.md)**: Create MCP services
 - **[Personal Memory](docs/personal_memory)**, **[Task Memory](docs/task_memory)** & **[Tool Memory](docs/tool_memory)**: Operators used in personal memory, task memory and tool memory. You can modify the config to customize the pipelines.
 - **[Example Collection](./cookbook)**: Real use cases and best practices
+
+---
+
+## ⭐ Support & Community
+
+- **Star & Watch**: Stars surface ReMe to more agent builders; watching keeps you updated on new releases.
+- **Share your wins**: Open an issue or discussion with what ReMe unlocked for your agents—we love showcasing community builds.
+- **Need a feature?** File a request and we’ll help shape it together.
 
 ---
 

@@ -141,5 +141,5 @@ class ContextCompactOp(BaseAsyncOp):
             tool_message.content = compact_result
 
         # Return the compacted messages as JSON
-        self.context.response.answer = json.dumps([x.model_dump() for x in messages], ensure_ascii=False, indent=2)
+        self.context.response.answer = json.dumps([x.simple_dump() for x in messages], ensure_ascii=False, indent=2)
         logger.info(f"Context compaction completed: {len(write_file_dict)} tool messages were compacted")

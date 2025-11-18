@@ -156,10 +156,6 @@ flow:
         description: "user query"
         required: true
 
-  compact:
-      flow_content: ContextCompactOp() >> WriteFile()
-      ....
-
 llm:
   default:
     backend: openai_compatible

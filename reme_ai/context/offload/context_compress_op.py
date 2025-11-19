@@ -4,21 +4,28 @@ Context compression module for reducing token usage in conversation contexts usi
 This module provides functionality to compress conversation history by using a language
 model to generate concise summaries of older messages while preserving recent messages.
 This helps manage context window limits while maintaining conversation coherence.
+
+The compression process:
+1. Identifies messages that exceed token thresholds
+2. Splits messages into groups if needed
+3. Uses LLM to generate compressed summaries of older message groups
+4. Stores original messages to files for potential retrieval
+5. Appends compressed summaries to the system message while preserving recent messages
 """
 
 import json
-import re
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 from uuid import uuid4
 
 from flowllm.core.context import C
 from flowllm.core.enumeration import Role
 from flowllm.core.op import BaseAsyncOp
 from flowllm.core.schema import Message
-from flowllm.core.utils import extract_content
 from loguru import logger
+
+from reme_ai.utils import merge_messages_content
+from reme_ai.utils.op_utils import extract_xml_tag_content
 
 
 @C.register_op()
@@ -29,90 +36,46 @@ class ContextCompressOp(BaseAsyncOp):
     When the total token count exceeds the threshold, this operation uses a language
     model to compress older messages into a concise summary while keeping recent
     messages intact. This preserves conversation context while reducing token usage.
+
+    Attributes:
+        file_path: Path to the operation file, used for configuration.
+
+    Context Parameters:
+        max_total_tokens (int): Maximum token count threshold for compression.
+            Defaults to 20000. Does not include keep_recent_count messages or system messages.
+        group_token_threshold (int, optional): Maximum token count per compression group.
+            If None or 0, all messages are compressed in a single group.
+        keep_recent_count (int): Number of recent messages to preserve without compression.
+            Defaults to 2. Must be non-negative.
+        chat_id (str): Unique identifier for the chat session, used for file naming.
+            Defaults to a generated UUID if not provided.
     """
 
     file_path: str = __file__
 
-    def __init__(
-        self,
-        all_token_threshold: int = 20000,
-        keep_recent: int = 5,
-        storage_path: str = "./compressed_contexts",
-        micro_summary_token_threshold: int = None,
-        **kwargs,
-    ):
-        """
-        Initialize the context compression operation.
+    def get_store_path(self, name: str) -> Path:
+        """Get the storage path for a given file name.
 
         Args:
-            all_token_threshold: Maximum total token count before compression is triggered.
-            keep_recent: Number of recent messages to keep uncompressed.
-            storage_path: Directory path where original messages will be stored for traceability.
-            micro_summary_token_threshold: Token threshold for each compression group.
-                If set, messages will be split into groups of this size and compressed separately.
-                If None, all messages will be compressed together.
-            **kwargs: Additional arguments passed to the base class.
-
-        Note:
-            System messages are NEVER compressed to preserve important system instructions.
-        """
-        super().__init__(**kwargs)
-        self.all_token_threshold: int = all_token_threshold
-        self.keep_recent: int = keep_recent
-        self.storage_path: Path = Path(storage_path)
-        self.micro_summary_token_threshold: int = micro_summary_token_threshold
-
-        assert (
-            micro_summary_token_threshold is None or micro_summary_token_threshold > 0
-        ), "Micro summary token threshold must be greater than 0"
-
-        # Create storage directory if it doesn't exist
-        self.storage_path.mkdir(parents=True, exist_ok=True)
-
-    def _save_original_messages(self, messages: List[Message]) -> str:
-        """Save original messages to file for traceability.
-
-        Args:
-            messages: List of messages to save
+            name: Name of the file to store.
 
         Returns:
-            Path to the saved file
+            Path object representing the full path to the storage location.
         """
-        # Generate unique filename with timestamp
-        file_name = f"context_{uuid4().hex}.txt"
-        file_path = self.storage_path / file_name
+        return Path(self.context.store_dir) / name
 
-        # Convert messages to serializable format
-        messages_data = [
-            {
-                "role": msg.role.value if hasattr(msg.role, "value") else str(msg.role),
-                "content": msg.content,
-                "name": getattr(msg, "name", None),
-                "tool_call_id": getattr(msg, "tool_call_id", None),
-            }
-            for msg in messages
-        ]
-
-        # Save to file
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(messages_data, f, ensure_ascii=False, indent=2)
-
-        logger.info(f"Saved {len(messages)} original messages to {file_path}")
-        return str(file_path)
-
-    def _split_messages_by_token_threshold(
-        self,
-        messages: List[Message],
-        token_threshold: int,
-    ) -> List[List[Message]]:
+    def _split_messages_by_token_threshold(self, messages: List[Message], token_threshold: int) -> List[List[Message]]:
         """Split messages into groups based on token threshold.
+
+        Messages are grouped such that each group's token count does not exceed the threshold,
+        except when a single message exceeds the threshold, in which case it forms its own group.
 
         Args:
             messages: List of messages to split
-            token_threshold: Maximum token count for each group
+            token_threshold: Maximum token count for each group (may be exceeded by single messages)
 
         Returns:
-            List of message groups, each within the token threshold
+            List of message groups, where each group attempts to stay within the token threshold
         """
         if not messages:
             return []
@@ -146,112 +109,42 @@ class ContextCompressOp(BaseAsyncOp):
         if current_group:
             groups.append(current_group)
 
-        logger.info(
-            f"Split {len(messages)} messages into {len(groups)} groups " f"with token threshold {token_threshold}",
-        )
+        logger.info(f"Split {len(messages)} messages into {len(groups)} groups with token threshold {token_threshold}")
         return groups
 
-    @staticmethod
-    def _extract_xml_fragments(text: str) -> str:
-        """
-        Extract XML fragments from text, removing scratchpad elements.
-
-        Scans text to extract complete and parseable top-level XML fragments,
-        excluding <scratchpad> elements. If state_snapshot XML is found, returns it;
-        otherwise returns the original text.
-
-        Args:
-            text: Input text potentially containing XML fragments
-
-        Returns:
-            Extracted XML content or original text
-        """
-        try:
-            # Remove scratchpad elements
-            new_text = re.sub(r"<scratchpad>.*?</scratchpad>", "", text, flags=re.S | re.I)
-            # Extract balanced XML tags
-            extract_xml = [m[0] for m in re.findall(r"(<(\w+)[^>]*>(?:[^<]|<(?!/\2))*</\2>)", new_text)]
-
-            # Validate XML parsing
-            valid_xml = []
-            for xml_str in extract_xml:
-                try:
-                    ET.fromstring(xml_str)
-                    valid_xml.append(xml_str)
-                except ET.ParseError:
-                    continue
-
-            # Return state_snapshot if found, otherwise original text
-            if valid_xml and any("<state_snapshot>" in xml for xml in valid_xml):
-                return next(xml for xml in valid_xml if "<state_snapshot>" in xml)
-            elif valid_xml:
-                return valid_xml[0]
-            else:
-                return text
-        except Exception as e:
-            logger.warning(f"Failed to extract XML fragments: {e}. Returning original text.")
-            return text
-
-    @staticmethod
-    def _format_messages_for_compression(messages: List[Message]) -> str:
-        """Format messages into a readable text for compression.
-
-        Args:
-            messages: List of messages to format
-
-        Returns:
-            Formatted string representation of messages
-        """
-        lines = []
-        for i, msg in enumerate(messages, 1):
-            role_name = msg.role.value if hasattr(msg.role, "value") else str(msg.role)
-            lines.append(f"[Message {i} - {role_name}]")
-            lines.append(msg.content)
-            lines.append("")  # Empty line between messages
-
-        return "\n".join(lines)
-
     async def _compress_messages_with_llm(self, messages_to_compress: List[Message]) -> str:
-        """Use LLM to compress messages into a concise summary.
+        """Compress a list of messages using LLM to generate a summary.
+
+        This method formats the messages into a prompt, sends it to the LLM, and extracts
+        the compressed state snapshot from the response. The LLM response is expected to
+        contain XML tags for scratchpad and state_snapshot.
 
         Args:
-            messages_to_compress: List of messages to compress
+            messages_to_compress: List of Message objects to compress into a summary.
 
         Returns:
-            Compressed summary text
-        """
-        # Format messages for the prompt
-        formatted_messages = self._format_messages_for_compression(messages_to_compress)
+            Compressed summary string extracted from the LLM response. Returns empty string
+            if LLM returns None or if state_snapshot cannot be extracted.
 
-        # Create prompt for compression
+        Note:
+            If state_snapshot extraction fails, the full content is used as fallback.
+        """
         prompt = self.prompt_format(
-            prompt_name="compress_context_prompt",
-            messages_content=formatted_messages,
+            "compress_context_prompt",
+            messages_content=merge_messages_content(messages_to_compress),
         )
 
         def parse_compressed_result(message: Message) -> str:
-            """Parse LLM response to extract compressed content.
-
-            Args:
-                message: LLM response message
-
-            Returns:
-                Compressed content string
-            """
             content = message.content.strip()
-            # Try to extract content from txt code block
-            compressed = extract_content(content, "txt")
 
-            # If no code block found, use the raw content
-            if not compressed:
-                compressed = content
+            scratchpad = extract_xml_tag_content(content, "scratchpad")
+            state_snapshot = extract_xml_tag_content(content, "state_snapshot")
+            logger.info(f"Parsed scratchpad: \n{scratchpad} \nstate_snapshot: \n{state_snapshot}")
 
-            logger.info(
-                f"Compressed {len(messages_to_compress)} messages into "
-                f"{len(compressed)} characters (reduction: "
-                f"{len(formatted_messages)} -> {len(compressed)})",
-            )
-            return compressed
+            if state_snapshot is None:
+                logger.warning("Failed to extract state_snapshot from LLM response, using full content as fallback")
+                return content
+            return state_snapshot
 
         # Call LLM to generate compressed summary
         result = await self.llm.achat(
@@ -259,158 +152,81 @@ class ContextCompressOp(BaseAsyncOp):
             callback_fn=parse_compressed_result,
         )
 
+        if result is None:
+            logger.error("LLM returned None, using empty string as fallback")
+            return ""
+
         return result
 
-    async def _compress_with_micro_groups(
+    async def _compress_with_groups(
         self,
-        messages_to_compress: List[Message],
-        system_messages: List[Message],
-        recent_messages: List[Message],
-    ) -> List[Message]:
-        """Compress messages by splitting into groups and compressing each separately.
+        system_message: Message,
+        message_groups: List[List[Message]],
+    ) -> Tuple[dict, list]:
+        """Compress multiple message groups and prepare them for storage.
+
+        This method processes each message group, compresses it using LLM, and determines
+        whether compression is beneficial. If compression reduces token count, the original
+        messages are saved to files and compressed summaries are appended to the system
+        message. Otherwise, original messages are preserved in the return list.
 
         Args:
-            messages_to_compress: Messages to be compressed
-            system_messages: System messages to preserve
-            recent_messages: Recent messages to keep uncompressed
+            system_message: The system message to append compressed summaries to.
+            message_groups: List of message groups, where each group is a list of Message
+                objects to be compressed together.
 
         Returns:
-            List of new messages after compression
+            A tuple containing:
+                - write_file_dict: Dictionary mapping file paths to JSON-serialized message
+                  strings for messages that were successfully compressed.
+                - return_messages: List of Message objects including the modified system
+                  message with compressed summaries and any messages that couldn't be
+                  compressed or didn't benefit from compression.
         """
-        # Split messages into groups based on micro threshold
-        message_groups = self._split_messages_by_token_threshold(
-            messages_to_compress,
-            self.micro_summary_token_threshold,
-        )
+        write_file_dict = {}
+        return_messages = []
+        chat_id: str = self.context.get("chat_id", uuid4().hex)
 
-        # Compress each group separately
-        compressed_messages = []
-        total_original_tokens = 0
-        total_compressed_tokens = 0
+        # Create a copy of system_message to avoid modifying the original
+        system_message_copy = Message(role=system_message.role, content=system_message.content)
 
-        for group_idx, group in enumerate(message_groups, 1):
-            # Calculate original token count for this group
-            group_original_tokens = self.token_count(group)
-            total_original_tokens += group_original_tokens
+        for g_idx, messages in enumerate(message_groups):
+            group_original_tokens = self.token_count(messages)
+            messages_str = json.dumps([x.simple_dump() for x in messages], ensure_ascii=False, indent=2)
+            store_path = Path(self.context.store_dir) / f"{chat_id}_{g_idx}"
 
-            # Save original messages for this group
-            group_file_path = self._save_original_messages(group)
+            logger.info(f"Compress {g_idx}/{len(message_groups)} ({len(messages)}, {group_original_tokens} tokens)")
+            group_summary = await self._compress_messages_with_llm(messages)
 
-            # Compress this group
-            logger.info(
-                f"Compressing group {group_idx}/{len(message_groups)} "
-                f"({len(group)} messages, {group_original_tokens} tokens)",
+            if not group_summary:
+                logger.warning(f"Group {g_idx} compression returned empty summary, using original messages.")
+                return_messages.extend(messages)
+                continue
+
+            compress_content = (
+                f"[Compressed conversation history - Part {g_idx}/{len(message_groups)}]\n{group_summary}\n\n"
+                f"(Original {len(messages)} messages are stored in: {store_path.as_posix()})\n"
             )
-            group_summary = await self._compress_messages_with_llm(group)
-            group_summary = self._extract_xml_fragments(group_summary)
-
-            # Create compressed message for this group
-            compressed_message = Message(
-                role=Role.SYSTEM,
-                content=(
-                    f"[Compressed conversation history - Part {group_idx}/{len(message_groups)}]\n"
-                    f"{group_summary}\n\n"
-                    f"(Original {len(group)} messages are stored in: {group_file_path})"
-                ),
-            )
-
-            # Check if compression actually reduced tokens for this group
-            compressed_tokens = self.token_count([compressed_message])
+            compressed_tokens = self.token_count([Message(content=compress_content)])
 
             if compressed_tokens >= group_original_tokens:
                 logger.warning(
-                    f"Group {group_idx} compression did not reduce tokens: "
+                    f"Group {g_idx} compression did not reduce tokens: "
                     f"{group_original_tokens} -> {compressed_tokens}. Using original messages.",
                 )
-                return None
+                return_messages.extend(messages)
+            else:
+                system_message_copy.content += compress_content
+                write_file_dict[store_path.as_posix()] = messages_str
+                logger.info(
+                    f"Group {g_idx} compression successful: "
+                    f"{group_original_tokens} -> {compressed_tokens} tokens "
+                    f"(reduction: {group_original_tokens - compressed_tokens} tokens, "
+                    f"{100 * (1 - compressed_tokens / group_original_tokens):.1f}%)",
+                )
 
-            logger.info(
-                f"Group {group_idx} compression successful: "
-                f"{group_original_tokens} -> {compressed_tokens} tokens "
-                f"(reduction: {group_original_tokens - compressed_tokens} tokens, "
-                f"{100 * (1 - compressed_tokens / group_original_tokens):.1f}%)",
-            )
-            compressed_messages.append(compressed_message)
-            total_compressed_tokens += compressed_tokens
-
-        # Construct new message list: system messages + all compressed messages + recent messages
-        new_messages = system_messages + compressed_messages + recent_messages
-
-        logger.info(
-            f"Context compression completed using micro-compression: "
-            f"{len(messages_to_compress) + len(system_messages) + len(recent_messages)} messages -> "
-            f"{len(new_messages)} messages ({len(message_groups)} compressed groups), "
-            f"total tokens: {total_original_tokens} -> {total_compressed_tokens}",
-        )
-
-        return new_messages
-
-    async def _compress_all_together(
-        self,
-        messages_to_compress: List[Message],
-        system_messages: List[Message],
-        recent_messages: List[Message],
-    ) -> List[Message]:
-        """Compress all messages together into a single summary.
-
-        Args:
-            messages_to_compress: Messages to be compressed
-            system_messages: System messages to preserve
-            recent_messages: Recent messages to keep uncompressed
-
-        Returns:
-            List of new messages after compression
-        """
-        # Calculate original token count
-        original_tokens = self.token_count(messages_to_compress)
-
-        # Save original messages to file for traceability
-        original_file_path = self._save_original_messages(messages_to_compress)
-
-        # Use LLM to compress messages
-        logger.info(
-            f"Starting LLM compression of {len(messages_to_compress)} messages "
-            f"({original_tokens} tokens), keeping {len(recent_messages)} recent messages",
-        )
-        compressed_summary = await self._compress_messages_with_llm(messages_to_compress)
-        compressed_summary = self._extract_xml_fragments(compressed_summary)
-
-        # Create a new system message with the compressed content and file reference
-        compressed_message = Message(
-            role=Role.SYSTEM,
-            content=(
-                f"[Compressed conversation history]\n"
-                f"{compressed_summary}\n\n"
-                f"(Original {len(messages_to_compress)} messages are stored in: {original_file_path})"
-            ),
-        )
-
-        # Check if compression actually reduced tokens
-        compressed_tokens = self.token_count([compressed_message])
-
-        if compressed_tokens >= original_tokens:
-            logger.warning(
-                f"Compression did not reduce tokens: {original_tokens} -> {compressed_tokens}. "
-                f"Returning original messages.",
-            )
-            return None
-
-        logger.info(
-            f"Compression successful: {original_tokens} -> {compressed_tokens} tokens "
-            f"(reduction: {original_tokens - compressed_tokens} tokens, "
-            f"{100 * (1 - compressed_tokens / original_tokens):.1f}%)",
-        )
-
-        # Construct new message list: system messages + compressed message + recent messages
-        new_messages = system_messages + [compressed_message] + recent_messages
-
-        logger.info(
-            f"Context compression completed: "
-            f"{len(messages_to_compress) + len(system_messages) + len(recent_messages)} messages -> "
-            f"{len(new_messages)} messages",
-        )
-
-        return new_messages
+        return_messages = [system_message_copy] + return_messages
+        return write_file_dict, return_messages
 
     async def async_execute(self):
         """
@@ -423,31 +239,38 @@ class ContextCompressOp(BaseAsyncOp):
         4. Otherwise, uses LLM to compress older messages by:
            - Saving original messages to file
            - Generating a concise summary of older messages
-           - Replacing older messages with a single summary message
+           - Appending compressed summaries to the system message
+           - Preserving messages that couldn't be compressed or didn't benefit from compression
         """
+        # Get configuration from context
+        # Note: max_total_tokens does not include keep_recent_count messages or system messages
+        max_total_tokens: int = self.context.get("max_total_tokens", 20000)
+        group_token_threshold: int = self.context.get("group_token_threshold", None)
+        keep_recent_count: int = self.context.get("keep_recent_count", 2)
+
+        # Validate keep_recent_count
+        if keep_recent_count < 0:
+            logger.warning(f"keep_recent_count ({keep_recent_count}) is negative, setting to 0")
+            keep_recent_count = 0
+
         # Convert context messages to Message objects
         messages = [Message(**x) for x in self.context.messages]
 
-        # Check if we have enough messages to compress
-        if len(messages) <= self.keep_recent:
-            self.context.response.answer = self.context.messages
-            logger.info(
-                f"Message count ({len(messages)}) is less than or "
-                f"equal to keep_recent ({self.keep_recent}), no compression needed",
-            )
-            return
+        # Extract system message (should be exactly one)
+        system_message = [x for x in messages if x.role is Role.SYSTEM]
+        if len(system_message) > 1:
+            raise ValueError("Expected exactly one system message")
 
-        # Split messages into those to compress and those to keep
-        messages_to_compress = messages[: -self.keep_recent]
-        recent_messages = messages[-self.keep_recent :]
+        if len(system_message) == 0:
+            system_message = Message(role=Role.SYSTEM, content="")
+        else:
+            system_message = system_message[0]
 
-        # Always filter out system messages (system messages are never compressed)
-        system_messages = [m for m in messages_to_compress if m.role is Role.SYSTEM]
-        messages_to_compress = [m for m in messages_to_compress if m.role is not Role.SYSTEM]
-        logger.info(
-            f"Excluding {len(system_messages)} system messages from compression, "
-            f"{len(messages_to_compress)} messages remaining for compression check",
+        messages_without_system = [x for x in messages if x.role is not Role.SYSTEM]
+        messages_to_compress = (
+            messages_without_system[:-keep_recent_count] if keep_recent_count > 0 else messages_without_system
         )
+        recent_messages = messages_without_system[-keep_recent_count:] if keep_recent_count > 0 else []
 
         # If nothing to compress after filtering, return original messages
         if not messages_to_compress:
@@ -455,40 +278,38 @@ class ContextCompressOp(BaseAsyncOp):
             logger.info("No messages to compress after filtering, returning original messages")
             return
 
+        logger.info(f"{len(messages_to_compress)} messages remaining for compression check")
+
         # Calculate token count of messages to compress (only the content that will be compressed)
         compress_token_cnt: int = self.token_count(messages_to_compress)
-        logger.info(
-            f"Context compression check: messages_to_compress token count={compress_token_cnt}, "
-            f"threshold={self.all_token_threshold}",
-        )
+        logger.info(f"Context compression check: token count={compress_token_cnt} threshold={max_total_tokens}")
 
         # If token count is within threshold, no compression needed
-        if compress_token_cnt <= self.all_token_threshold:
+        if compress_token_cnt <= max_total_tokens:
             self.context.response.answer = self.context.messages
-            logger.info(
-                f"Messages to compress token count ({compress_token_cnt}) is within threshold "
-                f"({self.all_token_threshold}), no compression needed",
-            )
+            logger.info(f"messages_to_compress ({compress_token_cnt}) is within threshold ({max_total_tokens})")
             return
 
-        # Determine whether to use micro-compression (split into groups) or compress all together
-        if self.micro_summary_token_threshold is not None and self.micro_summary_token_threshold > 0:
-            new_messages = await self._compress_with_micro_groups(
-                messages_to_compress,
-                system_messages,
-                recent_messages,
-            )
+        if group_token_threshold is not None and group_token_threshold > 0:
+            message_groups = self._split_messages_by_token_threshold(messages_to_compress, group_token_threshold)
         else:
-            new_messages = await self._compress_all_together(
-                messages_to_compress,
-                system_messages,
-                recent_messages,
-            )
+            message_groups = [messages_to_compress]
 
-        # If compression failed (returned None), use original messages
-        if new_messages is None:
-            self.context.response.answer = self.context.messages
-            return
+        write_file_dict, return_messages = await self._compress_with_groups(system_message, message_groups)
 
-        # Return the compressed messages as JSON
-        self.context.response.answer = json.dumps([x.model_dump() for x in new_messages], ensure_ascii=False, indent=2)
+        self.context.write_file_dict = write_file_dict
+        self.context.response.answer = [x.simple_dump() for x in (return_messages + recent_messages)]
+
+    async def async_default_execute(self, e: Exception = None, **_kwargs):
+        """Handle execution errors by returning original messages.
+
+        This method is called when an exception occurs during async_execute. It preserves
+        the original messages and marks the operation as unsuccessful.
+
+        Args:
+            e: The exception that occurred during execution, if any.
+            **_kwargs: Additional keyword arguments (unused but required by interface).
+        """
+        self.context.response.answer = self.context.messages
+        self.context.response.success = False
+        self.context.response.metadata["error"] = str(e)

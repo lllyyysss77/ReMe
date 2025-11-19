@@ -1,0 +1,8 @@
+[
+  {
+    "role": "user",
+    "content": "This is getting complex. I also need multi-region support with eventual consistency, the ability to pause/resume task processing by task type, and A/B testing capabilities for different worker implementations. Also, I need comprehensive audit logging and GDPR compliance features.",
+    "name": null,
+    "tool_call_id": ""
+  }
+]

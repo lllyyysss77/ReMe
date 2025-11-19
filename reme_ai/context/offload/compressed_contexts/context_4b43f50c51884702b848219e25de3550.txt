@@ -1,0 +1,14 @@
+[
+  {
+    "role": "user",
+    "content": "Let's use PostgreSQL. Also, I need JWT authentication.",
+    "name": null,
+    "tool_call_id": ""
+  },
+  {
+    "role": "assistant",
+    "content": "Excellent. PostgreSQL is a robust choice. For JWT authentication, we'll use python-jose library. Here's what we'll implement:\n1. User registration endpoint\n2. Login endpoint that returns JWT token\n3. Protected endpoints that require valid JWT\n4. Password hashing using bcrypt\nLet me show you the code for the User model first.",
+    "name": null,
+    "tool_call_id": ""
+  }
+]

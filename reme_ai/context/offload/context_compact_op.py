@@ -43,7 +43,11 @@ class ContextCompactOp(BaseAsyncOp):
         max_tool_message_tokens: int = self.context.get("max_tool_message_tokens", 2000)
         preview_char_length: int = self.context.get("preview_char_length", 100)
         keep_recent_count: int = self.context.get("keep_recent_count", 1)
-        storage_path: Path = Path(self.context.get("storage_path", ""))
+        store_dir: Path = Path(self.context.get("store_dir", ""))
+
+        assert max_total_tokens > 0, "max_total_tokens must be greater than 0"
+        assert max_tool_message_tokens > 0, "max_tool_message_tokens must be greater than 0"
+        assert preview_char_length >= 0, "preview_char_length must be greater than 0"
         assert keep_recent_count > 0, "keep_recent_count must be greater than 0"
 
         # Convert context messages to Message objects
@@ -53,7 +57,6 @@ class ContextCompactOp(BaseAsyncOp):
         # If nothing to compress after filtering, return original messages
         if not messages_to_compress:
             self.context.response.answer = self.context.messages
-            self.context.response.success = True
             logger.info("No messages to compress after filtering, returning original messages")
             return
 
@@ -93,10 +96,10 @@ class ContextCompactOp(BaseAsyncOp):
 
             # Generate file name from tool_call_id or create a unique identifier
             file_name = tool_message.tool_call_id or uuid4().hex
-            path = storage_path / f"{file_name}.txt"
+            store_path = store_dir / f"{file_name}.txt"
 
             # Store the full content for batch writing
-            write_file_dict[path.as_posix()] = original_content
+            write_file_dict[store_path.as_posix()] = original_content
 
             # Create compressed preview of the tool message content
             compact_result = original_content[:preview_char_length] + "..."
@@ -104,11 +107,11 @@ class ContextCompactOp(BaseAsyncOp):
             # Log the compaction action
             logger.info(
                 f"Compacting tool message (tool_call_id={tool_message.tool_call_id}): "
-                f"token count={tool_token_cnt}, saving full content to {path}",
+                f"token count={tool_token_cnt}, saving full content to {store_path}",
             )
 
             # Update tool message content with preview and file reference
-            compact_result += f" (detailed result is stored in {path})"
+            compact_result += f" (detailed result is stored in {store_path})"
             tool_message.content = compact_result
 
         # Store write_file_dict in context for potential batch writing
@@ -117,6 +120,8 @@ class ContextCompactOp(BaseAsyncOp):
 
         # Return the compacted messages as JSON
         self.context.response.answer = [x.simple_dump() for x in messages]
+        self.context.response.metadata["write_file_dict"] = write_file_dict
+
         logger.info(f"Context compaction completed: {len(write_file_dict)} tool messages were compacted")
 
     async def async_default_execute(self, e: Exception = None, **_kwargs):

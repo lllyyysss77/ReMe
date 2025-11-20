@@ -144,6 +144,7 @@ class ContextCompressOp(BaseAsyncOp):
             if state_snapshot is None:
                 logger.warning("Failed to extract state_snapshot from LLM response, using full content as fallback")
                 return content
+
             return state_snapshot
 
         # Call LLM to generate compressed summary
@@ -193,7 +194,7 @@ class ContextCompressOp(BaseAsyncOp):
         for g_idx, messages in enumerate(message_groups):
             group_original_tokens = self.token_count(messages)
             messages_str = json.dumps([x.simple_dump() for x in messages], ensure_ascii=False, indent=2)
-            store_path = Path(self.context.store_dir) / f"{chat_id}_{g_idx}"
+            store_path = Path(self.context.get("store_dir", "")) / f"{chat_id}_{g_idx}.json"
 
             logger.info(f"Compress {g_idx}/{len(message_groups)} ({len(messages)}, {group_original_tokens} tokens)")
             group_summary = await self._compress_messages_with_llm(messages)
@@ -216,7 +217,7 @@ class ContextCompressOp(BaseAsyncOp):
                 )
                 return_messages.extend(messages)
             else:
-                system_message_copy.content += compress_content
+                system_message_copy.content += compress_content + "\n\n"
                 write_file_dict[store_path.as_posix()] = messages_str
                 logger.info(
                     f"Group {g_idx} compression successful: "
@@ -248,18 +249,15 @@ class ContextCompressOp(BaseAsyncOp):
         group_token_threshold: int = self.context.get("group_token_threshold", None)
         keep_recent_count: int = self.context.get("keep_recent_count", 2)
 
-        # Validate keep_recent_count
-        if keep_recent_count < 0:
-            logger.warning(f"keep_recent_count ({keep_recent_count}) is negative, setting to 0")
-            keep_recent_count = 0
+        assert max_total_tokens > 0, "max_total_tokens must be positive"
+        assert keep_recent_count >= 0, "keep_recent_count must be non-negative"
 
         # Convert context messages to Message objects
         messages = [Message(**x) for x in self.context.messages]
 
         # Extract system message (should be exactly one)
         system_message = [x for x in messages if x.role is Role.SYSTEM]
-        if len(system_message) > 1:
-            raise ValueError("Expected exactly one system message")
+        assert len(system_message) <= 1, f"Expected at most one system message, got {len(system_message)}"
 
         if len(system_message) == 0:
             system_message = Message(role=Role.SYSTEM, content="")
@@ -267,10 +265,8 @@ class ContextCompressOp(BaseAsyncOp):
             system_message = system_message[0]
 
         messages_without_system = [x for x in messages if x.role is not Role.SYSTEM]
-        messages_to_compress = (
-            messages_without_system[:-keep_recent_count] if keep_recent_count > 0 else messages_without_system
-        )
-        recent_messages = messages_without_system[-keep_recent_count:] if keep_recent_count > 0 else []
+        messages_to_compress = messages_without_system[:-keep_recent_count]
+        recent_messages = messages_without_system[-keep_recent_count:]
 
         # If nothing to compress after filtering, return original messages
         if not messages_to_compress:
@@ -297,8 +293,12 @@ class ContextCompressOp(BaseAsyncOp):
 
         write_file_dict, return_messages = await self._compress_with_groups(system_message, message_groups)
 
-        self.context.write_file_dict = write_file_dict
+        # Store write_file_dict in context for potential batch writing
+        if write_file_dict:
+            self.context.write_file_dict = write_file_dict
+
         self.context.response.answer = [x.simple_dump() for x in (return_messages + recent_messages)]
+        self.context.response.metadata["write_file_dict"] = write_file_dict
 
     async def async_default_execute(self, e: Exception = None, **_kwargs):
         """Handle execution errors by returning original messages.

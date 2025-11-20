@@ -222,12 +222,13 @@ async def main():
         logger.info("Test 1: Messages below threshold (should skip compression)")
         logger.info("=" * 60)
 
-        compress_op1 = ContextCompressOp(
-            all_token_threshold=50000,  # High threshold, won't trigger
-            keep_recent=3,
-        )
+        compress_op1 = ContextCompressOp()
 
-        await compress_op1.async_call(messages=messages)
+        await compress_op1.async_call(
+            messages=messages,
+            max_total_tokens=50000,  # High threshold, won't trigger
+            keep_recent_count=3,
+        )
 
         result_messages1 = compress_op1.context.response.answer
         logger.info(f"✓ Result: {len(result_messages1)} messages (unchanged)")
@@ -237,13 +238,14 @@ async def main():
         logger.info("Test 2: Messages above threshold (should compress)")
         logger.info("=" * 60)
 
-        compress_op2 = ContextCompressOp(
-            all_token_threshold=2000,  # Low threshold, will trigger
-            keep_recent=3,  # Keep last 3 messages
+        compress_op2 = ContextCompressOp()
+
+        await compress_op2.async_call(
+            messages=messages,
+            max_total_tokens=2000,  # Low threshold, will trigger
+            keep_recent_count=3,  # Keep last 3 messages
             compress_system_message=False,  # Don't compress system messages
         )
-
-        await compress_op2.async_call(messages=messages)
 
         result_messages2 = compress_op2.context.response.answer
         logger.info(f"✓ Result: {len(result_messages2)} messages (compressed)")
@@ -260,15 +262,16 @@ async def main():
         logger.info("Test 3: Messages above micro threshold (should compress)")
         logger.info("=!" * 30)
 
-        compress_op2 = ContextCompressOp(
-            all_token_threshold=2000,  # Low threshold, will trigger
-            keep_recent=2,  # Keep last 3 messages
+        compress_op2 = ContextCompressOp()
+
+        await compress_op2.async_call(
+            messages=messages,
+            max_total_tokens=2000,  # Low threshold, will trigger
+            keep_recent_count=2,  # Keep last 2 messages
             compress_system_message=False,  # Don't compress system messages
-            micro_summary_token_threshold=1500,
+            group_token_threshold=1500,
             language="zh",
         )
-
-        await compress_op2.async_call(messages=messages)
 
         result_messages2 = compress_op2.context.response.answer
         logger.info(f"✓ Result: {len(result_messages2)} messages (compressed)")

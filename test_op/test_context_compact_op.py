@@ -59,16 +59,17 @@ async def async_main():
         ]
 
         # Create op with lower thresholds for testing
-        op = ContextCompactOp(
-            all_token_threshold=1000,  # Low threshold to trigger compaction
-            tool_token_threshold=100,  # Low threshold to compact tool messages
-            tool_left_char_len=50,  # Keep 50 chars in preview
-            keep_recent=1,  # Keep 1 recent tool message
-            storage_path="./test_compact_storage",
-        )
+        op = ContextCompactOp()
 
         # Execute the compaction
-        await op.async_call(messages=[m.model_dump() for m in messages])
+        await op.async_call(
+            messages=[m.model_dump() for m in messages],
+            max_total_tokens=1000,  # Low threshold to trigger compaction
+            max_tool_message_tokens=100,  # Low threshold to compact tool messages
+            preview_char_length=50,  # Keep 50 chars in preview
+            keep_recent_count=1,  # Keep 1 recent tool message
+            storage_path="./test_compact_storage",
+        )
 
         # Print results
         result = op.context.response.answer

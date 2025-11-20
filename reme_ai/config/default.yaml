@@ -156,6 +156,9 @@ flow:
         description: "user query"
         required: true
 
+  agentic_retrieve:
+    flow_content: AgenticRetrieveOp()
+
   context_offload:
     flow_content: ContextOffloadOp() >> BatchWriteFileOp()
     description: "Manages context window limits by compacting tool messages and compressing conversation history. First compacts large tool messages by storing full content in external files, then applies LLM-based compression if compaction ratio exceeds threshold. This helps reduce token usage while preserving important information."
@@ -205,7 +208,7 @@ flow:
       context_manage_mode:
         type: string
         description: "Context management mode: 'compact' only applies compaction to tool messages, 'compress' only applies LLM-based compression, 'auto' applies compaction first then compression if compaction ratio exceeds threshold. Defaults to 'auto'."
-        required: false
+        required: true
         enum: ["compact", "compress", "auto"]
       max_total_tokens:
         type: integer

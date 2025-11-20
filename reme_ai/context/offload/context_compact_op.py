@@ -48,11 +48,13 @@ class ContextCompactOp(BaseAsyncOp):
         assert max_total_tokens > 0, "max_total_tokens must be greater than 0"
         assert max_tool_message_tokens > 0, "max_tool_message_tokens must be greater than 0"
         assert preview_char_length >= 0, "preview_char_length must be greater than 0"
-        assert keep_recent_count > 0, "keep_recent_count must be greater than 0"
+        assert keep_recent_count >= 0, "keep_recent_count must be greater than 0"
 
         # Convert context messages to Message objects
         messages = [Message(**x) for x in self.context.messages]
-        messages_to_compress = [x for x in messages if x.role is not Role.SYSTEM][:-keep_recent_count]
+        messages_to_compress = [x for x in messages if x.role is not Role.SYSTEM]
+        if keep_recent_count > 0:
+            messages_to_compress = messages_to_compress[:-keep_recent_count]
 
         # If nothing to compress after filtering, return original messages
         if not messages_to_compress:

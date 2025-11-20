@@ -265,8 +265,12 @@ class ContextCompressOp(BaseAsyncOp):
             system_message = system_message[0]
 
         messages_without_system = [x for x in messages if x.role is not Role.SYSTEM]
-        messages_to_compress = messages_without_system[:-keep_recent_count]
-        recent_messages = messages_without_system[-keep_recent_count:]
+        if keep_recent_count > 0:
+            messages_to_compress = messages_without_system[:-keep_recent_count]
+            recent_messages = messages_without_system[-keep_recent_count:]
+        else:
+            messages_to_compress = messages_without_system
+            recent_messages = []
 
         # If nothing to compress after filtering, return original messages
         if not messages_to_compress:

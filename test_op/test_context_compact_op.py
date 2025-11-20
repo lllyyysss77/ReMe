@@ -9,7 +9,8 @@ import asyncio
 from flowllm.core.enumeration import Role
 from flowllm.core.schema import Message
 
-from reme_ai.context.offload.context_compact_op import ContextCompactOp
+from reme_ai.context.file_tool import BatchWriteFileOp
+from reme_ai.context.offload import ContextCompactOp
 from reme_ai.main import ReMeApp
 
 
@@ -59,7 +60,7 @@ async def async_main():
         ]
 
         # Create op with lower thresholds for testing
-        op = ContextCompactOp()
+        op = ContextCompactOp() >> BatchWriteFileOp()
 
         # Execute the compaction
         await op.async_call(
@@ -68,7 +69,7 @@ async def async_main():
             max_tool_message_tokens=100,  # Low threshold to compact tool messages
             preview_char_length=50,  # Keep 50 chars in preview
             keep_recent_count=1,  # Keep 1 recent tool message
-            storage_path="./test_compact_storage",
+            store_dir="./test_compact_storage",
         )
 
         # Print results

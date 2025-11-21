@@ -265,4 +265,4 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
 
         # Store the complete conversation history in the context response
         # This includes all reasoning steps, tool calls, and tool results
-        self.context.response.messages = messages
+        self.context.response.answer = messages

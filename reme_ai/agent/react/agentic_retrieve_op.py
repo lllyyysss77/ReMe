@@ -6,12 +6,11 @@ from flowllm.core.context import C
 from flowllm.core.enumeration import Role
 from flowllm.core.op import BaseAsyncToolOp
 from flowllm.core.schema import ToolCall, Message
-from flowllm.gallery.agent import ReactAgentOp
 from loguru import logger
 
 
 @C.register_op()
-class AgenticRetrieveOp(ReactAgentOp):
+class AgenticRetrieveOp(BaseAsyncToolOp):
     """React agent that exposes RAG-friendly tools and context policies."""
 
     file_path: str = __file__

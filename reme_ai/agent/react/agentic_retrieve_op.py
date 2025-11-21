@@ -105,8 +105,9 @@ class AgenticRetrieveOp(ReactAgentOp):
     async def before_chat(self, messages: List[Message]):
         """Run context offload to trim prior messages before invoking the agent."""
         from reme_ai.context.offload import ContextOffloadOp
+        from reme_ai.context.file_tool import BatchWriteFileOp
 
-        op = ContextOffloadOp()
+        op = ContextOffloadOp() >> BatchWriteFileOp()
         await op.async_call(**self.input_dict)
         messages = op.context.response.answer
         messages = [Message(**x) for x in messages]

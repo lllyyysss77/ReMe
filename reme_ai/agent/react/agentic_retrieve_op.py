@@ -87,9 +87,11 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
             },
         )
 
-    async def build_tool_op_dict(self) -> dict:
-        """Collect available tool operators from the execution context."""
+    async def async_execute(self):
+        """Main execution loop that alternates LLM calls and tool invocations."""
         from reme_ai.context.file_tool import GrepOp, ReadFileOp
+        from reme_ai.context.offload import ContextOffloadOp
+        from reme_ai.context.file_tool import BatchWriteFileOp
 
         grep_op = GrepOp(language=self.language)
         read_file_op = ReadFileOp(language=self.language)
@@ -98,34 +100,14 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
             read_file_op.tool_call.name: read_file_op,
         }
 
-        return tool_op_dict
-
-    async def build_messages(self) -> List[Message]:
-        """Build the initial message history for the LLM."""
-        return self.context.messages
-
-    async def before_chat(self, messages: List[Message]):
-        """Run context offload to trim prior messages before invoking the agent."""
-        from reme_ai.context.offload import ContextOffloadOp
-        from reme_ai.context.file_tool import BatchWriteFileOp
-
-        op = ContextOffloadOp() >> BatchWriteFileOp()
-        await op.async_call(**self.input_dict)
-        messages = op.context.response.answer
-        messages = [Message(**x) for x in messages]
-        return messages
-
-    async def execute_tool(self, op: BaseAsyncToolOp, tool_call: ToolCall):
-        """Execute a tool operation asynchronously using the provided tool call arguments."""
-        self.submit_async_task(op.async_call, **tool_call.argument_dict)
-
-    async def async_execute(self):
-        """Main execution loop that alternates LLM calls and tool invocations."""
-        tool_op_dict = await self.build_tool_op_dict()
-        messages = await self.build_messages()
+        messages = [Message(**x) for x in self.context.messages]
+        context_kwargs = self.input_dict.copy()
+        context_kwargs.pop("messages", None)
 
         for i in range(self.max_steps):
-            messages = await self.before_chat(messages)
+            op = ContextOffloadOp() >> BatchWriteFileOp()
+            await op.async_call(messages=[x.simple_dump() for x in messages], **context_kwargs)
+            messages = [Message(**x) for x in op.context.response.answer]
 
             assistant_message: Message = await self.llm.achat(
                 messages=messages,
@@ -148,7 +130,7 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
                 op_copy: BaseAsyncToolOp = tool_op_dict[tool_call.name].copy()
                 op_copy.tool_call.id = tool_call.id
                 op_list.append(op_copy)
-                await self.execute_tool(op_copy, tool_call)
+                self.submit_async_task(op.async_call, **tool_call.argument_dict)
 
             await self.join_async_task()
 

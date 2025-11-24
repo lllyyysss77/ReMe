@@ -7,8 +7,9 @@ and returning a combined result of all write operations.
 
 from flowllm.core.context import C
 from flowllm.core.op import BaseAsyncOp
-from flowllm.extensions.file_tool import WriteFileOp
 from loguru import logger
+
+from .write_file_op import WriteFileOp
 
 
 @C.register_op()
@@ -34,13 +35,10 @@ class BatchWriteFileOp(BaseAsyncOp):
         # Get write file dictionary from context
         write_file_dict: dict = self.context.get("write_file_dict", {})
         if not write_file_dict:
-            self.context.response.answer = "No write file task."
             logger.info("No write file task.")
             return
 
         # Process each file in the dictionary
-        result = []
         for file_path, content in write_file_dict.items():
             write_op = WriteFileOp(save_answer=self.save_answer)
             await write_op.async_call(file_path=file_path, content=content)
-            result.append(write_op.output)

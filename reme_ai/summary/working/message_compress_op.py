@@ -1,14 +1,14 @@
-"""
-Context compression module for reducing token usage in conversation contexts using LLM.
+"""Working-memory compression module using LLM.
 
-This module provides functionality to compress conversation history by using a language
-model to generate concise summaries of older messages while preserving recent messages.
-This helps manage context window limits while maintaining conversation coherence.
+This module compresses long conversation history for *working memory summary* by
+using a language model to generate concise summaries of older messages while
+preserving more recent ones. It is designed to keep the agent's short-term
+context small, while still retaining the essential information from past turns.
 
 The compression process:
 1. Identifies messages that exceed token thresholds
-2. Splits messages into groups if needed
-3. Uses LLM to generate compressed summaries of older message groups
+2. Optionally splits messages into groups based on token budget
+3. Uses an LLM to generate compressed summaries of older message groups
 4. Stores original messages to files for potential retrieval
 5. Appends compressed summaries to the system message while preserving recent messages
 """
@@ -29,16 +29,17 @@ from reme_ai.utils.op_utils import extract_xml_tag_content
 
 
 @C.register_op()
-class ContextCompressOp(BaseAsyncOp):
+class MessageCompressOp(BaseAsyncOp):
     """
-    Context compression operation that uses LLM to reduce token usage.
+    Working-memory compression operation that uses an LLM to reduce token usage.
 
-    When the total token count exceeds the threshold, this operation uses a language
-    model to compress older messages into a concise summary while keeping recent
-    messages intact. This preserves conversation context while reducing token usage.
+    When the total token count of older messages exceeds the threshold, this operation
+    calls a language model to compress them into a concise summary, while keeping
+    recent messages intact. This provides a compact *state snapshot* that the agent
+    can rely on for subsequent steps.
 
     Attributes:
-        file_path: Path to the operation file, used for configuration.
+        file_path: Path to the operation file, used for configuration (e.g. prompts).
 
     Context Parameters:
         max_total_tokens (int): Maximum token count threshold for compression.
@@ -205,8 +206,8 @@ class ContextCompressOp(BaseAsyncOp):
                 continue
 
             compress_content = (
-                f"[Compressed conversation history - Part {g_idx}/{len(message_groups)}]\n{group_summary}\n\n"
-                f"(Original {len(messages)} messages are stored in: {store_path.as_posix()})\n"
+                f"[Compressed conversation history - Part {g_idx}/{len(message_groups)}]\n{group_summary}\n"
+                f"(Original {len(messages)} messages are stored in: {store_path.as_posix()})"
             )
             compressed_tokens = self.token_count([Message(content=compress_content)])
 

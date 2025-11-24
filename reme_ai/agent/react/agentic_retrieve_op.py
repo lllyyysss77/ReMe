@@ -11,6 +11,19 @@ language model reasoning with tool execution. The agent iteratively:
 
 The agent is specifically designed for RAG (Retrieval-Augmented Generation) workflows,
 providing context management capabilities to handle long conversations efficiently.
+
+Context management is controlled via ``working_summary_mode`` and
+``compact_ratio_threshold`` parameters, which are forwarded to
+``MessageOffloadOp``. ``working_summary_mode`` selects between:
+- ``compact``  – only compact verbose tool messages by storing full content externally
+  and keeping short previews in the context.
+- ``compress`` – only apply LLM-based compression to generate a compact state snapshot.
+- ``auto``     – first run compaction, then optionally run compression if the
+  compaction ratio is not sufficient (default).
+
+``compact_ratio_threshold`` is only used in ``auto`` mode and defines the compaction
+ratio (tokens after compaction divided by original tokens) above which an additional
+LLM-based compression pass is applied. It defaults to ``0.75``.
 """
 
 from typing import Dict, List
@@ -36,6 +49,12 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
     through compaction (storing large tool messages externally) and compression
     (LLM-based summarization of message history).
 
+    Context management behavior is configured via ``working_summary_mode`` and
+    ``compact_ratio_threshold`` (see module docstring for details). These options are
+    passed to ``MessageOffloadOp`` to control whether the agent only compacts tool
+    messages, only compresses history, or applies an automatic compaction-then-
+    compression pipeline.
+
     Available tools:
     - GrepOp: Search for patterns in files
     - ReadFileOp: Read file contents
@@ -49,7 +68,7 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
     def __init__(
         self,
         llm: str = "qwen3_30b_instruct",
-        max_steps: int = 5,
+        max_steps: int = 20,
         **kwargs,
     ):
         """
@@ -87,13 +106,20 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
                         "description": "messages",
                         "required": True,
                     },
-                    "context_manage_mode": {
+                    "working_summary_mode": {
                         "type": "string",
-                        "description": "Context management mode: 'compact' (only compacts tool messages), 'compress' "
-                        "(only LLM-based compression), 'auto' (compaction first then compression if "
-                        "needed). Defaults to 'auto'.",
-                        "required": True,
+                        "description": "summary strategy: 'compact' only compacts large tool messages, 'compress' "
+                        "only applies LLM-based compression, 'auto' first compacts then optionally compresses when "
+                        "reduction is insufficient. Defaults to 'auto'.",
+                        "required": False,
                         "enum": ["compact", "compress", "auto"],
+                    },
+                    "compact_ratio_threshold": {
+                        "type": "number",
+                        "description": "Only used in 'auto' mode. Threshold for compaction (tokens after compaction "
+                        "divided by original tokens). When the ratio is greater than this value, an additional "
+                        "LLM-based compression pass is triggered. Defaults to 0.75.",
+                        "required": False,
                     },
                     "max_total_tokens": {
                         "type": "integer",
@@ -156,9 +182,8 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
         Each iteration is called a "round" and represents one reasoning-action cycle.
         """
         # Import tool operators that the agent can use
-        from reme_ai.context.file_tool import GrepOp, ReadFileOp
-        from reme_ai.context.offload import ContextOffloadOp
-        from reme_ai.context.file_tool import BatchWriteFileOp
+        from reme_ai.retrieve.working import GrepOp, ReadFileOp, BatchWriteFileOp
+        from reme_ai.summary.working import MessageOffloadOp
 
         # Initialize available tools for the agent
         # GrepOp: Search for patterns/text in files (useful for code search)
@@ -184,9 +209,9 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
         # Main ReAct loop: iterate up to max_steps times
         for i in range(self.max_steps):
             # Step 1: Context Management Phase
-            # Create a pipeline: ContextOffloadOp (compacts/compresses) -> BatchWriteFileOp (saves offloaded content)
+            # Create a pipeline: MessageOffloadOp (compacts/compresses) -> BatchWriteFileOp (saves offloaded content)
             # The >> operator chains these operations together
-            op = ContextOffloadOp() >> BatchWriteFileOp()
+            op = MessageOffloadOp() >> BatchWriteFileOp()
 
             # Apply context management to current message history
             # This may compact large tool messages or compress old messages based on context_manage_mode
@@ -194,6 +219,7 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
 
             # Update messages with the processed/optimized version from context management
             # Large messages may now reference external files instead of containing full content
+            logger.info(f"round{i + 1}.offload={op.context.response.answer}")
             messages = [Message(**x) for x in op.context.response.answer]
 
             # Step 2: Reasoning Phase
@@ -265,4 +291,4 @@ class AgenticRetrieveOp(BaseAsyncToolOp):
 
         # Store the complete conversation history in the context response
         # This includes all reasoning steps, tool calls, and tool results
-        self.context.response.answer = messages
+        self.context.response.metadata["messages"] = [x.simple_dump(add_reasoning=True) for x in messages]

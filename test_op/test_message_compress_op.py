@@ -1,7 +1,7 @@
 """
-Test script for ContextCompressOp.
+Test script for MessageCompressOp.
 
-This script demonstrates how to use the context compression operation to reduce
+This script demonstrates how to use the message compression operation to reduce
 token usage in conversation histories using language models.
 """
 
@@ -9,16 +9,16 @@ import asyncio
 
 from loguru import logger
 
-from reme_ai.context.offload.context_compress_op import ContextCompressOp
 from reme_ai.main import ReMeApp
+from reme_ai.summary.working import MessageCompressOp
 
 
 async def main():
-    """Main function to test ContextCompressOp."""
+    """Main function to test MessageCompressOp."""
 
     async with ReMeApp():
         logger.info("=" * 80)
-        logger.info("Testing ContextCompressOp - LLM-based Context Compression")
+        logger.info("Testing MessageCompressOp - LLM-based Context Compression")
         logger.info("=" * 80)
 
         # Create a mock conversation with multiple messages
@@ -220,7 +220,7 @@ async def main():
         logger.info("Test 1: Messages below threshold (should skip compression)")
         logger.info("=" * 60)
 
-        compress_op1 = ContextCompressOp()
+        compress_op1 = MessageCompressOp()
 
         await compress_op1.async_call(
             messages=messages,
@@ -236,7 +236,7 @@ async def main():
         logger.info("Test 2: Messages above threshold (should compress)")
         logger.info("=" * 60)
 
-        compress_op2 = ContextCompressOp()
+        compress_op2 = MessageCompressOp()
 
         await compress_op2.async_call(
             messages=messages,
@@ -260,7 +260,7 @@ async def main():
         logger.info("Test 3: Messages above micro threshold (should compress)")
         logger.info("=!" * 30)
 
-        compress_op2 = ContextCompressOp()
+        compress_op2 = MessageCompressOp()
 
         await compress_op2.async_call(
             messages=messages,

@@ -1,9 +1,9 @@
-"""
-Context compaction module for reducing token usage in conversation contexts.
+"""Working-memory compaction module for reducing token usage.
 
-This module provides functionality to compress large tool messages by storing
-their full content in external files and keeping only previews in the context.
-This helps manage context window limits while preserving important information.
+This module provides functionality to compact large tool messages for
+*working memory summary* by storing their full content in external files and
+keeping only short previews in the active message list. This reduces token
+usage while preserving access to detailed information when needed.
 """
 
 from pathlib import Path
@@ -17,13 +17,14 @@ from loguru import logger
 
 
 @C.register_op()
-class ContextCompactOp(BaseAsyncOp):
+class MessageCompactOp(BaseAsyncOp):
     """
-    Context compaction operation that reduces token usage by compressing tool messages.
+    Working-memory compaction operation that reduces token usage by compacting tool messages.
 
-    When the total token count exceeds the threshold, this operation compresses large tool
-    messages by truncating their content and storing the full content in external files.
-    This helps manage context window limits while preserving recent tool messages.
+    When the total token count exceeds the threshold, this operation truncates large tool
+    messages and stores the full content in external files. This is intended for
+    working-memory style summarization: the agent sees a short preview while the
+    complete result remains available out-of-band.
     """
 
     async def async_execute(self):
@@ -41,7 +42,7 @@ class ContextCompactOp(BaseAsyncOp):
         # Get configuration from context
         max_total_tokens: int = self.context.get("max_total_tokens", 20000)
         max_tool_message_tokens: int = self.context.get("max_tool_message_tokens", 2000)
-        preview_char_length: int = self.context.get("preview_char_length", 100)
+        preview_char_length: int = self.context.get("preview_char_length", 0)
         keep_recent_count: int = self.context.get("keep_recent_count", 1)
         store_dir: Path = Path(self.context.get("store_dir", ""))
 
@@ -50,11 +51,21 @@ class ContextCompactOp(BaseAsyncOp):
         assert preview_char_length >= 0, "preview_char_length must be greater than 0"
         assert keep_recent_count >= 0, "keep_recent_count must be greater than 0"
 
-        # Convert context messages to Message objects
         messages = [Message(**x) for x in self.context.messages]
+
+        # Convert context messages to Message objects
         messages_to_compress = [x for x in messages if x.role is not Role.SYSTEM]
         if keep_recent_count > 0:
             messages_to_compress = messages_to_compress[:-keep_recent_count]
+
+        # Extract system message (should be exactly one)
+        system_message = [x for x in messages if x.role is Role.SYSTEM]
+        assert len(system_message) <= 1, f"Expected at most one system message, got {len(system_message)}"
+
+        if len(system_message) == 0:
+            system_message = Message(role=Role.SYSTEM, content="")
+        else:
+            system_message = system_message[0]
 
         # If nothing to compress after filtering, return original messages
         if not messages_to_compress:
@@ -103,18 +114,18 @@ class ContextCompactOp(BaseAsyncOp):
             # Store the full content for batch writing
             write_file_dict[store_path.as_posix()] = original_content
 
-            # Create compressed preview of the tool message content
-            compact_result = original_content[:preview_char_length] + "..."
-
             # Log the compaction action
             logger.info(
                 f"Compacting tool message (tool_call_id={tool_message.tool_call_id}): "
-                f"token count={tool_token_cnt}, saving full content to {store_path}",
+                f"token count={tool_token_cnt}, saving full content to {store_path.as_posix()}",
             )
 
             # Update tool message content with preview and file reference
-            compact_result += f" (detailed result is stored in {store_path})"
+            compact_result = f"tool call={file_name} result is stored in file path=`{store_path.as_posix()}`"
+            if preview_char_length > 0:
+                compact_result += f"\npreview: {original_content[:preview_char_length]}..."
             tool_message.content = compact_result
+            system_message.content += f"\n\n{compact_result}"
 
         # Store write_file_dict in context for potential batch writing
         if write_file_dict:

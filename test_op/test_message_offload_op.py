@@ -1,6 +1,6 @@
-"""Test script for ContextOffloadOp.
+"""Test script for MessageOffloadOp.
 
-This script provides test cases for ContextOffloadOp class.
+This script provides test cases for MessageOffloadOp class.
 It can be run directly with: python test_context_offload_op.py
 """
 
@@ -10,14 +10,14 @@ from flowllm.core.enumeration import Role
 from flowllm.core.schema import Message
 from loguru import logger
 
-from reme_ai.context.file_tool import BatchWriteFileOp
-from reme_ai.context.offload.context_offload_op import ContextOffloadOp
-from reme_ai.enumeration import ContextManageEnum
+from reme_ai.enumeration import WorkingSummaryMode
 from reme_ai.main import ReMeApp
+from reme_ai.retrieve.working import BatchWriteFileOp
+from reme_ai.summary.working import MessageOffloadOp
 
 
 async def test_compact_mode():
-    """Test COMPACT mode - Only apply compaction."""
+    """Test COMPACT mode - Only apply compaction with MessageOffloadOp."""
     logger.info("\n" + "=" * 60)
     logger.info("Test: COMPACT mode - Only apply compaction")
     logger.info("=" * 60)
@@ -64,11 +64,11 @@ async def test_compact_mode():
         ),
     ]
 
-    op = ContextOffloadOp() >> BatchWriteFileOp()
+    op = MessageOffloadOp() >> BatchWriteFileOp()
 
     await op.async_call(
         messages=[m.model_dump() for m in messages],
-        context_manage_mode=ContextManageEnum.COMPACT,
+        context_manage_mode=WorkingSummaryMode.COMPACT,
         max_total_tokens=1000,  # Low threshold to trigger compaction
         max_tool_message_tokens=100,  # Low threshold to compact tool messages
         preview_char_length=50,  # Keep 50 chars in preview
@@ -82,7 +82,7 @@ async def test_compact_mode():
 
 
 async def test_compress_mode():
-    """Test COMPRESS mode - Only apply compression."""
+    """Test COMPRESS mode - Only apply compression with MessageOffloadOp."""
     logger.info("\n" + "=" * 60)
     logger.info("Test: COMPRESS mode - Only apply compression")
     logger.info("=" * 60)
@@ -129,11 +129,11 @@ async def test_compress_mode():
         ),
     ]
 
-    op = ContextOffloadOp() >> BatchWriteFileOp()
+    op = MessageOffloadOp() >> BatchWriteFileOp()
 
     await op.async_call(
         messages=[m.model_dump() for m in messages],
-        context_manage_mode=ContextManageEnum.COMPRESS,
+        context_manage_mode=WorkingSummaryMode.COMPRESS,
         max_total_tokens=2000,  # Low threshold to trigger compression
         keep_recent_count=2,
         store_dir="./test_compact_storage",
@@ -145,7 +145,7 @@ async def test_compress_mode():
 
 
 async def test_auto_mode():
-    """Test AUTO mode - Apply compaction first, then compression if needed."""
+    """Test AUTO mode - Apply compaction first, then compression if needed using MessageOffloadOp."""
     logger.info("\n" + "=" * 60)
     logger.info("Test: AUTO mode - Apply compaction first, then compression if needed")
     logger.info("=" * 60)
@@ -209,11 +209,11 @@ async def test_auto_mode():
         ),
     ]
 
-    op = ContextOffloadOp() >> BatchWriteFileOp()
+    op = MessageOffloadOp() >> BatchWriteFileOp()
 
     await op.async_call(
         messages=[m.model_dump() for m in auto_messages],
-        context_manage_mode=ContextManageEnum.AUTO,
+        context_manage_mode=WorkingSummaryMode.AUTO,
         compact_ratio_threshold=0.2,  # Low threshold, should trigger compression after compact
         max_total_tokens=1000,
         max_tool_message_tokens=100,
@@ -228,14 +228,14 @@ async def test_auto_mode():
 
 
 async def async_main():
-    """Test function for ContextOffloadOp."""
+    """Test function for MessageOffloadOp."""
     async with ReMeApp():
         logger.info("=" * 80)
-        logger.info("Testing ContextOffloadOp - Context Management Orchestration")
+        logger.info("Testing MessageOffloadOp - Context Management Orchestration")
         logger.info("=" * 80)
 
-        # await test_compact_mode()
-        # await test_compress_mode()
+        await test_compact_mode()
+        await test_compress_mode()
         await test_auto_mode()
 
         logger.info("\n" + "=" * 80)

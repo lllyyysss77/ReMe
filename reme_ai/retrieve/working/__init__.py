@@ -1,7 +1,7 @@
-"""File tool package for ReMe framework.
+"""Working operations package for ReMe retrieve framework.
 
-This package provides file-related operations that can be used in LLM-powered flows.
-It includes ready-to-use operations for:
+This package provides working/file-related operations that can be used in LLM-powered
+flows. It currently includes ready-to-use operations for:
 
 - BatchWriteFileOp: Batch write multiple files operation
 - GrepOp: Text search operation for finding patterns in files

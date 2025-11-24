@@ -12,68 +12,128 @@ kernelspec:
   name: python3
 ---
 
-# Vector Store Configuration Guide
+### Vector Store User Guide
 
-This guide covers how to configure vector store backends in ReMe using the `default.yaml` configuration file.
+Vector Store is a component designed for storing, managing, and retrieving vector embeddings. It supports features such as workspace management, similarity search, and metadata filtering.
 
-## 📋 Overview
+## Core Concepts
 
-ReMe provides multiple vector store backends for different use cases:
+**Workspace**: Each workspace is an independent vector storage unit used to organize and manage related vector nodes.
 
-- **LocalVectorStore** (`backend=local`) - 📁 Simple file-based storage for development and small datasets
-- **ChromaVectorStore** (`backend=chroma`) - 🔮 Embedded vector database for moderate scale
-- **EsVectorStore** (`backend=elasticsearch`) - 🔍 Elasticsearch-based storage for production and large scale
-- **QdrantVectorStore** (`backend=qdrant`) - 🎯 High-performance vector database with advanced filtering
-- **MemoryVectorStore** (`backend=memory`) - ⚡ In-memory storage for ultra-fast access and testing
+**VectorNode**: A data unit containing text content, vector embedding, and metadata. It serves as the fundamental unit for storage and retrieval.
 
-All vector stores implement the `BaseVectorStore` interface, providing a consistent API across implementations.
+**Embedding Model**: Used to convert text into vector embeddings. It supports automatic generation of both node vectors and query vectors.
 
-## 📊 Comparison Table
+## Available Implementations
 
-| Feature              | LocalVectorStore | ChromaVectorStore | EsVectorStore | QdrantVectorStore | MemoryVectorStore |
-|----------------------|------------------|-------------------|---------------|-------------------|-------------------|
-| **Storage**          | File (JSONL)     | Embedded DB       | Elasticsearch | Qdrant Server     | In-Memory         |
-| **Performance**      | Medium           | Good              | Excellent     | Excellent         | Ultra-Fast        |
-| **Scalability**      | < 10K vectors    | < 1M vectors      | > 1M vectors  | > 10M vectors     | < 1M vectors      |
-| **Persistence**      | ✅ Auto           | ✅ Auto            | ✅ Auto        | ✅ Auto            | ⚠️ Manual         |
-| **Setup Complexity** | 🟢 Simple        | 🟡 Medium         | 🔴 Complex    | 🟡 Medium         | 🟢 Simple         |
-| **Dependencies**     | None             | ChromaDB          | Elasticsearch | Qdrant            | None              |
-| **Filtering**        | ❌ Basic          | ✅ Metadata        | ✅ Advanced    | ✅ Advanced        | ❌ Basic           |
-| **Concurrency**      | ❌ Limited        | ✅ Good            | ✅ Excellent   | ✅ Excellent       | ❌ Single Process  |
-| **Async Support**    | ❌ No             | ❌ No              | ❌ No          | ✅ Native          | ❌ No              |
-| **Best For**         | Development      | Local Apps        | Production    | Production/Cloud  | Testing           |
+FlowLLM provides multiple Vector Store implementations tailored to different use cases:
 
-## ⚙️ Configuration in default.yaml
+- **LocalVectorStore** ([source code](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/local_vector_store.py)): A file-based local implementation that persists data in JSONL format. Suitable for single-machine deployments and small-scale datasets.
+- **MemoryVectorStore** ([source code](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/memory_vector_store.py)): An in-memory implementation offering fast access speeds. Ideal for temporary data or testing scenarios.
+- **QdrantVectorStore** ([source code](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/qdrant_vector_store.py)): Built on the Qdrant vector database, supporting high-performance vector search. Recommended for large-scale production environments.
+- **ChromaVectorStore** ([source code](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/chroma_vector_store.py)): Based on ChromaDB, providing persistent storage and metadata filtering capabilities.
+- **EsVectorStore** ([source code](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/es_vector_store.py)): Built on Elasticsearch, enabling powerful combined full-text and vector search functionalities.
 
-All vector stores are configured in the `vector_store` section of `reme_ai/config/default.yaml`. The configuration structure is:
+All Vector Store implementations inherit from **BaseVectorStore** ([source code](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/base_vector_store.py)), ensuring a consistent interface specification.
+
+## Core Features
+
+### Workspace Management
+
+- **Create Workspace**: Create a new workspace for storing vector nodes.
+- **Delete Workspace**: Remove a workspace along with all its data.
+- **Check Workspace Existence**: Verify whether a specified workspace exists.
+- **List Workspaces**: Retrieve a list of all existing workspaces.
+- **Copy Workspace**: Duplicate data from one workspace to another.
+
+### Node Operations
+
+- **Insert Nodes**: Insert vector nodes into a workspace, supporting single or batch insertion with automatic vector embedding generation.
+- **Delete Nodes**: Remove specific nodes by their IDs.
+- **Iterate Nodes**: Traverse all nodes within a workspace.
+
+### Vector Search
+
+- **Similarity Search**: Perform vector similarity searches based on text queries, returning the top-K most similar results.
+- **Metadata Filtering**: Apply filtering conditions based on metadata, including exact matches and range queries.
+- **Similarity Scores**: Search results include similarity scores to evaluate match quality.
+
+### Data Import/Export
+
+- **Export Workspace**: Export workspace data to a file or specified path.
+- **Import Workspace**: Import data into a workspace from a file or a list of nodes.
+- **Callback Functions**: Support callback functions during import/export for data transformation.
+
+## Synchronous and Asynchronous Interfaces
+
+All Vector Store implementations provide both synchronous and asynchronous interfaces:
+
+- **Synchronous Interface**: Direct method calls suitable for synchronous code environments.
+- **Asynchronous Interface**: Prefixed with `async_`, designed for asynchronous environments and offering better concurrency performance.
+
+The asynchronous interface is particularly useful in the following scenarios:
+- Using asynchronous embedding models for vector generation.
+- Performing batch operations in high-concurrency environments.
+- Integrating with other asynchronous components.
+
+## Configuration Options
+
+### General Configuration
+
+- **embedding_model**: Instance of the embedding model used to generate vector embeddings.
+- **batch_size**: Batch size for bulk operations (default: 1024).
+
+### LocalVectorStore Configuration
+
+- **store_dir**: Storage directory path (default: `./local_vector_store`).
+
+### MemoryVectorStore Configuration
+
+- **store_dir**: Persistence directory (default: `./memory_vector_store`).
+
+### QdrantVectorStore Configuration
+
+- **url**: Qdrant service URL (optional; used for Qdrant Cloud or custom deployments).
+- **host**: Qdrant server host (default: `localhost`).
+- **port**: Qdrant server port (default: `6333`).
+- **api_key**: API key for Qdrant Cloud authentication.
+- **distance**: Distance metric—supports COSINE, EUCLIDEAN, DOT (default: COSINE).
+
+### ChromaVectorStore Configuration
+
+- **store_dir**: ChromaDB data storage directory (default: `./chroma_vector_store`).
+
+### EsVectorStore Configuration
+
+- **hosts**: Elasticsearch host address(es), either a string or a list (default: `http://localhost:9200`).
+- **basic_auth**: Basic authentication credentials (username and password).
+
+## Configuration File Examples
+
+Configure Vector Store in `flowllm/config/default.yaml` under the `vector_store` section. The basic structure is as follows:
 
 ```yaml
 vector_store:
   default:
-    backend: <backend_name>        # Required: local, chroma, elasticsearch, qdrant, or memory
-    embedding_model: default        # Required: Name of the embedding model configuration
-    params:                         # Optional: Backend-specific parameters
-      # Backend-specific parameters go here
+    backend: <backend_name>        # Required: vector store backend type
+    embedding_model: default       # Required: name of embedding model config
+    params:                        # Optional: backend-specific parameters
+      # Backend-specific parameters
 ```
 
-### Configuration Fields
+### Configuration Field Descriptions
 
-- **`backend`** (required): The vector store backend to use. Valid values: `local`, `chroma`, `elasticsearch`, `qdrant`, `memory`
-- **`embedding_model`** (required): The name of the embedding model configuration from the `embedding_model` section
-- **`params`** (optional): A dictionary of backend-specific parameters that will be passed to the vector store constructor
+- **`backend`** (required): Vector store backend type. Options: `local`, `memory`, `chroma`, `qdrant`, `elasticsearch`.
+- **`embedding_model`** (required): Name of the embedding model configuration, referencing the `embedding_model` section.
+- **`params`** (optional): Dictionary of backend-specific parameters passed to the vector store constructor.
 
-## 📁 Vector Store Backend Configurations
+### Configuration Examples by Type
 
-### 1. LocalVectorStore (`backend=local`)
+#### 1. LocalVectorStore Configuration
 
-A simple file-based vector store that saves data to local JSONL files.
+Simplest local file-based storage, ideal for development and testing.
 
-#### 💡 When to Use
-- **Development and testing** - No external dependencies required 🛠️
-- **Small datasets** - Suitable for datasets with < 10,000 vectors 📊
-- **Single-user applications** - Limited concurrent access support 👤
-
-#### ⚙️ Configuration
+**Implementation**: [`flowllm/core/vector_store/local_vector_store.py`](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/local_vector_store.py)
 
 ```yaml
 vector_store:
@@ -81,25 +141,29 @@ vector_store:
     backend: local
     embedding_model: default
     params:
-      store_dir: "./local_vector_store"  # Directory to store JSONL files (default: "./local_vector_store")
-      batch_size: 1024                    # Batch size for operations (default: 1024)
+      store_dir: "./local_vector_store"  # Storage directory (optional; default: "./local_vector_store")
 ```
 
-#### Configuration Parameters
+#### 2. MemoryVectorStore Configuration
 
-- **`store_dir`** (optional): Directory path where workspace files are stored. Default: `"./local_vector_store"`
-- **`batch_size`** (optional): Batch size for bulk operations. Default: `1024`
+In-memory storage with fast access, suitable for temporary data or testing.
 
-### 2. ChromaVectorStore (`backend=chroma`)
+**Implementation**: [`flowllm/core/vector_store/memory_vector_store.py`](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/memory_vector_store.py)
 
-An embedded vector database that provides persistent storage with advanced features.
+```yaml
+vector_store:
+  default:
+    backend: memory
+    embedding_model: default
+    params:
+      store_dir: "./memory_vector_store"  # Persistence directory (optional; default: "./memory_vector_store")
+```
 
-#### 💡 When to Use
-- **Local development** with persistence requirements 🏠
-- **Medium-scale applications** (10K - 1M vectors) 📈
-- **Applications requiring metadata filtering** 🔍
+#### 3. ChromaVectorStore Configuration
 
-#### ⚙️ Configuration
+Persistent storage based on ChromaDB with metadata filtering support.
+
+**Implementation**: [`flowllm/core/vector_store/chroma_vector_store.py`](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/chroma_vector_store.py)
 
 ```yaml
 vector_store:
@@ -107,48 +171,44 @@ vector_store:
     backend: chroma
     embedding_model: default
     params:
-      store_dir: "./chroma_vector_store"  # Directory for Chroma database (default: "./chroma_vector_store")
-      batch_size: 1024                    # Batch size for operations (default: 1024)
+      store_dir: "./chroma_vector_store"  # ChromaDB data directory (optional; default: "./chroma_vector_store")
 ```
 
-#### Configuration Parameters
+#### 4. QdrantVectorStore Configuration
 
-- **`store_dir`** (optional): Directory path where ChromaDB data is persisted. Default: `"./chroma_vector_store"`
-- **`batch_size`** (optional): Batch size for bulk operations. Default: `1024`
+**Implementation**: [`flowllm/core/vector_store/qdrant_vector_store.py`](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/qdrant_vector_store.py)
 
-### 3. EsVectorStore (`backend=elasticsearch`)
+**Local Qdrant Instance**:
 
-Production-grade vector search using Elasticsearch with advanced filtering and scaling capabilities.
-
-#### 💡 When to Use
-- **Production environments** requiring high availability 🏭
-- **Large-scale applications** (1M+ vectors) 🚀
-- **Complex filtering requirements** on metadata 🎯
-
-#### 🛠️ Setup Elasticsearch
-
-Before using EsVectorStore, set up Elasticsearch:
-
-##### Option 1: Docker Run
-```bash
-# Pull the latest Elasticsearch image
-docker pull docker.elastic.co/elasticsearch/elasticsearch-wolfi:9.0.0
-
-# Run Elasticsearch container
-docker run -p 9200:9200 \
-  -e "discovery.type=single-node" \
-  -e "xpack.security.enabled=false" \
-  -e "xpack.license.self_generated.type=trial" \
-  -e "http.host=0.0.0.0" \
-  docker.elastic.co/elasticsearch/elasticsearch-wolfi:9.0.0
+```yaml
+vector_store:
+  default:
+    backend: qdrant
+    embedding_model: default
+    params:
+      host: "localhost"      # Qdrant server host (optional; default: localhost)
+      port: 6333             # Qdrant server port (optional; default: 6333)
+      distance: "COSINE"     # Distance metric (optional; default: COSINE; options: COSINE, EUCLIDEAN, DOT)
 ```
 
-##### Environment Configuration
-```bash
-export FLOW_ES_HOSTS=http://localhost:9200
+**Qdrant Cloud Configuration**:
+
+```yaml
+vector_store:
+  default:
+    backend: qdrant
+    embedding_model: default
+    params:
+      url: "https://your-cluster.qdrant.io:6333"  # Qdrant Cloud URL
+      api_key: "your-api-key-here"                 # API key
+      distance: "COSINE"
 ```
 
-#### ⚙️ Configuration
+#### 5. EsVectorStore Configuration
+
+**Implementation**: [`flowllm/core/vector_store/es_vector_store.py`](https://github.com/flowllm-ai/flowllm/blob/main/flowllm/core/vector_store/es_vector_store.py)
+
+**Basic Configuration (Local Elasticsearch)**:
 
 ```yaml
 vector_store:
@@ -156,167 +216,11 @@ vector_store:
     backend: elasticsearch
     embedding_model: default
     params:
-      hosts: "http://localhost:9200"     # Elasticsearch host(s) - can be string or list (default: from FLOW_ES_HOSTS env var or "http://localhost:9200")
-      basic_auth: null                    # Optional: ("username", "password") tuple for authentication
-      batch_size: 1024                    # Batch size for bulk operations (default: 1024)
+      hosts: "http://localhost:9200"  # Elasticsearch host(s) (optional; default: http://localhost:9200)
 ```
 
-#### Configuration Parameters
+**Configuration with Authentication**:
 
-- **`hosts`** (optional): Elasticsearch host(s) as a string or list of strings. Defaults to the `FLOW_ES_HOSTS` environment variable or `"http://localhost:9200"` if not set
-- **`basic_auth`** (optional): Tuple of `("username", "password")` for basic authentication. Default: `null` (no authentication)
-- **`batch_size`** (optional): Batch size for bulk operations. Default: `1024`
-
-### 4. QdrantVectorStore (`backend=qdrant`)
-
-A high-performance vector database designed for production workloads with native async support and advanced filtering.
-
-#### 💡 When to Use
-- **Production environments** requiring high performance and reliability 🏭
-- **Large-scale applications** (10M+ vectors) with excellent horizontal scaling 🚀
-- **Applications requiring native async operations** for better concurrency ⚡
-- **Complex filtering and metadata queries** on large datasets 🎯
-- **Cloud-native deployments** with Qdrant Cloud support ☁️
-
-#### 🛠️ Setup Qdrant
-
-Before using QdrantVectorStore, set up Qdrant:
-
-##### Option 1: Docker Run (Recommended for Development)
-```bash
-# Pull the latest Qdrant image
-docker pull qdrant/qdrant
-
-# Run Qdrant container
-docker run -p 6333:6333 -p 6334:6334 \
-  -v $(pwd)/qdrant_storage:/qdrant/storage:z \
-  qdrant/qdrant
-```
-
-##### Option 2: Qdrant Cloud
-For production, you can use [Qdrant Cloud](https://cloud.qdrant.io/) for managed hosting.
-
-##### Environment Configuration
-```bash
-# For local setup
-export FLOW_QDRANT_HOST=localhost
-export FLOW_QDRANT_PORT=6333
-
-# For cloud setup (optional)
-export FLOW_QDRANT_API_KEY=your-api-key
-```
-
-#### ⚙️ Configuration
-
-##### Local Qdrant Instance
-```yaml
-vector_store:
-  default:
-    backend: qdrant
-    embedding_model: default
-    params:
-      host: "localhost"                   # Qdrant host (default: from FLOW_QDRANT_HOST env var or "localhost")
-      port: 6333                          # Qdrant port (default: from FLOW_QDRANT_PORT env var or 6333)
-      batch_size: 1024                    # Batch size for operations (default: 1024)
-      distance: "COSINE"                  # Distance metric: "COSINE", "EUCLIDEAN", or "DOT" (default: "COSINE")
-```
-
-##### Qdrant Cloud or Remote Server
-```yaml
-vector_store:
-  default:
-    backend: qdrant
-    embedding_model: default
-    params:
-      url: "https://your-cluster.qdrant.io:6333"  # Qdrant server URL (if provided, host and port are ignored)
-      api_key: "your-api-key"                     # API key for Qdrant Cloud authentication
-      batch_size: 1024                            # Batch size for operations (default: 1024)
-      distance: "COSINE"                          # Distance metric (default: "COSINE")
-```
-
-#### Configuration Parameters
-
-- **`url`** (optional): Complete URL for connecting to Qdrant. If provided, `host` and `port` are ignored. Useful for Qdrant Cloud or custom deployments
-- **`host`** (optional): Host address of the Qdrant server. Defaults to the `FLOW_QDRANT_HOST` environment variable or `"localhost"` if not set
-- **`port`** (optional): Port number of the Qdrant server. Defaults to the `FLOW_QDRANT_PORT` environment variable or `6333` if not set
-- **`api_key`** (optional): API key for authentication (required for Qdrant Cloud). Can also be set via `FLOW_QDRANT_API_KEY` environment variable
-- **`distance`** (optional): Distance metric for vector similarity. Valid values: `"COSINE"`, `"EUCLIDEAN"`, `"DOT"`. Default: `"COSINE"`
-- **`batch_size`** (optional): Batch size for bulk operations. Default: `1024`
-
-#### 🌟 Key Features
-
-- **Native Async Support** - All operations have async equivalents for better concurrency
-- **Upsert Operations** - Insert automatically updates existing nodes with the same ID
-- **Advanced Filtering** - Support for term and range filters on metadata
-- **High Performance** - Optimized for large-scale vector similarity search
-- **Horizontal Scaling** - Supports clustering for distributed deployments
-- **Multiple Distance Metrics** - Cosine, Euclidean, and Dot Product similarity
-- **Persistent Storage** - Data is automatically persisted to disk
-- **Efficient Iteration** - Scroll through large collections with pagination
-
-### 5. MemoryVectorStore (`backend=memory`)
-
-An ultra-fast in-memory vector store that keeps all data in RAM for maximum performance.
-
-#### 💡 When to Use
-- **Testing and development** - Fastest possible operations for unit tests 🧪
-- **Small to medium datasets** that fit in memory (< 1M vectors) 💾
-- **Applications requiring ultra-low latency** search operations ⚡
-- **Temporary workspaces** that don't need persistence 🚀
-
-#### ⚙️ Configuration
-
-```yaml
-vector_store:
-  default:
-    backend: memory
-    embedding_model: default
-    params:
-      store_dir: "./memory_vector_store"  # Directory for backup/restore operations (default: "./memory_vector_store")
-      batch_size: 1024                     # Batch size for operations (default: 1024)
-```
-
-#### Configuration Parameters
-
-- **`store_dir`** (optional): Directory path for backup/restore operations. Default: `"./memory_vector_store"`
-- **`batch_size`** (optional): Batch size for bulk operations. Default: `1024`
-
-#### ⚡ Performance Benefits
-
-- **Zero I/O latency** - All operations happen in RAM
-- **Instant search results** - No disk or network overhead
-- **Perfect for testing** - Fast setup and teardown
-- **Memory efficient** - Only stores what you need
-
-#### 🚨 Important Notes
-
-- **Data is volatile** - Lost when process ends unless explicitly saved
-- **Memory usage** - Entire dataset must fit in available RAM
-- **No persistence** - Use `dump_workspace()` to save to disk
-- **Single process** - Not suitable for distributed applications
-
-## 📝 Example Configurations
-
-### Minimal Configuration (Memory Store)
-```yaml
-vector_store:
-  default:
-    backend: memory
-    embedding_model: default
-```
-
-### Local File Storage
-```yaml
-vector_store:
-  default:
-    backend: local
-    embedding_model: default
-    params:
-      store_dir: "./my_vector_store"
-      batch_size: 2048
-```
-
-### Elasticsearch Production Setup
 ```yaml
 vector_store:
   default:
@@ -324,40 +228,29 @@ vector_store:
     embedding_model: default
     params:
       hosts: "http://elasticsearch.example.com:9200"
-      basic_auth: ["username", "password"]
-      batch_size: 2048
+      basic_auth: ["username", "password"]  # Basic auth credentials
 ```
 
-### Qdrant Cloud Setup
+**Multi-Host Configuration**:
+
 ```yaml
 vector_store:
   default:
-    backend: qdrant
+    backend: elasticsearch
     embedding_model: default
     params:
-      url: "https://your-cluster.qdrant.io:6333"
-      api_key: "your-api-key-here"
-      distance: "COSINE"
-      batch_size: 1024
+      hosts:
+        - "http://es-node1:9200"
+        - "http://es-node2:9200"
+        - "http://es-node3:9200"
 ```
 
-## 🔄 Environment Variables
+### Complete Configuration Example
 
-Some vector store backends support environment variables for configuration:
-
-- **Elasticsearch**: `FLOW_ES_HOSTS` - Elasticsearch host(s)
-- **Qdrant**:
-  - `FLOW_QDRANT_HOST` - Qdrant host (default: "localhost")
-  - `FLOW_QDRANT_PORT` - Qdrant port (default: 6333)
-  - `FLOW_QDRANT_API_KEY` - Qdrant API key for authentication
-
-Environment variables are used as fallbacks when parameters are not explicitly set in the YAML configuration.
-
-## 🧩 Integration with Embedding Models
-
-All vector stores require an embedding model configuration. The `embedding_model` field in the vector store configuration references a model defined in the `embedding_model` section of `default.yaml`:
+Below is a complete `default.yaml` example including both embedding model and vector store configurations:
 
 ```yaml
+# Embedding model configuration
 embedding_model:
   default:
     backend: openai_compatible
@@ -365,10 +258,46 @@ embedding_model:
     params:
       dimensions: 1024
 
+# Vector store configuration
 vector_store:
   default:
-    backend: memory
-    embedding_model: default  # References the embedding_model.default configuration
+    backend: elasticsearch
+    embedding_model: default
+    params:
+      hosts: "http://localhost:9200"
 ```
 
-The embedding model configuration provides the model name, backend, and parameters needed for generating vector embeddings.
+### Environment Variable Support
+
+Certain Vector Stores support environment variables as a supplement to YAML configuration:
+
+- **Elasticsearch**: `FLOW_ES_HOSTS` – Elasticsearch host address.
+- **Qdrant**:
+  - `FLOW_QDRANT_HOST` – Qdrant host (default: `localhost`)
+  - `FLOW_QDRANT_PORT` – Qdrant port (default: `6333`)
+  - `FLOW_QDRANT_API_KEY` – Qdrant API key
+
+When parameters are not explicitly specified in the YAML configuration, the system falls back to environment variables.
+
+## Metadata Filtering
+
+Two types of metadata filtering are supported:
+
+- **Exact Match**: Specify field values for exact matching.
+- **Range Queries**: Use operators `gte`, `lte`, `gt`, `lt` for numeric range queries.
+- **Nested Fields**: Access nested metadata fields using dot notation.
+
+## Usage Recommendations
+
+- **Development & Testing**: Use MemoryVectorStore or LocalVectorStore—no additional services required.
+- **Small-Scale Applications**: Use LocalVectorStore or ChromaVectorStore for simplicity and ease of use.
+- **Production Environments**: Use QdrantVectorStore or EsVectorStore for high performance and scalability.
+- **Hybrid Search**: Use EsVectorStore to combine vector search with full-text search capabilities.
+
+## Important Notes
+
+- Ensure the embedding model’s output dimension matches the Vector Store configuration.
+- For large-scale data, use professional vector databases (e.g., Qdrant, Elasticsearch).
+- Asynchronous interfaces deliver better performance in asynchronous environments.
+- Regularly back up critical data, especially when using in-memory storage.
+- Choose an appropriate batch size based on your data scale to optimize performance.

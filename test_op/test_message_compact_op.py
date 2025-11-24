@@ -1,6 +1,6 @@
-"""Test script for ContextCompactOp.
+"""Test script for MessageCompactOp.
 
-This script provides test cases for ContextCompactOp class.
+This script provides test cases for MessageCompactOp class.
 It can be run directly with: python test_context_compact_op.py
 """
 
@@ -9,13 +9,13 @@ import asyncio
 from flowllm.core.enumeration import Role
 from flowllm.core.schema import Message
 
-from reme_ai.context.file_tool import BatchWriteFileOp
-from reme_ai.context.offload import ContextCompactOp
 from reme_ai.main import ReMeApp
+from reme_ai.retrieve.working import BatchWriteFileOp
+from reme_ai.summary.working import MessageCompactOp
 
 
 async def async_main():
-    """Test function for ContextCompactOp."""
+    """Test function for MessageCompactOp."""
     async with ReMeApp():
         # Create test messages with system, user, assistant, tool sequence
         messages = [
@@ -60,7 +60,7 @@ async def async_main():
         ]
 
         # Create op with lower thresholds for testing
-        op = ContextCompactOp() >> BatchWriteFileOp()
+        op = MessageCompactOp() >> BatchWriteFileOp()
 
         # Execute the compaction
         await op.async_call(

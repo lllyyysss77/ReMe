@@ -31,3 +31,5 @@ cookbook/appworld/file_vector_store/*
 site/*
 docs/_build/*
 test_compact_storage/*
+test_working_memory/*
+*.code-workspace

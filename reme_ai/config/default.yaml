@@ -159,19 +159,23 @@ flow:
   agentic_retrieve:
     flow_content: AgenticRetrieveOp()
 
-  context_offload:
-    flow_content: ContextOffloadOp() >> BatchWriteFileOp()
+  summary_working_memory:
+    flow_content: MessageOffloadOp() >> BatchWriteFileOp()
     description: "Manages context window limits by compacting tool messages and compressing conversation history. First compacts large tool messages by storing full content in external files, then applies LLM-based compression if compaction ratio exceeds threshold. This helps reduce token usage while preserving important information."
     input_schema:
       messages:
         type: array
         description: "List of conversation messages to process for context offloading"
         required: true
-      context_manage_mode:
+      working_summary_mode:
         type: string
-        description: "Context management mode: 'compact' only applies compaction to tool messages, 'compress' only applies LLM-based compression, 'auto' applies compaction first then compression if compaction ratio exceeds threshold. Defaults to 'auto'."
+        description: "Working summary strategy: 'compact' only compacts large tool messages, 'compress' only applies LLM-based compression, 'auto' first compacts then optionally compresses when reduction is insufficient. Defaults to 'auto'."
         required: false
         enum: ["compact", "compress", "auto"]
+      compact_ratio_threshold:
+        type: number
+        description: "Only used in 'auto' mode. Threshold for compaction ratio (tokens after compaction divided by original tokens). When the ratio is greater than this value, an additional LLM-based compression pass is triggered. Defaults to 0.75."
+        required: false
       max_total_tokens:
         type: integer
         description: "Maximum token count threshold for triggering compression/compaction. For compaction, this is the total token count threshold. For compression, this excludes keep_recent_count messages and system messages. Defaults to 20000."
@@ -197,19 +201,29 @@ flow:
         description: "Unique identifier for the chat session, used for file naming when storing compressed message groups. If not provided, a UUID will be generated automatically."
         required: false
 
-  context_offload_for_agentscope:
-    flow_content: ContextOffloadOp()
+  grep_working_memory:
+    flow_content: GrepOp()
+
+  read_working_memory:
+    flow_content: ReadFileOp()
+
+  summary_working_memory_for_agentscope:
+    flow_content: MessageOffloadOp()
     description: "Context offload operation for AgentScope integration. Manages context window limits by compacting tool messages and compressing conversation history without batch file writing. Same functionality as context_offload but without the BatchWriteFileOp step."
     input_schema:
       messages:
         type: array
         description: "List of conversation messages to process for context offloading"
         required: true
-      context_manage_mode:
+      working_summary_mode:
         type: string
-        description: "Context management mode: 'compact' only applies compaction to tool messages, 'compress' only applies LLM-based compression, 'auto' applies compaction first then compression if compaction ratio exceeds threshold. Defaults to 'auto'."
-        required: true
+        description: "Working summary strategy: 'compact' only compacts large tool messages, 'compress' only applies LLM-based compression, 'auto' first compacts then optionally compresses when reduction is insufficient. Defaults to 'auto'."
+        required: false
         enum: ["compact", "compress", "auto"]
+      compact_ratio_threshold:
+        type: number
+        description: "Only used in 'auto' mode. Threshold for compaction ratio (tokens after compaction divided by original tokens). When the ratio is greater than this value, an additional LLM-based compression pass is triggered. Defaults to 0.75."
+        required: false
       max_total_tokens:
         type: integer
         description: "Maximum token count threshold for triggering compression/compaction. For compaction, this is the total token count threshold. For compression, this excludes keep_recent_count messages and system messages. Defaults to 20000."
@@ -244,6 +258,33 @@ llm:
       temperature: 0.6
     token_count: # Optional
       backend: base
+
+  qwen3_coder_plus:
+    backend: openai_compatible
+    model_name: qwen3-coder-plus
+    token_count: # Optional
+      model_name: Qwen/Qwen3-Coder-480B-A35B-Instruct
+      backend: hf
+      params:
+        use_mirror: true
+
+  qwen3_coder_480b_instruct:
+    backend: openai_compatible
+    model_name: qwen3-coder-480b-a35b-instruct
+    token_count: # Optional
+      model_name: Qwen/Qwen3-Coder-480B-A35B-Instruct
+      backend: hf
+      params:
+        use_mirror: true
+
+  qwen3_coder_30b_instruct:
+    backend: openai_compatible
+    model_name: qwen3-coder-30b-a3b-instruct
+    token_count: # Optional
+      model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct
+      backend: hf
+      params:
+        use_mirror: true
 
   qwen3_30b_instruct:
     backend: openai_compatible

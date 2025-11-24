@@ -8,7 +8,6 @@ os.environ["FLOW_APP_NAME"] = "ReMe"
 from . import agent  # noqa: E402
 from . import config  # noqa: E402
 from . import constants  # noqa: E402
-from . import context  # noqa: E402
 from . import enumeration  # noqa: E402
 from . import retrieve  # noqa: E402
 from . import schema  # noqa: E402
@@ -22,7 +21,6 @@ __all__ = [
     "agent",
     "config",
     "constants",
-    "context",
     "enumeration",
     "retrieve",
     "schema",

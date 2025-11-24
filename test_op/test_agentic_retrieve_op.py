@@ -39,7 +39,7 @@ async def test_agentic_retrieve_basic():
         ),
         Message(
             role=Role.USER,
-            content="搜索下reme项目的的README文件",
+            content="搜索下reme项目的的README内容",
         ),
         Message(
             role=Role.ASSISTANT,

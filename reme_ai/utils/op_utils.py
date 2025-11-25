@@ -4,13 +4,48 @@ This module provides helper functions for merging messages, parsing JSON respons
 extracting trajectory context, and parsing insight updates.
 """
 
+import asyncio
 import json
 import re
-from typing import List
+from typing import List, Optional, Tuple
 
 from flowllm.core.schema import Message, Trajectory
 from flowllm.core.utils import merge_messages_content as merge_messages_content_flowllm
 from loguru import logger
+
+
+async def run_shell_command(
+    cmd: List[str],
+    timeout: Optional[float] = 30,
+) -> Tuple[str, str, int]:
+    """Run a shell command asynchronously.
+
+    Args:
+        cmd: Command and arguments as a list.
+        timeout: Timeout in seconds. None for no timeout.
+
+    Returns:
+        Tuple of (stdout, stderr, returncode).
+
+    Raises:
+        asyncio.TimeoutError: If command execution exceeds timeout.
+    """
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    if timeout:
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+    else:
+        stdout, stderr = await process.communicate()
+
+    return (
+        stdout.decode("utf-8", errors="ignore"),
+        stderr.decode("utf-8", errors="ignore"),
+        process.returncode,
+    )
 
 
 def merge_messages_content(messages: List[Message | dict]) -> str:

@@ -70,8 +70,9 @@ async def test_agentic_retrieve_basic():
     ]
 
     # llm = "qwen3_coder_plus"
-    llm = "qwen3_30b_instruct"
-    # llm = "qwen3_coder_30b_instruct"
+    # llm = "qwen3_30b_instruct"
+    # llm = "qwen3_30b_thinking"
+    llm = "qwen3_coder_30b_instruct"
     # llm = "qwen3_max_instruct"
     op = AgenticRetrieveOp(llm=llm)
 

@@ -5,7 +5,6 @@ It enables efficient content-based search using regular expressions, with suppor
 for glob pattern filtering and result limiting.
 """
 
-import asyncio
 from pathlib import Path
 from typing import List
 
@@ -13,6 +12,7 @@ from flowllm.core.context import C
 from flowllm.core.op import BaseAsyncToolOp
 from flowllm.core.schema import ToolCall
 from loguru import logger
+from reme_ai.utils.op_utils import run_shell_command
 
 
 @C.register_op()
@@ -81,20 +81,12 @@ class GrepOp(BaseAsyncToolOp):
 
         logger.info(f"Running grep command: {' '.join(cmd)}")
 
-        # Execute grep using an async subprocess
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await process.communicate()
+        # Execute grep using run_shell_command
+        stdout, stderr, returncode = await run_shell_command(cmd, timeout=None)
 
-        if process.returncode not in (0, 1):
-            # grep returns 1 when no matches are found; treat other codes as errors
-            err_msg = stderr.decode("utf-8", errors="ignore").strip()
-            raise RuntimeError(f"grep failed with code {process.returncode}: {err_msg}")
+        assert returncode in (0, 1), f"grep failed with code {returncode}: {stderr.strip()}"
 
-        output_text = stdout.decode("utf-8", errors="ignore").strip()
+        output_text = stdout.strip()
 
         # Return raw grep output
         if not output_text:

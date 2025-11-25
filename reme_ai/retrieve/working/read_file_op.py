@@ -4,13 +4,13 @@ This module provides a tool operation for reading file contents.
 It supports reading entire files or specific line ranges for large files.
 """
 
-import asyncio
 from pathlib import Path
 from typing import Optional
 
 from flowllm.core.context import C
 from flowllm.core.op import BaseAsyncToolOp
 from flowllm.core.schema import ToolCall
+from reme_ai.utils.op_utils import run_shell_command
 
 
 @C.register_op()
@@ -76,15 +76,10 @@ class ReadFileOp(BaseAsyncToolOp):
         end_line = offset + limit
 
         cmd = ["sed", "-n", f"{start_line},{end_line}p", str(file_path_obj)]
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
+        stdout, stderr, returncode = await run_shell_command(cmd, timeout=30)
 
-        assert process.returncode == 0, f"sed command failed: {stderr.decode()}"
-        content = stdout.decode().rstrip("\n")
+        assert returncode == 0, f"sed command failed: {stderr}"
+        content = stdout.rstrip("\n")
         self.set_output(content)
 
     async def async_default_execute(self, e: Exception = None, **_kwargs):

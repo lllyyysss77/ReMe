@@ -58,15 +58,6 @@ class MessageCompactOp(BaseAsyncOp):
         if keep_recent_count > 0:
             messages_to_compress = messages_to_compress[:-keep_recent_count]
 
-        # Extract system message (should be exactly one)
-        system_message = [x for x in messages if x.role is Role.SYSTEM]
-        assert len(system_message) <= 1, f"Expected at most one system message, got {len(system_message)}"
-
-        if len(system_message) == 0:
-            system_message = Message(role=Role.SYSTEM, content="")
-        else:
-            system_message = system_message[0]
-
         # If nothing to compress after filtering, return original messages
         if not messages_to_compress:
             self.context.response.answer = self.context.messages
@@ -125,7 +116,6 @@ class MessageCompactOp(BaseAsyncOp):
             if preview_char_length > 0:
                 compact_result += f"\npreview: {original_content[:preview_char_length]}..."
             tool_message.content = compact_result
-            system_message.content += f"\n\n{compact_result}"
 
         # Store write_file_dict in context for potential batch writing
         if write_file_dict:

@@ -162,7 +162,6 @@ class MessageCompressOp(BaseAsyncOp):
 
     async def _compress_with_groups(
         self,
-        system_message: Message,
         message_groups: List[List[Message]],
     ) -> Tuple[dict, list]:
         """Compress multiple message groups and prepare them for storage.
@@ -173,7 +172,6 @@ class MessageCompressOp(BaseAsyncOp):
         message. Otherwise, original messages are preserved in the return list.
 
         Args:
-            system_message: The system message to append compressed summaries to.
             message_groups: List of message groups, where each group is a list of Message
                 objects to be compressed together.
 
@@ -190,7 +188,7 @@ class MessageCompressOp(BaseAsyncOp):
         chat_id: str = self.context.get("chat_id", uuid4().hex)
 
         # Create a copy of system_message to avoid modifying the original
-        system_message_copy = Message(role=system_message.role, content=system_message.content)
+        compress_message = Message(role=Role.ASSISTANT, content="")
 
         for g_idx, messages in enumerate(message_groups):
             group_original_tokens = self.token_count(messages)
@@ -218,7 +216,7 @@ class MessageCompressOp(BaseAsyncOp):
                 )
                 return_messages.extend(messages)
             else:
-                system_message_copy.content += compress_content + "\n\n"
+                compress_message.content += compress_content + "\n\n"
                 write_file_dict[store_path.as_posix()] = messages_str
                 logger.info(
                     f"Group {g_idx} compression successful: "
@@ -227,7 +225,7 @@ class MessageCompressOp(BaseAsyncOp):
                     f"{100 * (1 - compressed_tokens / group_original_tokens):.1f}%)",
                 )
 
-        return_messages = [system_message_copy] + return_messages
+        return_messages = [compress_message] + return_messages
         return write_file_dict, return_messages
 
     async def async_execute(self):
@@ -257,13 +255,7 @@ class MessageCompressOp(BaseAsyncOp):
         messages = [Message(**x) for x in self.context.messages]
 
         # Extract system message (should be exactly one)
-        system_message = [x for x in messages if x.role is Role.SYSTEM]
-        assert len(system_message) <= 1, f"Expected at most one system message, got {len(system_message)}"
-
-        if len(system_message) == 0:
-            system_message = Message(role=Role.SYSTEM, content="")
-        else:
-            system_message = system_message[0]
+        system_messages = [x for x in messages if x.role is Role.SYSTEM]
 
         messages_without_system = [x for x in messages if x.role is not Role.SYSTEM]
         if keep_recent_count > 0:
@@ -296,13 +288,13 @@ class MessageCompressOp(BaseAsyncOp):
         else:
             message_groups = [messages_to_compress]
 
-        write_file_dict, return_messages = await self._compress_with_groups(system_message, message_groups)
+        write_file_dict, return_messages = await self._compress_with_groups(message_groups)
 
         # Store write_file_dict in context for potential batch writing
         if write_file_dict:
             self.context.write_file_dict = write_file_dict
 
-        self.context.response.answer = [x.simple_dump() for x in (return_messages + recent_messages)]
+        self.context.response.answer = [x.simple_dump() for x in (system_messages + return_messages + recent_messages)]
         self.context.response.metadata["write_file_dict"] = write_file_dict
 
     async def async_default_execute(self, e: Exception = None, **_kwargs):

@@ -33,7 +33,7 @@ async def test_agentic_retrieve_basic():
                 "You are a helpful assistant. "
                 "请先使用`Grep`匹配关键词或者正则表达式所在行数，然后通过`ReadFile`读取位置附近的代码。"
                 "如果没有找到匹配项，永远不要放弃尝试，尝试其他的参数，比如只搜索部分关键词。"
-                "`Grep`之后通过 `ReadFile` 命令，你可以从指定偏移位置`offset`+长度`limit`开始查看内容，不要超过50行。"
+                "`Grep`之后通过 `ReadFile` 命令，你可以从指定偏移位置`offset`+长度`limit`开始查看内容，不要超过100行。"
                 "如果当前内容不足，`ReadFile` 命令也可以不断尝试不同的`offset`和`limit`参数"
             ),
         ),
@@ -60,7 +60,7 @@ async def test_agentic_retrieve_basic():
         ),
         Message(
             role=Role.TOOL,
-            content=readme_content,
+            content=readme_content * 4,
             tool_call_id=tool_call_id,
         ),
         Message(
@@ -79,7 +79,7 @@ async def test_agentic_retrieve_basic():
         messages=[m.model_dump() for m in messages],
         working_summary_mode="auto",
         compact_ratio_threshold=0.75,
-        max_total_tokens=6000,
+        max_total_tokens=20000,
         max_tool_message_tokens=2000,
         group_token_threshold=None,
         keep_recent_count=1,

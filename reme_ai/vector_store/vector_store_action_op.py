@@ -99,4 +99,4 @@ class VectorStoreActionOp(BaseAsyncOp):
         else:
             raise ValueError(f"invalid action={action}")
 
-        self.context.response.metadata["action_result"] = result
+        self.context.response.metadata["action_result"] = str(result)

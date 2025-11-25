@@ -4,7 +4,7 @@ This module provides a tool operation for reading file contents.
 It supports reading entire files or specific line ranges for large files.
 """
 
-import subprocess
+import asyncio
 from pathlib import Path
 from typing import Optional
 
@@ -76,8 +76,15 @@ class ReadFileOp(BaseAsyncToolOp):
         end_line = offset + limit
 
         cmd = ["sed", "-n", f"{start_line},{end_line}p", str(file_path_obj)]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=True)
-        content = result.stdout.rstrip("\n")
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
+
+        assert process.returncode == 0, f"sed command failed: {stderr.decode()}"
+        content = stdout.decode().rstrip("\n")
         self.set_output(content)
 
     async def async_default_execute(self, e: Exception = None, **_kwargs):

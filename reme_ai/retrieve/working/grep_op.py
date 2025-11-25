@@ -5,14 +5,13 @@ It enables efficient content-based search using regular expressions, with suppor
 for glob pattern filtering and result limiting.
 """
 
+import re
 from pathlib import Path
-from typing import List
 
 from flowllm.core.context import C
 from flowllm.core.op import BaseAsyncToolOp
 from flowllm.core.schema import ToolCall
 from loguru import logger
-from reme_ai.utils.op_utils import run_shell_command
 
 
 @C.register_op()
@@ -59,41 +58,31 @@ class GrepOp(BaseAsyncToolOp):
         """Execute the grep search operation."""
         pattern: str = self.input_dict.get("pattern", "").strip()
         file_path: str | None | Path = self.input_dict.get("file_path", "")
-        limit: int = self.input_dict.get("limit", 50)
+        limit: int = int(self.input_dict.get("limit", 50))
 
-        # Validate pattern
-        if not pattern:
-            raise ValueError("The 'pattern' parameter cannot be empty.")
+        assert pattern, "The 'pattern' parameter cannot be empty."
+        assert file_path, "The 'file_path' parameter is required."
+        target_file = Path(file_path).expanduser().resolve()
+        assert target_file.exists(), f"File does not exist: {target_file}"
+        assert target_file.is_file(), f"Path is not a file: {target_file}"
 
-        # Determine search directory
-        if file_path:
-            search_dir = Path(file_path).expanduser().resolve()
-            if not search_dir.exists():
-                raise ValueError(f"Search file_path does not exist: {search_dir}")
-        else:
-            search_dir = Path.cwd()
+        logger.info(f"Searching for pattern '{pattern}' in {target_file}")
 
-        # Build grep command
-        cmd: List[str] = ["grep", "-RIni"]
-        if limit:
-            cmd.extend(["-m", str(limit)])
-        cmd.extend(["--", pattern, str(search_dir)])
+        regex = re.compile(re.escape(pattern), re.IGNORECASE)
+        results = []
 
-        logger.info(f"Running grep command: {' '.join(cmd)}")
+        with target_file.open("r", encoding="utf-8", errors="ignore") as f:
+            for line_num, line in enumerate(f, 1):
+                if regex.search(line):
+                    results.append(f"{target_file}:{line_num}:{line.rstrip()}")
+                    if len(results) >= limit:
+                        break
 
-        # Execute grep using run_shell_command
-        stdout, stderr, returncode = await run_shell_command(cmd, timeout=None)
-
-        assert returncode in (0, 1), f"grep failed with code {returncode}: {stderr.strip()}"
-
-        output_text = stdout.strip()
-
-        # Return raw grep output
-        if not output_text:
+        if not results:
             search_location = f'in file_path "{file_path}"' if file_path else "in the workspace directory"
             result_msg = f'No matches found for pattern "{pattern}" {search_location}.'
         else:
-            result_msg = output_text
+            result_msg = "\n".join(results)
 
         self.set_output(result_msg)
 

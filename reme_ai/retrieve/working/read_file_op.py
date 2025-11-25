@@ -56,8 +56,8 @@ class ReadFileOp(BaseAsyncToolOp):
     async def async_execute(self):
         """Execute the read file operation."""
         file_path: str = self.input_dict.get("file_path", "").strip()
-        offset: Optional[int] = self.input_dict.get("offset")
-        limit: Optional[int] = self.input_dict.get("limit")
+        offset: Optional[int] = int(self.input_dict.get("offset"))
+        limit: Optional[int] = int(self.input_dict.get("limit"))
 
         # Validate and resolve file path
         assert file_path, "The 'file_path' parameter cannot be empty."

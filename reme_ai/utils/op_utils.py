@@ -4,13 +4,48 @@ This module provides helper functions for merging messages, parsing JSON respons
 extracting trajectory context, and parsing insight updates.
 """
 
+import asyncio
 import json
 import re
-from typing import List
+from typing import List, Optional, Tuple
 
 from flowllm.core.schema import Message, Trajectory
 from flowllm.core.utils import merge_messages_content as merge_messages_content_flowllm
 from loguru import logger
+
+
+async def run_shell_command(
+    cmd: List[str],
+    timeout: Optional[float] = 30,
+) -> Tuple[str, str, int]:
+    """Run a shell command asynchronously.
+
+    Args:
+        cmd: Command and arguments as a list.
+        timeout: Timeout in seconds. None for no timeout.
+
+    Returns:
+        Tuple of (stdout, stderr, returncode).
+
+    Raises:
+        asyncio.TimeoutError: If command execution exceeds timeout.
+    """
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    if timeout:
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+    else:
+        stdout, stderr = await process.communicate()
+
+    return (
+        stdout.decode("utf-8", errors="ignore"),
+        stderr.decode("utf-8", errors="ignore"),
+        process.returncode,
+    )
 
 
 def merge_messages_content(messages: List[Message | dict]) -> str:
@@ -130,3 +165,24 @@ def parse_update_insight_response(response_text: str, language: str = "en") -> s
 
     logger.warning("No insight content found in response")
     return ""
+
+
+def extract_xml_tag_content(text: str, tag_name: str) -> str | None:
+    """Extract content from XML tag in text.
+
+    Args:
+        text: The text containing XML tags.
+        tag_name: The name of the XML tag to extract (e.g., 'state_snapshot').
+
+    Returns:
+        str: The content inside the XML tag, or None if not found.
+    """
+    # Use re.DOTALL to make . match newline characters
+    pattern = rf"<{tag_name}>(.*?)</{tag_name}>"
+    match = re.search(pattern, text, re.DOTALL)
+
+    if match:
+        content = match.group(1).strip()
+        return content
+
+    return None

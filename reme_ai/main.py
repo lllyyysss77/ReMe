@@ -6,7 +6,6 @@ which extends FlowLLM with specialized memory management capabilities including:
 - Task Memory: Store and retrieve task execution histories
 - Tool Memory: Track tool usage patterns and experiences
 - Personal Memory: Manage user preferences and personal information
-- SOP Memory: Standard Operating Procedures for recurring workflows
 """
 
 import asyncio
@@ -224,12 +223,6 @@ def main():
 
     Command-line arguments are passed directly to ReMeApp.__init__(), allowing
     configuration via command line:
-
-    Example:
-        python -m reme_ai.app --llm_api_key=sk-xxx --config_path=config.yaml
-
-    The app runs as a context manager, ensuring proper cleanup of resources
-    (database connections, API clients, etc.) on shutdown.
 
     Note:
         Press Ctrl+C to gracefully shutdown the service.

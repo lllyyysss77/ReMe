@@ -30,4 +30,4 @@ __all__ = [
     "vector_store",
 ]
 
-__version__ = "0.2.0.1"
+__version__ = "0.2.0.2"

@@ -43,7 +43,7 @@ class MessageCompactOp(BaseAsyncOp):
         max_total_tokens: int = self.context.get("max_total_tokens", 20000)
         max_tool_message_tokens: int = self.context.get("max_tool_message_tokens", 2000)
         preview_char_length: int = self.context.get("preview_char_length", 0)
-        keep_recent_count: int = self.context.get("keep_recent_count", 1)
+        keep_recent_count: int = self.context.get("keep_recent_count", 10)
         store_dir: Path = Path(self.context.get("store_dir", ""))
 
         assert max_total_tokens > 0, "max_total_tokens must be greater than 0"
@@ -118,8 +118,7 @@ class MessageCompactOp(BaseAsyncOp):
             tool_message.content = compact_result
 
         # Store write_file_dict in context for potential batch writing
-        if write_file_dict:
-            self.context.write_file_dict = write_file_dict
+        self.context.write_file_dict = write_file_dict
 
         # Return the compacted messages as JSON
         self.context.response.answer = [x.simple_dump() for x in messages]

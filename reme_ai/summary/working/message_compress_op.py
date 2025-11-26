@@ -160,10 +160,7 @@ class MessageCompressOp(BaseAsyncOp):
 
         return result
 
-    async def _compress_with_groups(
-        self,
-        message_groups: List[List[Message]],
-    ) -> Tuple[dict, list]:
+    async def _compress_with_groups(self, message_groups: List[List[Message]]) -> Tuple[dict, list]:
         """Compress multiple message groups and prepare them for storage.
 
         This method processes each message group, compresses it using LLM, and determines
@@ -184,8 +181,8 @@ class MessageCompressOp(BaseAsyncOp):
                   compressed or didn't benefit from compression.
         """
         write_file_dict = {}
-        return_messages = []
         chat_id: str = self.context.get("chat_id", uuid4().hex)
+        success: bool = True
 
         # Create a copy of system_message to avoid modifying the original
         compress_message = Message(role=Role.ASSISTANT, content="")
@@ -200,8 +197,8 @@ class MessageCompressOp(BaseAsyncOp):
 
             if not group_summary:
                 logger.warning(f"Group {g_idx} compression returned empty summary, using original messages.")
-                return_messages.extend(messages)
-                continue
+                success = False
+                break
 
             compress_content = (
                 f"[Compressed conversation history - Part {g_idx}/{len(message_groups)}]\n{group_summary}\n"
@@ -209,24 +206,22 @@ class MessageCompressOp(BaseAsyncOp):
             )
             compressed_tokens = self.token_count([Message(content=compress_content)])
 
-            if compressed_tokens >= group_original_tokens:
-                logger.warning(
-                    f"Group {g_idx} compression did not reduce tokens: "
-                    f"{group_original_tokens} -> {compressed_tokens}. Using original messages.",
-                )
-                return_messages.extend(messages)
-            else:
-                compress_message.content += compress_content + "\n\n"
-                write_file_dict[store_path.as_posix()] = messages_str
-                logger.info(
-                    f"Group {g_idx} compression successful: "
-                    f"{group_original_tokens} -> {compressed_tokens} tokens "
-                    f"(reduction: {group_original_tokens - compressed_tokens} tokens, "
-                    f"{100 * (1 - compressed_tokens / group_original_tokens):.1f}%)",
-                )
+            compress_message.content += compress_content + "\n\n"
+            write_file_dict[store_path.as_posix()] = messages_str
+            logger.info(
+                f"Group {g_idx} compression successful: "
+                f"{group_original_tokens} -> {compressed_tokens} tokens "
+                f"(reduction: {group_original_tokens - compressed_tokens} tokens, "
+                f"{100 * (1 - compressed_tokens / group_original_tokens):.1f}%)",
+            )
 
-        return_messages = [compress_message] + return_messages
-        return write_file_dict, return_messages
+        if success:
+            return write_file_dict, [compress_message]
+        else:
+            return_messages = []
+            for group in message_groups:
+                return_messages.extend(group)
+            return {}, return_messages
 
     async def async_execute(self):
         """
@@ -246,7 +241,7 @@ class MessageCompressOp(BaseAsyncOp):
         # Note: max_total_tokens does not include keep_recent_count messages or system messages
         max_total_tokens: int = self.context.get("max_total_tokens", 20000)
         group_token_threshold: int = self.context.get("group_token_threshold", None)
-        keep_recent_count: int = self.context.get("keep_recent_count", 2)
+        keep_recent_count: int = self.context.get("keep_recent_count", 10)
 
         assert max_total_tokens > 0, "max_total_tokens must be positive"
         assert keep_recent_count >= 0, "keep_recent_count must be non-negative"
@@ -291,8 +286,7 @@ class MessageCompressOp(BaseAsyncOp):
         write_file_dict, return_messages = await self._compress_with_groups(message_groups)
 
         # Store write_file_dict in context for potential batch writing
-        if write_file_dict:
-            self.context.write_file_dict = write_file_dict
+        self.context.write_file_dict = write_file_dict
 
         self.context.response.answer = [x.simple_dump() for x in (system_messages + return_messages + recent_messages)]
         self.context.response.metadata["write_file_dict"] = write_file_dict

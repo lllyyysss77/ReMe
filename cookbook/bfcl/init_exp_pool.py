@@ -9,7 +9,9 @@ import requests
 
 
 def load_task_case(data_path: str, task_id: str | None) -> Dict[str, Any]:
-    """按 ID加载单条 JSONL 训练用例。找不到就抛错。"""
+    """
+    load training cases by id
+    """
     if not Path(data_path).exists():
         raise FileNotFoundError(f"BFCL data file '{data_path}' not found")
 
@@ -41,15 +43,14 @@ def get_tool_prompt(tools):
 
 def group_trajectories_by_task_id(jsonl_entries: List[Dict[str, Any]]) -> List[List[Any]]:
     """
-    根据task_id字段对trajectories进行分组
+    group trajectories by task_id
 
     Args:
-        jsonl_entries: JSONL条目列表
+        jsonl_entries: JSONL entry list
 
     Returns:
-        List[List[Any]]: 按task_id分组的trajectory列表
+        List[List[Any]]: trajectory list grouped by task_id
     """
-    # 按task_id分组
     grouped = defaultdict(list)
 
     for entry in jsonl_entries:
@@ -62,37 +63,26 @@ def group_trajectories_by_task_id(jsonl_entries: List[Dict[str, Any]]) -> List[L
         entry["task_history"][0]["content"] += get_tool_prompt(tool_schema)
         grouped[task_id].append(entry)
 
-    # 对每组只保留最大和最小reward的两个
+    # retain only the two with the highest and lowest rewards
     filtered_groups = []
     for key, trajectories in grouped.items():
         if len(trajectories) == 1:
-            # 只有一个trajectory，直接保留
+            # when only one trajectory, retain it
             filtered_groups.append(trajectories)
         elif len(trajectories) == 2:
-            # 有两个trajectory，直接保留
+            # when there are two trajectories, retain them
             filtered_groups.append(trajectories)
         else:
-            # 多个trajectory，选择最大和最小reward的
+            # when there are more than two trajectories, choose the two with the highest and lowest rewards
             trajectories.sort(key=lambda t: t["reward"])
-            min_reward_traj = trajectories[0]  # 最小reward
-            max_reward_traj = trajectories[-1]  # 最大reward
+            min_reward_traj = trajectories[0]  # highest reward
+            max_reward_traj = trajectories[-1]  # lowest reward
             filtered_groups.append([min_reward_traj, max_reward_traj])
 
     return filtered_groups
 
 
 def post_to_summarizer(trajectories: List[Any], service_url: str, workspace_id: str) -> Dict[str, Any]:
-    """
-    将trajectories发送到summarizer服务
-
-    Args:
-        trajectories: trajectory列表
-        service_url: 服务URL
-        workspace_id: 工作空间ID
-
-    Returns:
-        响应结果
-    """
     trajectory_dicts = [
         {
             "task_id": traj["task_id"],
@@ -103,12 +93,12 @@ def post_to_summarizer(trajectories: List[Any], service_url: str, workspace_id: 
     ]
 
     request_data = {
-        "traj_list": trajectory_dicts,
+        "trajectories": trajectory_dicts,
         "workspace_id": workspace_id,
     }
 
     try:
-        response = requests.post(f"{service_url}/summarizer", json=request_data)
+        response = requests.post(f"{service_url}/summary_task_memory", json=request_data)
         response.raise_for_status()
         return response.json()
     except Exception as e:
@@ -122,27 +112,25 @@ def process_trajectories_with_threads(
     n_threads: int = 4,
 ) -> List[Dict[str, Any]]:
     """
-    使用多线程处理trajectories组
+    use threads to process trajectories
 
     Args:
-        grouped_trajectories: 按task_id分组的trajectory列表
-        service_url: summarizer服务URL
-        workspace_id: 工作空间ID
-        n_threads: 线程数
+        grouped_trajectories: group trajectory list by task_id
+        service_url: memory summarizer service URL
+        workspace_id: workspace ID
+        n_threads: number of threads
 
     Returns:
-        所有结果列表
+        all results
     """
     results = []
 
     with ThreadPoolExecutor(max_workers=n_threads) as executor:
-        # 提交所有任务
         future_to_group = {
             executor.submit(post_to_summarizer, group, service_url, workspace_id): i
             for i, group in enumerate(grouped_trajectories)
         }
 
-        # 收集结果
         for future in as_completed(future_to_group):
             group_index = future_to_group[future]
             try:
@@ -151,7 +139,7 @@ def process_trajectories_with_threads(
                 result["group_size"] = len(grouped_trajectories[group_index])
                 results.append(result)
                 print(
-                    f"✅ Group {group_index} processed: {result.get('experience_list', 0) if 'experience_list' in result else 'error'}",
+                    f'✅ Group {group_index} processed: {result["metadata"].get("memory_list", 0) if "memory_list" in result["metadata"] else "error"}',
                 )
             except Exception as e:
                 error_result = {
@@ -166,13 +154,10 @@ def process_trajectories_with_threads(
 
 
 def main():
-    """
-    主函数，支持命令行参数
-    """
-    parser = argparse.ArgumentParser(description="Convert JSONL to experiences using experience maker service")
+    parser = argparse.ArgumentParser(description="Convert JSONL to memories using ReMe service")
     parser.add_argument("--jsonl_file", type=str, required=True, help="Path to the JSONL file")
-    parser.add_argument("--service_url", type=str, default="http://localhost:8001", help="Experience maker service URL")
-    parser.add_argument("--workspace_id", type=str, required=True, help="Workspace ID for the experience")
+    parser.add_argument("--service_url", type=str, default="http://localhost:8001", help="ReMe service URL")
+    parser.add_argument("--workspace_id", type=str, required=True, help="Workspace ID for the task memory pool")
     parser.add_argument("--output_file", type=str, help="Output file to save results (optional)")
     parser.add_argument("--n_threads", type=int, default=4, help="Number of threads for processing")
 
@@ -183,20 +168,13 @@ def main():
     print(f"Workspace ID: {args.workspace_id}")
     print(f"Threads: {args.n_threads}")
 
-    # 读取JSONL文件
-    try:
-        with open(args.jsonl_file, "r") as f:
-            data = [json.loads(line) for line in f]
-        print(f"Loaded {len(data)} entries from JSONL file")
-    except Exception as e:
-        print(f"Error reading JSONL file: {e}")
-        return
+    with open(args.jsonl_file, "r") as f:
+        data = [json.loads(line) for line in f]
+    print(f"Loaded {len(data)} entries from JSONL file")
 
-    # 分组处理
     grouped_trajectories = group_trajectories_by_task_id(data)
     print(f"Total groups: {len(grouped_trajectories)}")
 
-    # 多线程处理
     results = process_trajectories_with_threads(
         grouped_trajectories,
         args.service_url,
@@ -206,16 +184,14 @@ def main():
 
     print(f"Processed {len(results)} groups")
 
-    # 统计结果
     success_count = sum(1 for r in results if "error" not in r)
     error_count = len(results) - success_count
-    total_experiences = sum(len(r.get("experiences", [])) for r in results if "experiences" in r)
+    total_memories = sum(len(r["metadata"].get("memory_list", [])) for r in results if "memory_list" in r["metadata"])
 
     print(f"✅ Success: {success_count}")
     print(f"❌ Errors: {error_count}")
-    print(f"📊 Total experiences created: {total_experiences}")
+    print(f"📊 Total task memories created: {total_memories}")
 
-    # 保存结果到文件
     if args.output_file:
         try:
             summary = {
@@ -224,7 +200,7 @@ def main():
                 "total_groups": len(grouped_trajectories),
                 "success_count": success_count,
                 "error_count": error_count,
-                "total_experiences": total_experiences,
+                "total_task_memories": total_memories,
                 "results": results,
             }
 
@@ -235,28 +211,23 @@ def main():
             print(f"Error saving results: {e}")
 
 
-# 保持原有的使用示例（向后兼容）
 if __name__ == "__main__":
-    # 检查是否有命令行参数
     import sys
 
     if len(sys.argv) > 1:
-        # 使用新的命令行接口
         main()
     else:
-        # 保持原有的行为（向后兼容）
         print("Running in compatibility mode...")
-        with open("exp_result/qwen-max-2025-01-25/no_think/bfcl-multi-turn-base-train50_wo-exp.jsonl", "r") as f:
+        with open("exp_result/qwen3-8b/with_think/bfcl-multi-turn-base-train50_wo-exp.jsonl", "r") as f:
             data = [json.loads(line) for line in f]
 
-        # 分组
         grouped_trajectories = group_trajectories_by_task_id(data)
         print(f"Total groups: {len(grouped_trajectories)}")
 
         results = process_trajectories_with_threads(
             grouped_trajectories,
             "http://localhost:8001",
-            "bfcl_train50_qwen_max_2025_01_25_extract_compare_validate",
+            "bfcl_train50_qwen3_8b_extract_compare_validate",
             n_threads=4,
         )
         print(f"Processed {len(results)} groups")

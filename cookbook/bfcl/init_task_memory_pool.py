@@ -218,7 +218,7 @@ if __name__ == "__main__":
         main()
     else:
         print("Running in compatibility mode...")
-        with open("exp_result/qwen3-14b/no_think/bfcl-multi-turn-base_wo-exp.jsonl", "r") as f:
+        with open("exp_result/qwen3-8b/no_think/bfcl-multi-turn-base_wo-exp.jsonl", "r") as f:
             data = [json.loads(line) for line in f]
 
         grouped_trajectories = group_trajectories_by_task_id(data)
@@ -227,7 +227,7 @@ if __name__ == "__main__":
         results = process_trajectories_with_threads(
             grouped_trajectories,
             "http://localhost:8001",
-            "bfcl_test",
+            "bfcl_v3",
             n_threads=4,
         )
         print(f"Processed {len(results)} groups")

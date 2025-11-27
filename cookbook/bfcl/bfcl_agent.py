@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv("../../.env")
 
+import re
 import time
 import json
 import ray
@@ -63,7 +64,7 @@ class BFCLAgent:
         temperature: float = 0.9,
         max_interactions: int = 30,
         max_response_size: int = 2000,
-        num_runs: int = 1,
+        num_trials: int = 1,
         enable_thinking: bool = False,
         use_memory: bool = False,
         use_memory_addition: bool = False,
@@ -71,8 +72,8 @@ class BFCLAgent:
         delete_freq: int = 10,
         freq_threshold: int = 5,
         utility_threshold: float = 0.5,
-        memory_base_url: str = "http://0.0.0.0:8001/",
-        memory_workspace_id: str = "bfcl_8b_0725",
+        memory_base_url: str = "http://0.0.0.0:8002/",
+        memory_workspace_id: str = "bfcl_v3",
     ):
 
         self.index: int = index
@@ -85,7 +86,7 @@ class BFCLAgent:
         self.temperature: float = temperature
         self.max_interactions: int = max_interactions
         self.max_response_size: int = max_response_size
-        self.num_runs: int = num_runs
+        self.num_trials: int = num_trials
         self.enable_thinking: bool = enable_thinking
         self.use_memory: bool = use_memory
         self.use_memory_addition: bool = use_memory_addition if use_memory else False
@@ -96,14 +97,14 @@ class BFCLAgent:
         self.memory_base_url: str = memory_base_url
         self.memory_workspace_id: str = memory_workspace_id
 
-        self.history: List[List[List[dict]]] = [[] for _ in range(num_runs)]
-        self.retrieved_memory_list: List[List[List[Any]]] = [[] for _ in range(num_runs)]
-        self.test_entry: List[List[Dict[str, Any]]] = [[] for _ in range(num_runs)]
-        self.original_test_entry: List[List[Dict[str, Any]]] = [[] for _ in range(num_runs)]
-        self.tool_schema: List[List[List[dict]]] = [[] for _ in range(num_runs)]
-        self.current_turn = [[0 for _ in range(len(task_ids))] for _ in range(num_runs)]
+        self.history: List[List[List[dict]]] = [[] for _ in range(num_trials)]
+        self.retrieved_memory_list: List[List[List[Any]]] = [[] for _ in range(num_trials)]
+        self.test_entry: List[List[Dict[str, Any]]] = [[] for _ in range(num_trials)]
+        self.original_test_entry: List[List[Dict[str, Any]]] = [[] for _ in range(num_trials)]
+        self.tool_schema: List[List[List[dict]]] = [[] for _ in range(num_trials)]
+        self.current_turn = [[0 for _ in range(len(task_ids))] for _ in range(num_trials)]
 
-        for run_id in range(num_runs):
+        for run_id in range(num_trials):
             for task_index in range(len(task_ids)):
                 self.init_state(run_id, task_index)
 
@@ -112,22 +113,28 @@ class BFCLAgent:
         self.original_test_entry[run_id].append(self.test_entry[run_id][i].get("extra", {}))
         self.tool_schema[run_id].append(extract_tool_schema(self.test_entry[run_id][i].get("tools", [{}])))
 
-        msg = self.test_entry[run_id][i].get("messages", [])[0]
-        if self.use_memory:
-            query = msg["content"]
-            response = self.get_memory(query)
-
-            if len(response["metadata"]["memory_list"]):
-                self.retrieved_memory_list[run_id].append(response["metadata"]["memory_list"])
-                exp: str = response["answer"]
-                # print(f"memory_merged={exp}")
-                self.history[run_id].append([self.get_query_with_memory(query, exp)])
-            else:
-                self.retrieved_memory_list[run_id].append([])
-                self.history[run_id].append([msg])
-        else:
-            self.history[run_id].append([msg])
+        msg = self.test_entry[run_id][i].get("messages", [])
+        self.history[run_id].append(msg)
+        self.retrieved_memory_list[run_id].append([])
         self.current_turn[run_id][i] = 1
+
+    def update_task_history_with_memory(self, run_id, task_index, previous_memories: None):
+        query = self.history[run_id][task_index][0]["content"]
+        if len(previous_memories) == 0:
+            response = self.get_memory(query)
+            if response and "memory_list" in response["metadata"]:
+                self.retrieved_memory_list[run_id][task_index] = response["metadata"]["memory_list"]
+                task_memory = response["answer"]
+                logger.info(f"loaded task_memory: {task_memory}")
+                self.history[run_id][task_index][0] = self.get_query_with_memory(query, task_memory)
+        else:
+            formatted_memories = []
+            for i, memory in enumerate(previous_memories, 1):
+                condition = memory["when_to_use"]
+                memory_content = memory["content"]
+                memory_text = f"Experience {i}:\n When to use: {condition}\n Content: {memory_content}\n"
+                formatted_memories.append(memory_text)
+            self.history[run_id][task_index][0] = self.get_query_with_memory(query, "\n".join(formatted_memories))
 
     def get_query_with_memory(self, query: str, memory: str):
         return {
@@ -135,12 +142,26 @@ class BFCLAgent:
             "content": "Task:\n" + query + "\n\nSome Related Experience to help you to complete the task:\n" + memory,
         }
 
+    def get_query_without_experience(self, query: str):
+        if "\n\nSome Related Experience" in query:
+            query = query.split("\n\nSome Related Experience")[0].split("Task:\n")[-1]
+        return query
+
     def get_traj_from_task_history(self, task_id: str, task_history: list, reward: float):
         return {
             "task_id": task_id,
             "messages": task_history,
             "score": reward,
         }
+
+    def handle_api_response(self, response: requests.Response):
+        """Handle API response with proper error checking"""
+        if response.status_code != 200:
+            print(f"Error: {response.status_code}")
+            print(response.text)
+            return None
+
+        return response.json()
 
     def get_memory(self, query: str):
         response = requests.post(
@@ -152,13 +173,12 @@ class BFCLAgent:
             },
         )
 
-        if response.status_code != 200:
-            logger.info(response.text)
-            return ""
+        result = self.handle_api_response(response)
+        if not result:
+            return None
 
-        response = response.json()
-        logger.info(f"query: {query}, response: {response}")
-        return response
+        logger.info(f"query: {query}, response: {result}")
+        return result
 
     def add_memory(self, trajectories):
         response = requests.post(
@@ -168,9 +188,26 @@ class BFCLAgent:
                 "trajectories": trajectories,
             },
         )
+
+        result = self.handle_api_response(response)
+        if not result:
+            return []
+
+        # Extract memory list from response
+        memory_list = result.get("metadata", {}).get("memory_list", [])
+        logger.info(f'add new memories: {memory_list}')
+        return memory_list
+
+    def delete_memory_by_ids(self, memory_ids):
+        response = requests.post(
+            url=self.memory_base_url + "vector_store",
+            json={
+                "workspace_id": self.memory_workspace_id,
+                "action": "delete_ids",
+                "memory_ids": memory_ids
+            }
+        )
         response.raise_for_status()
-        response = response.json()
-        logger.info(f'add new memorys: {response["metadata"]["memory_list"]}')
 
     def update_memory_information(self, memory_list, update_utility: bool = False):
         response = requests.post(
@@ -555,10 +592,14 @@ class BFCLAgent:
         result = []
         counter = 0
         for task_index, task_id in enumerate(tqdm(self.task_ids, desc=f"ray_index={self.index}")):
-            for run_id in range(self.num_runs):
+            t_result = None
+            previous_memories = []
+            for run_id in range(self.num_trials):
                 try:
                     start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     for i in range(self.max_interactions):
+                        if self.use_memory and i == 0:
+                            self.update_task_history_with_memory(run_id, task_index, previous_memories)
                         llm_output = self.call_llm(
                             self.history[run_id][task_index],
                             self.tool_schema[run_id][task_index],
@@ -605,11 +646,11 @@ class BFCLAgent:
 
                     reward = self.get_reward(run_id, task_index)
                     if self.use_memory:
-                        if reward == 1 and self.use_memory_addition:  # selectively add memories when succeed
-                            new_traj_list = [
-                                self.get_traj_from_task_history(task_id, self.history[run_id][task_index], reward),
-                            ]
-                            self.add_memory(new_traj_list)
+                        if self.use_memory_addition:  # selectively add memories when succeed
+                            new_traj_list = [self.get_traj_from_task_history(task_id, self.history[run_id][task_index], reward)]
+                            previous_memories = self.add_memory(new_traj_list)
+                            if reward != 1:
+                                self.delete_memory_by_ids([mem["memory_id"] for mem in previous_memories])
 
                         # update the freq & utility attributes of retrieved memories
                         update_utility: bool = reward == 1
@@ -628,11 +669,13 @@ class BFCLAgent:
                         "task_history": self.history[run_id][task_index],
                         "task_start_time": start_time,
                     }
-                    result.append(t_result)
+                    if reward == 1:
+                        break
 
                 except Exception as e:
                     logger.exception(f"encounter error with {e.args}")
                     result.append({})
+            result.append(t_result)
         return result
 
     def task_completed(self, run_id, index):
@@ -652,7 +695,7 @@ def main():
     agent = BFCLAgent(
         index=0,
         task_id=task_ids[0],
-        experiment_name=f"zouying_{dataset_name}",
+        experiment_name=f"qwen3_8b_{dataset_name}",
     )
     result = agent.execute()
     logger.info(f"result={json.dumps(result)}")

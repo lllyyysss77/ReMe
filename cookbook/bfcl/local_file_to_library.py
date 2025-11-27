@@ -19,6 +19,8 @@ for exp in bfcl:
     new_exp["author"] = exp["metadata"]["author"]
 
     new_exp["metadata"] = exp["metadata"]["metadata"]
+    new_exp["metadata"]["utility"] = 0
+    new_exp["metadata"]["freq"] = 0
 
     new_bfcl.append(new_exp)
 

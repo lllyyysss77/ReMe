@@ -6,12 +6,12 @@
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python Version"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/pypi-0.2.0.0-blue?logo=pypi" alt="PyPI Version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="License"></a>
-  <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/modelscope/ReMe?style=social" alt="GitHub Stars"></a>
+  <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/agentscope-ai/ReMe?style=social" alt="GitHub Stars"></a>
 </p>
 
 <p align="center">
   <strong>Memory Management Kit for Agents, Remember Me, Refine Me.</strong><br>
-  <em style="color:#808080;">⭐ Love ReMe? Star the repo to help more builders discover memory-first agents.</em>
+  <em><sub>If you find it useful, please give us a ⭐ Star. Your support drives our continuous improvement.</sub></em>
 </p>
 
 <p align="center">
@@ -23,30 +23,35 @@
 ReMe provides AI agents with a unified memory system—enabling the ability to extract, reuse, and share memories across
 users, tasks, and agents.
 
-```
-Personal Memory + Task Memory + Tool Memory = Agent Memory
+Agent memory can be viewed as:
+
+```text
+Agent Memory = Long-Term Memory + Short-Term Memory
+             = (Personal + Task + Tool) Memory + (Working Memory)
 ```
 
-Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**".
+Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**". Working memory provides **short-term contextual memory** by keeping recent reasoning and tool results compact and accessible without overflowing the model's context window.
 
 ---
 
-## 🚀 Why Teams Choose ReMe
+## 📰 Latest Updates
 
-- **Ship smarter agents faster**: Plug-and-play memory primitives with configurable pipelines.
-- **Amplify success rates**: Validated lifts up to **+15%** on tool usage and **+9.7%** on multi-turn tasks (see Experiments).
-- **Scale with confidence**: Unified memory across users, tasks, and tools—no more babysitting embedding hacks.
-- **Deploy anywhere**: HTTP server, MCP service, or direct Python import—same config, same results.
-- **Team-ready workflows**: Pre-built libraries, audit trails, and guideline generation keep agents accountable.
-
-> **Quick win:** Try the Quick Start below, then drop a ⭐ if ReMe saves you tokens, time, or both.
+- **[2025-11]** 🧠 Working Memory: react-agent with working-memory demo~ ([Guide](docs/work_memory/message_offload.md)) with ([Quick Start](docs/cookbook/working/quick_start.md)) and ([Code](cookbook/working_memory/work_memory_demo.py))
+- **[2025-10]** 🚀 Direct Python import support: use `from reme_ai import ReMeApp` without HTTP/MCP service
+- **[2025-10]** 🔧 Tool Memory: data-driven tool selection and parameter optimization ([Guide](docs/tool_memory/tool_memory.md))
+- **[2025-09]** 🎉 Async operations support, integrated into agentscope-runtime
+- **[2025-09]** 🎉 Task memory and personal memory integration
+- **[2025-09]** 🧪 Validated effectiveness in appworld, bfcl(v3), and frozenlake ([Experiments](docs/cookbook))
+- **[2025-08]** 🚀 MCP protocol support ([Quick Start](docs/mcp_quick_start.md))
+- **[2025-06]** 🚀 Multiple backend vector storage (Elasticsearch & ChromaDB) ([Guide](docs/vector_store_api_guide.md))
+- **[2024-09]** 🧠 Personalized and time-aware memory storage
 
 ---
 
 ## ✨ Architecture Design
 
 <p align="center">
- <img src="docs/_static/figure/reme_structure.jpg" alt="ReMe Logo" width="100%">
+ <img src="docs/_static/figure/reme_usage.jpg" alt="ReMe Logo" width="100%">
 </p>
 
 ReMe integrates three complementary memory capabilities:
@@ -84,18 +89,18 @@ Data-driven tool selection and usage optimization
 
 Learn more about how to use tool memory from [tool memory](docs/tool_memory/tool_memory.md)
 
----
+#### 🧠 Working Memory
 
-## 📰 Latest Updates
-
-- **[2025-10]** 🚀 Direct Python import support: use `from reme_ai import ReMeApp` without HTTP/MCP service
-- **[2025-10]** 🔧 Tool Memory: data-driven tool selection and parameter optimization ([Guide](docs/tool_memory/tool_memory.md))
-- **[2025-09]** 🎉 Async operations support, integrated into agentscope-runtime
-- **[2025-09]** 🎉 Task memory and personal memory integration
-- **[2025-09]** 🧪 Validated effectiveness in appworld, bfcl(v3), and frozenlake ([Experiments](docs/cookbook))
-- **[2025-08]** 🚀 MCP protocol support ([Quick Start](docs/mcp_quick_start.md))
-- **[2025-06]** 🚀 Multiple backend vector storage (Elasticsearch & ChromaDB) ([Guide](docs/vector_store_api_guide.md))
-- **[2024-09]** 🧠 Personalized and time-aware memory storage
+Short‑term contextual memory for long‑running agents via **message offload & reload**:
+- **Message Offload**: Compact large tool outputs to external files or LLM summaries
+- **Message Reload**: Search (`grep_working_memory`) and read (`read_working_memory`) offloaded content on demand
+📖 **Concept & API**:
+- Message offload overview: [Message Offload](docs/work_memory/message_offload.md)
+- Offload / reload operators: [Message Offload Ops](docs/work_memory/message_offload_ops.md), [Message Reload Ops](docs/work_memory/message_reload_ops.md)
+💻 **End‑to‑End Demo**:
+- Working memory quick start: [Working Memory Quick Start](docs/cookbook/working/quick_start.md)
+- ReAct agent with working memory: [react_agent_with_working_memory.py](cookbook/working_memory/react_agent_with_working_memory.py)
+- Runnable demo: [work_memory_demo.py](cookbook/working_memory/work_memory_demo.py)
 
 ---
 
@@ -244,44 +249,6 @@ curl -X POST http://localhost:8002/retrieve_task_memory \
 
 </details>
 
-<details>
-<summary>Node.js version</summary>
-
-```javascript
-// Experience Summarizer: Learn from execution trajectories
-fetch("http://localhost:8002/summary_task_memory", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workspace_id: "task_workspace",
-    trajectories: [
-      {messages: [{role: "user", content: "Help me create a project plan"}], score: 1.0}
-    ]
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
-
-// Retriever: Get relevant memories
-fetch("http://localhost:8002/retrieve_task_memory", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workspace_id: "task_workspace",
-    query: "How to efficiently manage project progress?",
-    top_k: 1
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
-```
-
-</details>
-
 #### Personal Memory Management
 
 ```python
@@ -373,50 +340,9 @@ curl -X POST http://localhost:8002/retrieve_personal_memory \
   -H "Content-Type: application/json" \
   -d '{
     "workspace_id": "task_workspace",
-    "query": "What are the users work habits?",
+    "query": "What are the user'\''s work habits?",
     "top_k": 5
   }'
-```
-
-</details>
-
-<details>
-<summary>Node.js version</summary>
-
-```javascript
-// Memory Integration: Learn from user interactions
-fetch("http://localhost:8002/summary_personal_memory", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workspace_id: "task_workspace",
-    trajectories: [
-      {messages: [
-        {role: "user", content: "I like to drink coffee while working in the morning"},
-        {role: "assistant", content: "I understand, you prefer to start your workday with coffee to stay energized"}
-      ]}
-    ]
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
-
-// Memory Retrieval: Get personal memory fragments
-fetch("http://localhost:8002/retrieve_personal_memory", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workspace_id: "task_workspace",
-    query: "What are the user's work habits?",
-    top_k: 5
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
 ```
 
 </details>
@@ -549,61 +475,174 @@ curl -X POST http://localhost:8002/retrieve_tool_memory \
 
 </details>
 
+#### Working Memory Management
+
+```python
+import requests
+
+# Summarize and compact working memory for a long-running conversation
+response = requests.post("http://localhost:8002/summary_working_memory", json={
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant. First use `Grep` to find the line numbers that match the keywords or regular expressions, and then use `ReadFile` to read the code around those locations. If no matches are found, never give up; try different parameters, such as searching with only part of the keywords. After `Grep`, use the `ReadFile` command to view content starting from a specified `offset` and `limit`, and do not exceed 100 lines. If the current content is insufficient, you can continue trying different `offset` and `limit` values with the `ReadFile` command."
+        },
+        {
+            "role": "user",
+            "content": "搜索下reme项目的的README内容"
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "index": 0,
+                    "id": "call_6596dafa2a6a46f7a217da",
+                    "function": {
+                        "arguments": "{\"query\": \"readme\"}",
+                        "name": "web_search"
+                    },
+                    "type": "function"
+                }
+            ]
+        },
+        {
+            "role": "tool",
+            "content": "tool call=6ec4edf351774e91ba6c3e719b6d18c9 result is stored in file path=`test_working_memory/6ec4edf351774e91ba6c3e719b6d18c9.txt`"
+        },
+        {
+            "role": "user",
+            "content": "根据readme回答task memory在appworld的效果是多少，需要具体的数值"
+        }
+    ],
+    "working_summary_mode": "auto",
+    "compact_ratio_threshold": 0.75,
+    "max_total_tokens": 20000,
+    "max_tool_message_tokens": 2000,
+    "group_token_threshold": 4000,
+    "keep_recent_count": 2,
+    "store_dir": "test_working_memory",
+    "chat_id": "demo_chat_id"
+})
+```
+
 <details>
-<summary>Node.js version</summary>
+<summary>Python import version</summary>
 
-```javascript
-// Record tool execution results
-fetch("http://localhost:8002/add_tool_call_result", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workspace_id: "tool_workspace",
-    tool_call_results: [
+```python
+import asyncio
+from reme_ai import ReMeApp
+
+
+async def main():
+    async with ReMeApp(
+        "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
+        "embedding_model.default.model_name=text-embedding-v4",
+        "vector_store.default.backend=memory"
+    ) as app:
+        # Summarize and compact working memory for a long-running conversation
+        result = await app.async_execute(
+            name="summary_working_memory",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant. First use `Grep` to find the line numbers that match the keywords or regular expressions, and then use `ReadFile` to read the code around those locations. If no matches are found, never give up; try different parameters, such as searching with only part of the keywords. After `Grep`, use the `ReadFile` command to view content starting from a specified `offset` and `limit`, and do not exceed 100 lines. If the current content is insufficient, you can continue trying different `offset` and `limit` values with the `ReadFile` command."
+                },
+                {
+                    "role": "user",
+                    "content": "搜索下reme项目的的README内容"
+                },
+                {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "index": 0,
+                            "id": "call_6596dafa2a6a46f7a217da",
+                            "function": {
+                                "arguments": "{\"query\": \"readme\"}",
+                                "name": "web_search"
+                            },
+                            "type": "function"
+                        }
+                    ]
+                },
+                {
+                    "role": "tool",
+                    "content": "tool call=6ec4edf351774e91ba6c3e719b6d18c9 result is stored in file path=`test_working_memory/6ec4edf351774e91ba6c3e719b6d18c9.txt`"
+                },
+                {
+                    "role": "user",
+                    "content": "根据readme回答task memory在appworld的效果是多少，需要具体的数值"
+                }
+            ],
+            working_summary_mode="auto",
+            compact_ratio_threshold=0.75,
+            max_total_tokens=20000,
+            max_tool_message_tokens=2000,
+            group_token_threshold=4000,
+            keep_recent_count=2,
+            store_dir="test_working_memory",
+            chat_id="demo_chat_id",
+        )
+        print(result)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+</details>
+
+<details>
+<summary>curl version</summary>
+
+```bash
+curl -X POST http://localhost:8002/summary_working_memory \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
       {
-        create_time: "2025-10-21 10:30:00",
-        tool_name: "web_search",
-        input: {query: "Python asyncio tutorial", max_results: 10},
-        output: "Found 10 relevant results...",
-        token_cost: 150,
-        success: true,
-        time_cost: 2.3
+        "role": "system",
+        "content": "You are a helpful assistant. First use `Grep` to find the line numbers that match the keywords or regular expressions, and then use `ReadFile` to read the code around those locations. If no matches are found, never give up; try different parameters, such as searching with only part of the keywords. After `Grep`, use the `ReadFile` command to view content starting from a specified `offset` and `limit`, and do not exceed 100 lines. If the current content is insufficient, you can continue trying different `offset` and `limit` values with the `ReadFile` command."
+      },
+      {
+        "role": "user",
+        "content": "搜索下reme项目的的README内容"
+      },
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_6596dafa2a6a46f7a217da",
+            "function": {
+              "arguments": "{\"query\": \"readme\"}",
+              "name": "web_search"
+            },
+            "type": "function"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "content": "tool call=6ec4edf351774e91ba6c3e719b6d18c9 result is stored in file path=`test_working_memory/6ec4edf351774e91ba6c3e719b6d18c9.txt`"
+      },
+      {
+        "role": "user",
+        "content": "根据readme回答task memory在appworld的效果是多少，需要具体的数值"
       }
-    ]
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
-
-// Generate usage guidelines from history
-fetch("http://localhost:8002/summary_tool_memory", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workspace_id: "tool_workspace",
-    tool_names: "web_search"
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
-
-// Retrieve tool guidelines before use
-fetch("http://localhost:8002/retrieve_tool_memory", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    workspace_id: "tool_workspace",
-    tool_names: "web_search"
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
+    ],
+    "working_summary_mode": "auto",
+    "compact_ratio_threshold": 0.75,
+    "max_total_tokens": 20000,
+    "max_tool_message_tokens": 2000,
+    "group_token_threshold": 4000,
+    "keep_recent_count": 2,
+    "store_dir": "test_working_memory",
+    "chat_id": "demo_chat_id"
+  }'
 ```
 
 </details>
@@ -791,5 +830,5 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICE
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=modelscope/ReMe&type=Date)](https://www.star-history.com/#modelscope/ReMe&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=agentscope-ai/ReMe&type=Date)](https://www.star-history.com/#agentscope-ai/ReMe&Date)
 

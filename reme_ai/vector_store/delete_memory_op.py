@@ -48,10 +48,10 @@ class DeleteMemoryOp(BaseAsyncOp):
 
         deleted_memory_ids = []
         for node in nodes:
-            freq = node["metadata"]["metadata"]["freq"]
-            utility = node["metadata"]["metadata"]["utility"]
+            freq = node.metadata.get("freq", 0)
+            utility = node.metadata.get("utility", 0)
             if freq >= freq_threshold:
                 if utility * 1.0 / freq < utility_threshold:
-                    deleted_memory_ids.append(node["unique_id"])
+                    deleted_memory_ids.append(node.unique_id)
 
         self.context.deleted_memory_ids = deleted_memory_ids

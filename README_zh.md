@@ -35,7 +35,7 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ## 📰 最新进展
 
-- **[2025-11]** 🧠 基于工作记忆的 react-agent demo（[指南](docs/work_memory/message_offload.md)、[Quick Start](docs/cookbook/working/quick_start.md)、[代码](cookbook/working_memory/work_memory_demo.py)）
+- **[2025-11]** 🧠 基于工作记忆的 react-agent demo（[介绍](docs/work_memory/message_offload.md)、[Quick Start](docs/cookbook/working/quick_start.md)、[代码](cookbook/working_memory/work_memory_demo.py)）
 - **[2025-10]** 🚀 直接 Python 导入：支持 `from reme_ai import ReMeApp`，无需 HTTP/MCP 服务
 - **[2025-10]** 🔧 工具记忆：支持基于数据驱动的工具选择与参数优化（[指南](docs/tool_memory/tool_memory.md)）
 - **[2025-09]** 🎉 支持异步操作，并已集成至 agentscope-runtime

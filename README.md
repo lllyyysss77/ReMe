@@ -36,7 +36,7 @@ Personal memory helps "**understand user preferences**", task memory helps agent
 
 ## 📰 Latest Updates
 
-- **[2025-11]** 🧠 React-agent with working-memory demo ([Guide](docs/work_memory/message_offload.md)) with ([Quick Start](docs/cookbook/working/quick_start.md)) and ([Code](cookbook/working_memory/work_memory_demo.py))
+- **[2025-11]** 🧠 React-agent with working-memory demo ([Intro](docs/work_memory/message_offload.md)) with ([Quick Start](docs/cookbook/working/quick_start.md)) and ([Code](cookbook/working_memory/work_memory_demo.py))
 - **[2025-10]** 🚀 Direct Python import support: use `from reme_ai import ReMeApp` without HTTP/MCP service
 - **[2025-10]** 🔧 Tool Memory: data-driven tool selection and parameter optimization ([Guide](docs/tool_memory/tool_memory.md))
 - **[2025-09]** 🎉 Async operations support, integrated into agentscope-runtime

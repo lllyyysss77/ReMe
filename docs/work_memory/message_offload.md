@@ -144,6 +144,7 @@ After Message Offload (100 tool calls):
 
 ReMe has fully implemented the above-mentioned message offload and reload mechanisms, inspired by [Context Engineering for AI Agents with LangChain and Manus](https://www.youtube.com/watch?v=6_BcCthVvb8). The implementation provides two core operation primitives:
 
+
 ### (1) Message Offload Operations
 
 Operations for intelligently reducing context size through compaction and compression strategies.
@@ -169,3 +170,26 @@ Key features:
 - Complete working examples in test files
 
 Both operation primitives are production-ready and can be integrated into your agent workflows. Refer to the linked documentation for API specifications, parameter details, and practical usage examples.
+
+## 3. Integrating Working Memory with Agents
+
+ReMe provides a complete tutorial on integrating working memory mechanisms with agent workflows. This integration enables agents to handle long-running tasks efficiently while maintaining optimal context window usage.
+
+### Resources
+
+📖 **Tutorial Guide**: [Working Memory Quick Start](../cookbook/working/quick_start.md)
+- Step-by-step guide on integrating working memory with agents
+- Configuration examples and best practices
+- Real-world usage scenarios
+
+💻 **Implementation Reference**: [react_agent_with_working_memory.py](../../cookbook/working_memory/react_agent_with_working_memory.py)
+- Complete implementation of a ReAct agent with working memory
+- Shows how to configure message offload and reload operations
+- Production-ready code template
+
+🚀 **Demo Application**: [work_memory_demo.py](../../cookbook/working_memory/work_memory_demo.py)
+- Runnable demonstration of working memory in action
+- Practical examples with different scenarios
+- Easy to adapt for your own use cases
+
+These resources provide everything you need to add intelligent working memory management to your agent applications.

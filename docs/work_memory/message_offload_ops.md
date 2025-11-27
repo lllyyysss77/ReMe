@@ -18,7 +18,20 @@ kernelspec:
 
 ### Purpose
 
-Manages context window limits by intelligently offloading message content through compaction and compression strategies to reduce token usage while preserving important information.
+As AI agents evolved from simple chatbots to sophisticated autonomous systems, the focus shifted from "prompt engineering" to "context engineering". Agentic systems work by binding LLMs with tools and running them in a loop where the agent decides which tools to call and feeds results back into the message history. This creates a **context explosion** problem:
+
+- **Rapid Growth**: A seemingly simple task can trigger 50+ tool calls, with production agents often running hundreds of conversation turns
+- **Large Outputs**: Each tool call can return substantial text, consuming massive amounts of tokens
+- **Memory Pressure**: The context window quickly fills up as messages and tool results accumulate chronologically
+
+When context grows too large, model performance degrades significantly—a phenomenon known as **"context rot"**:
+
+- **Repetitive Responses**: The model starts generating redundant or circular answers
+- **Slower Reasoning**: Inference becomes noticeably slower as context length increases
+- **Quality Degradation**: Overall response quality and coherence decline
+- **Lost Focus**: The model struggles to identify relevant information in the bloated context
+
+**MessageOffloadOp** addresses this fundamental challenge by managing context window limits through intelligent offloading strategies. It implements compaction and compression techniques to reduce token usage while preserving important information, enabling agents to handle arbitrarily long conversations and complex tasks while maintaining optimal performance throughout.
 
 ### Functionality
 

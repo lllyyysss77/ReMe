@@ -27,16 +27,19 @@ kernelspec:
 ReMe provides AI agents with a unified memory system—enabling the ability to extract, reuse, and share memories across
 users, tasks, and agents.
 
-```
-Personal Memory + Task Memory + Tool Memory = Agent Memory
+Agent memory can be viewed as:
+
+```text
+Agent Memory = Long-Term Memory + Short-Term Memory
+             = (Personal + Task + Tool) Memory + (Working Memory)
 ```
 
-Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**".
+Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**". Working memory provides **short-term contextual memory** by keeping recent reasoning and tool results compact and accessible without overflowing the model's context window.
 
 ## Architecture Design
 
 <p align="center">
- <img src="_static/figure/reme_structure.jpg" alt="ReMe Logo" width="100%">
+ <img src="_static/figure/reme_usage.jpg" alt="ReMe Logo" width="100%">
 </p>
 
 ReMe integrates three complementary memory capabilities:
@@ -82,6 +85,25 @@ Data-driven tool selection and usage optimization
 :::
 
 Learn more about how to use tool memory from [tool memory](tool_memory/tool_memory.md)
+
+:::{admonition} Working Memory
+:class: note
+
+Short‑term contextual memory for long‑running agents via **message offload & reload**:
+
+- **Message Offload**: Compact large tool outputs to external files or LLM summaries
+- **Message Reload**: Search (`grep_working_memory`) and read (`read_working_memory`) offloaded content on demand
+
+**📖 Concept & API**:
+- Message offload overview: [Message Offload](work_memory/message_offload.md)
+- Offload / reload operators: [Message Offload Ops](work_memory/message_offload_ops.md), [Message Reload Ops](work_memory/message_reload_ops.md)
+
+**💻 End‑to‑End Demo**:
+- Working memory quick start: [Working Memory Quick Start](cookbook/working/quick_start.md)
+- ReAct agent with working memory: [react_agent_with_working_memory.py](../cookbook/working_memory/react_agent_with_working_memory.py)
+- Runnable demo: [work_memory_demo.py](../cookbook/working_memory/work_memory_demo.py)
+
+:::
 
 ---
 

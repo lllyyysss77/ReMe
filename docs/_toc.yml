@@ -27,6 +27,12 @@ parts:
       - file: tool_memory/tool_summary_ops
       - file: tool_memory/tool_bench
 
+  - caption: Working Memory
+    chapters:
+      - file: work_memory/message_offload
+      - file: work_memory/message_offload_ops
+      - file: work_memory/message_reload_ops
+
   - caption: Extensions
     maxdepth: 1
     chapters:
@@ -39,6 +45,7 @@ parts:
       - file: cookbook/frozenlake/quickstart
       - file: cookbook/bfcl/quickstart
       - file: cookbook/appworld/quickstart
+      - file: cookbook/working/quick_start
 
   - caption: Others
     maxdepth: 1

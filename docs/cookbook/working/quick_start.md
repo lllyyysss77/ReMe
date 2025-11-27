@@ -1,3 +1,17 @@
+---
+jupytext:
+  formats: md:myst
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: 0.13
+    jupytext_version: 1.11.5
+kernelspec:
+  display_name: Python 3
+  language: python
+  name: python3
+---
+
 # Working Memory Demo
 
 This demo showcases how to use ReMe's working memory capabilities with a ReAct agent. The working memory system automatically manages context by compressing and summarizing conversation history, enabling efficient long-context processing.
@@ -54,6 +68,7 @@ The HTTP service provides the flow execution endpoint for memory operations.
 ## Running the Demo
 
 Once both services are running, execute the demo:
+
 
 ```bash
 cd cookbook/working_memory

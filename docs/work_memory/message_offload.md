@@ -31,6 +31,10 @@ When an agent executes complex tasks, it relies on maintaining conversation hist
 
 **Example: Web Research Agent**
 
+<p align="center">
+ <img src="../_static/figure/working_memory_intro.png" alt="" width="60%">
+</p>
+
 Imagine an agent performing research across multiple sources:
 ```
 Iteration 1: web_search("AI context management") → 3,500 tokens

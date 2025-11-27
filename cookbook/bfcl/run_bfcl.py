@@ -19,7 +19,7 @@ def run_agent(
     dataset_name: str,
     experiment_suffix: str,
     max_workers: int,
-    num_runs: int = 4,
+    num_trials: int = 1,
     model_name: str = "qwen3-8b",
     data_path: str = "data/multiturn_data_base_val.jsonl",
     answer_path: Path = Path("data/possible_answer"),
@@ -30,8 +30,8 @@ def run_agent(
     freq_threshold: int = 5,
     utility_threshold: float = 0.5,
     enable_thinking: bool = False,
-    memory_base_url: str = "http://0.0.0.0:8001/",
-    memory_workspace_id: str = "bfcl_test",
+    memory_base_url: str = "http://0.0.0.0:8002/",
+    memory_workspace_id: str = "bfcl_v3",
 ):
     experiment_name = dataset_name + "_" + experiment_suffix
     path: Path = Path(
@@ -58,7 +58,7 @@ def run_agent(
             data_path=data_path,
             answer_path=answer_path,
             model_name=model_name,
-            num_runs=num_runs,
+            num_trials=num_trials,
             use_memory=use_memory,
             use_memory_addition=use_memory_addition,
             use_memory_deletion=use_memory_deletion,
@@ -89,20 +89,25 @@ def run_agent(
 def main():
     max_workers = 4
     num_runs = 1
+
+    num_trials = 2
+    model_name="qwen3-8b"
     use_memory = False
     use_memory_addition = False
     use_memory_deletion = False
-    memory_base_url = "http://0.0.0.0:8001/"
-    memory_workspace_id = "bfcl_test"
+    memory_base_url = "http://0.0.0.0:8002/"
+    memory_workspace_id = "bfcl_v3"
+
     if max_workers > 1:
         ray.init(num_cpus=max_workers)
+
     for run_id in range(num_runs):
         run_agent(
             dataset_name="bfcl-multi-turn-base",
             experiment_suffix=f"wo-exp",
-            model_name="qwen3-8b",
+            model_name=model_name,
             max_workers=max_workers,
-            num_runs=1,
+            num_trials=num_trials,
             data_path="data/multiturn_data_base_val.jsonl",
             answer_path=Path("data/possible_answer"),
             enable_thinking=False,

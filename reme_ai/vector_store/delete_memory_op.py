@@ -48,7 +48,6 @@ class DeleteMemoryOp(BaseAsyncOp):
 
         deleted_memory_ids = []
         for node in nodes:
-            # VectorNode 对象需要使用属性访问，不是字典访问
             freq = node.metadata.get("freq", 0)
             utility = node.metadata.get("utility", 0)
             if freq >= freq_threshold:

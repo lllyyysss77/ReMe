@@ -510,7 +510,7 @@ response = requests.post("http://localhost:8002/summary_working_memory", json={
         },
         {
             "role": "tool",
-            "content": "tool call=6ec4edf351774e91ba6c3e719b6d18c9 result is stored in file path=`test_working_memory/6ec4edf351774e91ba6c3e719b6d18c9.txt`"
+            "content": "ultra large context , over 50000 tokens......"
         },
         {
             "role": "user",
@@ -571,7 +571,7 @@ async def main():
                 },
                 {
                     "role": "tool",
-                    "content": "tool call=6ec4edf351774e91ba6c3e719b6d18c9 result is stored in file path=`test_working_memory/6ec4edf351774e91ba6c3e719b6d18c9.txt`"
+                    "content": "ultra large context , over 50000 tokens......"
                 },
                 {
                     "role": "user",
@@ -629,7 +629,7 @@ curl -X POST http://localhost:8002/summary_working_memory \
       },
       {
         "role": "tool",
-        "content": "tool call=6ec4edf351774e91ba6c3e719b6d18c9 result is stored in file path=`test_working_memory/6ec4edf351774e91ba6c3e719b6d18c9.txt`"
+        "content": "ultra large context , over 50000 tokens......"
       },
       {
         "role": "user",

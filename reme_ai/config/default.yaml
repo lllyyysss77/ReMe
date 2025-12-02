@@ -23,7 +23,7 @@ flow:
         required: true
 
   summary_task_memory:
-    flow_content: TrajectoryPreprocessOp(success_threshold=1.0) >> (SuccessExtractionOp()|FailureExtractionOp()|ComparativeExtractionOp(enable_soft_comparison=True)) >> MemoryValidationOp(validation_threshold=0.5) >> UpdateVectorStoreOp()
+    flow_content: TrajectoryPreprocessOp(success_threshold=1.0) >> (SuccessExtractionOp()|FailureExtractionOp()|ComparativeExtractionOp(enable_soft_comparison=True)) >> MemoryValidationOp(validation_threshold=0.5) >> MemoryDeduplicationOp() >> UpdateVectorStoreOp()
     description: "Summarizes conversation trajectories or messages into structured memory representations for long-term storage"
     input_schema:
       trajectories:

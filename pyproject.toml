@@ -56,7 +56,7 @@ full = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["reme_ai*"]
-exclude = ["memoryscope*", "test*", "cookbook*", "doc*", "library*", "dist*"]
+exclude = ["test*", "cookbook*", "doc*", "library*", "dist*"]
 
 [tool.setuptools.package-data]
 reme_ai = [

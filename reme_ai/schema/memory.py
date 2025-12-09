@@ -121,7 +121,7 @@ class TaskMemory(BaseMemory):
                 "time_created": self.time_created,
                 "time_modified": self.time_modified,
                 "author": self.author,
-                "metadata": self.metadata,
+                "metadata": json.dumps(self.metadata, ensure_ascii=False),
             },
         )
 
@@ -136,6 +136,10 @@ class TaskMemory(BaseMemory):
             TaskMemory: Reconstructed TaskMemory instance.
         """
         metadata = node.metadata.copy()
+        memory_metadata = metadata.pop("metadata", {})
+        if isinstance(memory_metadata, str):
+            memory_metadata = json.loads(memory_metadata)
+
         return cls(
             workspace_id=node.workspace_id,
             memory_id=node.unique_id,
@@ -146,7 +150,7 @@ class TaskMemory(BaseMemory):
             time_created=metadata.pop("time_created"),
             time_modified=metadata.pop("time_modified"),
             author=metadata.pop("author"),
-            metadata=metadata.pop("metadata", {}),
+            metadata=memory_metadata,
         )
 
 
@@ -188,7 +192,7 @@ class PersonalMemory(BaseMemory):
                 "time_created": self.time_created,
                 "time_modified": self.time_modified,
                 "author": self.author,
-                "metadata": self.metadata,
+                "metadata": json.dumps(self.metadata, ensure_ascii=False),
             },
         )
 
@@ -203,6 +207,10 @@ class PersonalMemory(BaseMemory):
             PersonalMemory: Reconstructed PersonalMemory instance.
         """
         metadata = node.metadata.copy()
+        memory_metadata = metadata.pop("metadata", {})
+        if isinstance(memory_metadata, str):
+            memory_metadata = json.loads(memory_metadata)
+
         return cls(
             workspace_id=node.workspace_id,
             memory_id=node.unique_id,
@@ -215,7 +223,7 @@ class PersonalMemory(BaseMemory):
             time_created=metadata.pop("time_created"),
             time_modified=metadata.pop("time_modified"),
             author=metadata.pop("author"),
-            metadata=metadata.pop("metadata", {}),
+            metadata=memory_metadata,
         )
 
 
@@ -341,7 +349,7 @@ class ToolMemory(BaseMemory):
                 "time_modified": self.time_modified,
                 "author": self.author,
                 "tool_call_results": [x.model_dump() for x in self.tool_call_results],
-                "metadata": self.metadata,
+                "metadata": json.dumps(self.metadata, ensure_ascii=False),
             },
         )
 
@@ -411,6 +419,10 @@ class ToolMemory(BaseMemory):
         """
         metadata = node.metadata.copy()
         tool_call_results = [ToolCallResult(**result) for result in metadata.pop("tool_call_results", [])]
+        memory_metadata = metadata.pop("metadata", {})
+        if isinstance(memory_metadata, str):
+            memory_metadata = json.loads(memory_metadata)
+
         return cls(
             workspace_id=node.workspace_id,
             memory_id=node.unique_id,
@@ -422,7 +434,7 @@ class ToolMemory(BaseMemory):
             time_modified=metadata.pop("time_modified"),
             author=metadata.pop("author"),
             tool_call_results=tool_call_results,
-            metadata=metadata.pop("metadata", {}),
+            metadata=memory_metadata,
         )
 
 

@@ -25,6 +25,23 @@ class SimpleReactOp(ReactSearchOp):
     - Maximum step limits for preventing infinite loops
     """
 
+    def __init__(
+        self,
+        llm: str = "default",
+        max_steps: int = 20,
+        tool_call_interval: float = 1.0,
+        add_think_tool: bool = False,
+        **kwargs,
+    ):
+        """Initialize the agent runtime configuration."""
+        super().__init__(
+            llm=llm,
+            max_steps=max_steps,
+            tool_call_interval=tool_call_interval,
+            add_think_tool=add_think_tool,
+            **kwargs,
+        )
+
 
 async def main():
     """Main function to demonstrate SimpleReactOp usage.

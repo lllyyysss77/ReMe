@@ -186,9 +186,9 @@ class AppworldReactAgent:
                         self.history[run_id][task_index].append({"role": "assistant", "content": code})
 
                         output = world.execute(code)
-                        if len(output) > self.max_response_size:
-                            # logger.warning(f"output exceed max size={len(output)}")
-                            output = output[: self.max_response_size]
+                        # if len(output) > self.max_response_size:
+                        #     # logger.warning(f"output exceed max size={len(output)}")
+                        #     output = output[: self.max_response_size]
                         self.history[run_id][task_index].append({"role": "user", "content": "Output:\n```\n" + output + "```\n\n"})
 
                         if world.task_completed():

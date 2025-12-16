@@ -10,6 +10,7 @@ authors = [
     { name = "jinli.yl", email = "jinli.yl@alibaba-inc.com" },
     { name = "dengjiaji.djj", email = "dengjiaji.djj@alibaba-inc.com" },
     { name = "caozouying.czy", email = "caozouying.czy@alibaba-inc.com" },
+    { name = "weikangzhou.zwk", email = "weikangzhou.zwk@alibaba-inc.com" },
 ]
 license = { file = "LICENSE" }
 readme = "README.md"

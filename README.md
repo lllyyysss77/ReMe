@@ -814,9 +814,19 @@ We believe the best memory systems come from collective wisdom. Contributions we
 ```bibtex
 @software{AgentscopeReMe2025,
   title = {AgentscopeReMe: Memory Management Kit for Agents},
-  author = {Li Yu, Jiaji Deng, Zouying Cao},
+  author = {Li Yu, Jiaji Deng, Zouying Cao, Weikang Zhou},
   url = {https://reme.agentscope.io},
   year = {2025}
+}
+
+@misc{AgentscopeReMe2025Paper,
+  title={Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution},
+  author={Zouying Cao and Jiaji Deng and Li Yu and Weikang Zhou and Zhaoyang Liu and Bolin Ding and Hai Zhao},
+  year={2025},
+  eprint={2512.10696},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI},
+  url={https://arxiv.org/abs/2512.10696},
 }
 ```
 

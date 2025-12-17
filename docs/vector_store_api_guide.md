@@ -121,6 +121,11 @@ vector_store:
       # Backend-specific parameters
 ```
 
+```shell
+vector_store.default.backend=<backend_name>
+vector_store.default.params.<param_name>=<param_value>
+```
+
 ### Configuration Field Descriptions
 
 - **`backend`** (required): Vector store backend type. Options: `local`, `memory`, `chroma`, `qdrant`, `elasticsearch`.
@@ -144,6 +149,11 @@ vector_store:
       store_dir: "./local_vector_store"  # Storage directory (optional; default: "./local_vector_store")
 ```
 
+```shell
+vector_store.default.backend=local
+vector_store.default.params.store_dir=./local_vector_store
+```
+
 #### 2. MemoryVectorStore Configuration
 
 In-memory storage with fast access, suitable for temporary data or testing.
@@ -159,6 +169,11 @@ vector_store:
       store_dir: "./memory_vector_store"  # Persistence directory (optional; default: "./memory_vector_store")
 ```
 
+```shell
+vector_store.default.backend=memory
+vector_store.default.params.store_dir=./memory_vector_store
+```
+
 #### 3. ChromaVectorStore Configuration
 
 Persistent storage based on ChromaDB with metadata filtering support.
@@ -172,6 +187,11 @@ vector_store:
     embedding_model: default
     params:
       store_dir: "./chroma_vector_store"  # ChromaDB data directory (optional; default: "./chroma_vector_store")
+```
+
+```shell
+vector_store.default.backend=chroma
+vector_store.default.params.store_dir=./chroma_vector_store
 ```
 
 #### 4. QdrantVectorStore Configuration
@@ -191,6 +211,13 @@ vector_store:
       distance: "COSINE"     # Distance metric (optional; default: COSINE; options: COSINE, EUCLIDEAN, DOT)
 ```
 
+```shell
+vector_store.default.backend=qdrant
+vector_store.default.params.host=localhost
+vector_store.default.params.port=6333
+vector_store.default.params.distance=COSINE
+```
+
 **Qdrant Cloud Configuration**:
 
 ```yaml
@@ -202,6 +229,13 @@ vector_store:
       url: "https://your-cluster.qdrant.io:6333"  # Qdrant Cloud URL
       api_key: "your-api-key-here"                 # API key
       distance: "COSINE"
+```
+
+```shell
+vector_store.default.backend=qdrant
+vector_store.default.params.url=https://your-cluster.qdrant.io:6333
+vector_store.default.params.api_key=your-api-key-here
+vector_store.default.params.distance=COSINE
 ```
 
 #### 5. EsVectorStore Configuration
@@ -219,6 +253,11 @@ vector_store:
       hosts: "http://localhost:9200"  # Elasticsearch host(s) (optional; default: http://localhost:9200)
 ```
 
+```shell
+vector_store.default.backend=elasticsearch
+vector_store.default.params.hosts=http://localhost:9200
+```
+
 **Configuration with Authentication**:
 
 ```yaml
@@ -229,6 +268,12 @@ vector_store:
     params:
       hosts: "http://elasticsearch.example.com:9200"
       basic_auth: ["username", "password"]  # Basic auth credentials
+```
+
+```shell
+vector_store.default.backend=elasticsearch
+vector_store.default.params.hosts=http://elasticsearch.example.com:9200
+vector_store.default.params.basic_auth='["username", "password"]'
 ```
 
 **Multi-Host Configuration**:
@@ -243,6 +288,11 @@ vector_store:
         - "http://es-node1:9200"
         - "http://es-node2:9200"
         - "http://es-node3:9200"
+```
+
+```shell
+vector_store.default.backend=elasticsearch
+vector_store.default.params.hosts='["http://es-node1:9200", "http://es-node2:9200", "http://es-node3:9200"]'
 ```
 
 ### Complete Configuration Example
@@ -265,6 +315,17 @@ vector_store:
     embedding_model: default
     params:
       hosts: "http://localhost:9200"
+```
+
+```shell
+# Embedding model configuration
+embedding_model.default.backend=openai_compatible
+embedding_model.default.model_name=text-embedding-v4
+embedding_model.default.params.dimensions=1024
+
+# Vector store configuration
+vector_store.default.backend=elasticsearch
+vector_store.default.params.hosts=http://localhost:9200
 ```
 
 ### Environment Variable Support

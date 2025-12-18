@@ -6,23 +6,19 @@
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python Version"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/pypi-0.2.0.0-blue?logo=pypi" alt="PyPI Version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="License"></a>
+  <a href="./README.md"><img src="https://img.shields.io/badge/English-Click-yellow" alt="English"></a>
+  <a href="./README_ZH.md"><img src="https://img.shields.io/badge/简体中文-点击查看-orange" alt="简体中文"></a>
   <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/agentscope-ai/ReMe?style=social" alt="GitHub Stars"></a>
 </p>
 
 <p align="center">
   <strong>Memory Management Kit for Agents, Remember Me, Refine Me.</strong><br>
-  <em><sub>If you find it useful, please give us a ⭐ Star. Your support drives our continuous improvement.</sub></em>
-</p>
-
-<p align="center">
-  English | <a href="./README_zh.md">简体中文</a>
+  <em><sub>If you find it useful, please give us a ⭐ Star.</sub></em>
 </p>
 
 ---
 
-ReMe provides AI agents with a unified memory system—enabling the ability to extract, reuse, and share memories across
-users, tasks, and agents.
-
+ReMe is a **modular memory management kit** that provides AI agents with unified memory capabilities—enabling the ability to extract, reuse, and share memories across users, tasks, and agents.
 Agent memory can be viewed as:
 
 ```text
@@ -30,12 +26,16 @@ Agent Memory = Long-Term Memory + Short-Term Memory
              = (Personal + Task + Tool) Memory + (Working Memory)
 ```
 
-Personal memory helps "**understand user preferences**", task memory helps agents "**perform better**", and tool memory enables "**smarter tool usage**". Working memory provides **short-term contextual memory** by keeping recent reasoning and tool results compact and accessible without overflowing the model's context window.
+- **Personal Memory**: Understand user preferences and adapt to context
+- **Task Memory**: Learn from experience and perform better on similar tasks
+- **Tool Memory**: Optimize tool selection and parameter usage based on historical performance
+- **Working Memory**: Manage short-term context for long-running agents without context overflow
 
 ---
 
 ## 📰 Latest Updates
 
+- **[2025-12]** 📄 Our procedural (task) memory paper has been released on arXiv "Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution" ([Paper](https://arxiv.org/abs/2512.10696))
 - **[2025-11]** 🧠 React-agent with working-memory demo ([Intro](docs/work_memory/message_offload.md)) with ([Quick Start](docs/cookbook/working/quick_start.md)) and ([Code](cookbook/working_memory/work_memory_demo.py))
 - **[2025-10]** 🚀 Direct Python import support: use `from reme_ai import ReMeApp` without HTTP/MCP service
 - **[2025-10]** 🔧 Tool Memory: data-driven tool selection and parameter optimization ([Guide](docs/tool_memory/tool_memory.md))
@@ -51,10 +51,10 @@ Personal memory helps "**understand user preferences**", task memory helps agent
 ## ✨ Architecture Design
 
 <p align="center">
- <img src="docs/_static/figure/reme_usage.jpg" alt="ReMe Logo" width="100%">
+ <img src="docs/_static/figure/reme_structure.jpg" alt="ReMe Architecture" width="80%">
 </p>
 
-ReMe integrates three complementary memory capabilities:
+ReMe provides a **modular memory management kit** with pluggable components that can be integrated into any agent framework. The system consists of:
 
 #### 🧠 **Task Memory/Experience**
 
@@ -122,7 +122,7 @@ pip install .
 
 ### Environment Configuration
 
-Copy `example.env` to .env and modify the corresponding parameters:
+ReMe requires LLM and embedding model configurations. Copy `example.env` to `.env` and configure:
 
 ```bash
 FLOW_LLM_API_KEY=sk-xxxx
@@ -649,17 +649,18 @@ curl -X POST http://localhost:8002/summary_working_memory \
 
 ---
 
-## 📦 Ready-to-Use Memories
+## 📦 Pre-built Memory Library
 
-ReMe provides pre-built memories that agents can immediately use with verified best practices:
+ReMe provides a **memory library** with pre-extracted, production-ready memories that agents can load and use immediately:
 
-### Available Memories
+### Available Memory Packs
 
-- **`appworld.jsonl`**: Memory for Appworld agent interactions, covering complex task planning and execution
-  patterns
-- **`bfcl_v3.jsonl`**: Working memory for BFCL tool calls
+| Memory Pack          | Domain         | Size          | Description                                                                         |
+|----------------------|----------------|---------------|-------------------------------------------------------------------------------------|
+| **`appworld.jsonl`** | Task Execution | ~100 memories | Complex task planning patterns, multi-step workflows, and error recovery strategies |
+| **`bfcl_v3.jsonl`**  | Tool Usage     | ~150 memories | Function calling patterns, parameter optimization, and tool selection strategies    |
 
-### Quick Usage
+### Loading Pre-built Memories
 
 ```python
 # Load pre-built memories
@@ -773,13 +774,26 @@ You can find more details in [tool_bench.md](docs/tool_memory/tool_bench.md) and
 
 ## 📚 Resources
 
-- **[Quick Start](./cookbook/simple_demo)**: Get started quickly with practical examples
+### Getting Started
+- **[Quick Start](./cookbook/simple_demo)**: Practical examples for immediate use
   - [Tool Memory Demo](cookbook/simple_demo/use_tool_memory_demo.py): Complete lifecycle demonstration of tool memory
   - [Tool Memory Benchmark](cookbook/tool_memory/run_reme_tool_bench.py): Evaluate tool memory effectiveness
-- **[Vector Storage Setup](docs/vector_store_api_guide.md)**: Configure local/vector databases and usage
-- **[MCP Guide](docs/mcp_quick_start.md)**: Create MCP services
-- **[Personal Memory](docs/personal_memory)**, **[Task Memory](docs/task_memory)** & **[Tool Memory](docs/tool_memory)**: Operators used in personal memory, task memory and tool memory. You can modify the config to customize the pipelines.
-- **[Example Collection](./cookbook)**: Real use cases and best practices
+
+### Integration Guides
+- **[Direct Python Import](docs/cookbook/working/quick_start.md)**: Embed ReMe directly into your agent code
+- **[HTTP Service API](docs/vector_store_api_guide.md)**: RESTful API for multi-agent systems
+- **[MCP Protocol](docs/mcp_quick_start.md)**: Integration with Claude Desktop and MCP-compatible clients
+
+### Memory System Configuration
+- **[Personal Memory](docs/personal_memory)**: User preference learning and contextual adaptation
+- **[Task Memory](docs/task_memory)**: Procedural knowledge extraction and reuse
+- **[Tool Memory](docs/tool_memory)**: Data-driven tool selection and optimization
+- **[Working Memory](docs/work_memory/message_offload.md)**: Short-term context management for long-running agents
+
+### Advanced Topics
+- **[Operator Pipelines](reme_ai/config/default.yaml)**: Customize memory processing workflows by modifying operator chains
+- **[Vector Store Backends](docs/vector_store_api_guide.md)**: Configure local, Elasticsearch, Qdrant, or ChromaDB storage
+- **[Example Collection](./cookbook)**: Real-world use cases and best practices
 
 ---
 
@@ -797,14 +811,17 @@ We believe the best memory systems come from collective wisdom. Contributions we
 
 ### Code Contributions
 
-- New operation and tool development
-- Backend implementation and optimization
-- API enhancements and new endpoints
+- **New Operators**: Develop custom memory processing operators (retrieval, summarization, etc.)
+- **Backend Implementations**: Add support for new vector stores or LLM providers
+- **Memory Services**: Extend with new memory types or capabilities
+- **API Enhancements**: Improve existing endpoints or add new ones
 
 ### Documentation Improvements
 
-- Usage examples and tutorials
-- Best practice guides
+- **Integration Examples**: Show how to integrate ReMe with different agent frameworks
+- **Operator Tutorials**: Document custom operator development
+- **Best Practice Guides**: Share effective memory management patterns
+- **Use Case Studies**: Demonstrate ReMe in real-world applications
 
 
 ---
@@ -814,7 +831,7 @@ We believe the best memory systems come from collective wisdom. Contributions we
 ```bibtex
 @software{AgentscopeReMe2025,
   title = {AgentscopeReMe: Memory Management Kit for Agents},
-  author = {Li Yu, Jiaji Deng, Zouying Cao, Weikang Zhou},
+  author = {Li Yu and Jiaji Deng and Zouying Cao and Weikang Zhou and Tiancheng Qin and Qingxu Fu and Sen Huang and Xianzhe Xu and Zhaoyang Liu and Boyin Liu},
   url = {https://reme.agentscope.io},
   year = {2025}
 }

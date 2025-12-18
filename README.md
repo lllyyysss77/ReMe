@@ -35,7 +35,7 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ## 📰 Latest Updates
 
-- **[2025-12]** 📄 Our procedural (task) memory paper has been released on arXiv "Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution" ([Paper](https://arxiv.org/abs/2512.10696))
+- **[2025-12]** 📄 Our procedural (task) memory paper has been released on [arXiv](https://arxiv.org/abs/2512.10696)
 - **[2025-11]** 🧠 React-agent with working-memory demo ([Intro](docs/work_memory/message_offload.md)) with ([Quick Start](docs/cookbook/working/quick_start.md)) and ([Code](cookbook/working_memory/work_memory_demo.py))
 - **[2025-10]** 🚀 Direct Python import support: use `from reme_ai import ReMeApp` without HTTP/MCP service
 - **[2025-10]** 🔧 Tool Memory: data-driven tool selection and parameter optimization ([Guide](docs/tool_memory/tool_memory.md))
@@ -831,14 +831,29 @@ We believe the best memory systems come from collective wisdom. Contributions we
 ```bibtex
 @software{AgentscopeReMe2025,
   title = {AgentscopeReMe: Memory Management Kit for Agents},
-  author = {Li Yu and Jiaji Deng and Zouying Cao and Weikang Zhou and Tiancheng Qin and Qingxu Fu and Sen Huang and Xianzhe Xu and Zhaoyang Liu and Boyin Liu},
+  author = {Li Yu and
+            Jiaji Deng and
+            Zouying Cao and
+            Weikang Zhou and
+            Tiancheng Qin and
+            Qingxu Fu and
+            Sen Huang and
+            Xianzhe Xu and
+            Zhaoyang Liu and
+            Boyin Liu},
   url = {https://reme.agentscope.io},
   year = {2025}
 }
 
 @misc{AgentscopeReMe2025Paper,
   title={Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution},
-  author={Zouying Cao and Jiaji Deng and Li Yu and Weikang Zhou and Zhaoyang Liu and Bolin Ding and Hai Zhao},
+  author={Zouying Cao and
+          Jiaji Deng and
+          Li Yu and
+          Weikang Zhou and
+          Zhaoyang Liu and
+          Bolin Ding and
+          Hai Zhao},
   year={2025},
   eprint={2512.10696},
   archivePrefix={arXiv},

@@ -6,6 +6,8 @@
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python 版本"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/pypi-0.2.0.0-blue?logo=pypi" alt="PyPI 版本"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="许可证"></a>
+  <a href="./README.md"><img src="https://img.shields.io/badge/English-Click-yellow" alt="English"></a>
+  <a href="./README_ZH.md"><img src="https://img.shields.io/badge/简体中文-点击查看-orange" alt="简体中文"></a>
   <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/agentscope-ai/ReMe?style=social" alt="GitHub Stars"></a>
 </p>
 
@@ -14,13 +16,9 @@
   <em><sub>如果 ReMe 对你有帮助，欢迎点一个 ⭐ Star，你的支持是我们持续改进的动力。</sub></em>
 </p>
 
-<p align="center">
-  <a href="./README.md">English</a> | 简体中文
-</p>
-
 ---
 
-ReMe 为智能体提供统一的记忆系统——支持在用户、任务与智能体之间提取、复用与共享记忆。
+ReMe 是一个**模块化的记忆管理工具包**，为 AI 智能体提供统一的记忆能力——支持在用户、任务与智能体之间提取、复用与共享记忆。
 
 智能体的记忆可以被视为：
 
@@ -29,12 +27,16 @@ Agent Memory = Long-Term Memory + Short-Term Memory
              = (Personal + Task + Tool) Memory + (Working Memory)
 ```
 
-其中，个人记忆用于「理解用户偏好」，任务记忆用于「提升任务表现」，工具记忆用于「更聪明地使用工具」，而工作记忆则通过保持近期推理与工具结果的紧凑表示，在不爆上下文窗口的前提下，提供「短期上下文记忆」。
+- **个人记忆（Personal Memory）**：理解用户偏好并适应上下文
+- **任务记忆（Task Memory）**：从经验中学习并在类似任务中表现更好
+- **工具记忆（Tool Memory）**：基于历史表现优化工具选择和参数使用
+- **工作记忆（Working Memory）**：管理长运行智能体的短期上下文，避免上下文溢出
 
 ---
 
 ## 📰 最新进展
 
+- **[2025-12]** 📄 我们的程序性（任务）记忆论文已在 [arXiv](https://arxiv.org/abs/2512.10696) 发布
 - **[2025-11]** 🧠 基于工作记忆的 react-agent demo（[介绍](docs/work_memory/message_offload.md)、[Quick Start](docs/cookbook/working/quick_start.md)、[代码](cookbook/working_memory/work_memory_demo.py)）
 - **[2025-10]** 🚀 直接 Python 导入：支持 `from reme_ai import ReMeApp`，无需 HTTP/MCP 服务
 - **[2025-10]** 🔧 工具记忆：支持基于数据驱动的工具选择与参数优化（[指南](docs/tool_memory/tool_memory.md)）
@@ -50,12 +52,12 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 ## ✨ 架构设计
 
 <p align="center">
- <img src="docs/_static/figure/reme_usage.jpg" alt="ReMe 使用示意" width="100%">
+ <img src="docs/_static/figure/reme_structure.jpg" alt="ReMe 架构" width="80%">
 </p>
 
-ReMe 集成三类长期记忆能力与一类短期工作记忆能力：
+ReMe 提供了一个**模块化的记忆管理工具包**，具有可插拔的组件，可以集成到任何智能体框架中。系统包括：
 
-#### 🧠 任务记忆 / 经验记忆（Task Memory/Experience）
+#### 🧠 **任务记忆 / 经验记忆（Task Memory/Experience）**
 
 可在不同智能体之间复用的程序性知识：
 
@@ -66,7 +68,7 @@ ReMe 集成三类长期记忆能力与一类短期工作记忆能力：
 
 了解如何使用任务记忆可参考：[任务记忆文档](docs/task_memory/task_memory.md)
 
-#### 👤 个人记忆（Personal Memory）
+#### 👤 **个人记忆（Personal Memory）**
 
 面向特定用户的情境化长期记忆：
 
@@ -77,7 +79,7 @@ ReMe 集成三类长期记忆能力与一类短期工作记忆能力：
 
 了解如何使用个人记忆可参考：[个人记忆文档](docs/personal_memory/personal_memory.md)
 
-#### 🔧 工具记忆（Tool Memory）
+#### 🔧 **工具记忆（Tool Memory）**
 
 基于真实调用数据的工具选择与使用优化：
 
@@ -88,12 +90,11 @@ ReMe 集成三类长期记忆能力与一类短期工作记忆能力：
 
 了解如何使用工具记忆可参考：[工具记忆文档](docs/tool_memory/tool_memory.md)
 
-#### 🧠 工作记忆（Working Memory）
+#### 🧠 **工作记忆（Working Memory）**
 
-面向长流程与长对话智能体的短期上下文记忆，通过 **消息卸载与重载（message offload & reload）** 来实现：
-
-- **消息卸载（Message Offload）**：将体积巨大的工具输出压缩为外部文件路径或 LLM 摘要，减轻上下文压力
-- **消息重载（Message Reload）**：通过 `grep_working_memory` 与 `read_working_memory` 等操作，在需要时检索并读取已卸载内容
+面向长流程智能体的短期上下文记忆，通过**消息卸载与重载（message offload & reload）**实现：
+- **消息卸载（Message Offload）**：将体积巨大的工具输出压缩为外部文件或 LLM 摘要
+- **消息重载（Message Reload）**：按需搜索（`grep_working_memory`）并读取（`read_working_memory`）已卸载的内容
 
 📖 **概念与 API：**
 - 消息卸载概览：[Message Offload](docs/work_memory/message_offload.md)
@@ -653,14 +654,16 @@ curl -X POST http://localhost:8002/summary_working_memory \
 
 ## 📦 开箱即用的记忆库
 
-ReMe 提供可直接挂载到智能体中的预构建记忆，内含已验证的最佳实践：
+ReMe 提供一个**记忆库**，包含预先提取的、生产就绪的记忆，智能体可以立即加载和使用：
 
-### 可用记忆
+### 可用记忆包
 
-- **`appworld.jsonl`**：Appworld 智能体交互记忆，覆盖复杂任务规划与执行模式
-- **`bfcl_v3.jsonl`**：BFCL 工具调用相关的工作记忆
+| 记忆包                | 领域       | 规模           | 描述                                                   |
+|----------------------|------------|----------------|--------------------------------------------------------|
+| **`appworld.jsonl`** | 任务执行   | ~100 条记忆    | 复杂任务规划模式、多步骤工作流和错误恢复策略              |
+| **`bfcl_v3.jsonl`**  | 工具使用   | ~150 条记忆    | 函数调用模式、参数优化和工具选择策略                      |
 
-### 快速使用
+### 加载预构建记忆
 
 ```python
 # 加载内置记忆
@@ -719,7 +722,7 @@ if __name__ == "__main__":
 
 ## 🧪 实验结果
 
-### 🌍 Appworld 实验（qwen3-8b）
+### 🌍 [Appworld 实验](docs/cookbook/appworld/quickstart.md)
 
 我们在 Appworld 环境上使用 qwen3-8b 进行评测：
 
@@ -730,9 +733,10 @@ if __name__ == "__main__":
 
 Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1）的概率。
 当前实验使用的是内部 AppWorld 环境，可能与对外版本存在轻微差异。
+
 关于如何复现实验的更多细节，见 [quickstart.md](docs/cookbook/appworld/quickstart.md)。
 
-### 🧊 Frozenlake 实验（qwen3-8b）
+### 🧊 [Frozenlake 实验](docs/cookbook/frozenlake/quickstart.md)
 
 |                                             无 ReMe                                              |                                              使用 ReMe                                               |
 |:------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------:|
@@ -747,7 +751,7 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
 
 更多复现实验细节见 [quickstart.md](docs/cookbook/frozenlake/quickstart.md)。
 
-### 🔧 BFCL-V3 实验
+### 🔧 [BFCL-V3 实验](docs/cookbook/bfcl/quickstart.md)
 
 我们在 BFCL-V3 multi-turn-base 任务（随机划分 50 train / 150 val）上，使用 qwen3-8b 进行评测：
 
@@ -756,7 +760,7 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
 | 无 ReMe    | 0.2472              | 0.2733              | 0.2922              |
 | 使用 ReMe  | 0.3061 **(+5.89%)** | 0.3500 **(+7.67%)** | 0.3888 **(+9.66%)** |
 
-### 🛠️ 工具记忆基准（Tool Memory Benchmark）
+### 🛠️ [工具记忆基准](docs/tool_memory/tool_bench.md)
 
 我们在一个受控基准上，使用三个模拟搜索工具与 Qwen3-30B-Instruct 评估工具记忆的效果：
 
@@ -776,38 +780,54 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
 
 ## 📚 资源
 
-- **Quick Start 示例**：`./cookbook/simple_demo`
-  - 工具记忆 Demo：`cookbook/simple_demo/use_tool_memory_demo.py`，演示工具记忆的完整生命周期
-  - 工具记忆基准：`cookbook/tool_memory/run_reme_tool_bench.py`，用于评估工具记忆效果
-- **向量库配置指南**：`docs/vector_store_api_guide.md`，介绍本地 / 外部向量库的配置与使用
-- **MCP 使用指南**：`docs/mcp_quick_start.md`，教你如何创建 MCP 服务
-- **个人记忆 / 任务记忆 / 工具记忆文档**：`docs/personal_memory`、`docs/task_memory`、`docs/tool_memory` 中包含算子说明与可配置流程
-- **案例集**：`./cookbook` 中包含多种真实场景与最佳实践
+### 快速入门
+- **[Quick Start](./cookbook/simple_demo)**：实用示例，可立即使用
+  - [工具记忆 Demo](cookbook/simple_demo/use_tool_memory_demo.py)：工具记忆的完整生命周期演示
+  - [工具记忆基准](cookbook/tool_memory/run_reme_tool_bench.py)：评估工具记忆效果
+
+### 集成指南
+- **[直接 Python 导入](docs/cookbook/working/quick_start.md)**：将 ReMe 直接嵌入到你的智能体代码中
+- **[HTTP 服务 API](docs/vector_store_api_guide.md)**：用于多智能体系统的 RESTful API
+- **[MCP 协议](docs/mcp_quick_start.md)**：与 Claude Desktop 和 MCP 兼容客户端集成
+
+### 记忆系统配置
+- **[个人记忆](docs/personal_memory)**：用户偏好学习和上下文自适应
+- **[任务记忆](docs/task_memory)**：程序性知识提取和复用
+- **[工具记忆](docs/tool_memory)**：数据驱动的工具选择和优化
+- **[工作记忆](docs/work_memory/message_offload.md)**：长流程智能体的短期上下文管理
+
+### 高级主题
+- **[算子管道](reme_ai/config/default.yaml)**：通过修改算子链来自定义记忆处理工作流
+- **[向量存储后端](docs/vector_store_api_guide.md)**：配置本地、Elasticsearch、Qdrant 或 ChromaDB 存储
+- **[案例集](./cookbook)**：真实场景的用例和最佳实践
 
 ---
 
 ## ⭐ 社区与支持
 
 - **Star & Watch**：Star 可以让更多智能体开发者发现 ReMe；Watch 能帮助你第一时间获知新版本与特性。
-- **分享你的成果**：欢迎在 Issue 或 Discussion 中分享 ReMe 为你的智能体带来的提升，我们非常乐意展示优秀案例。
-- **需要新功能？** 提交 Feature Request 或 PR，一起把记忆系统打磨得更强大、更好用。
+- **分享你的成果**：在 Issue 或 Discussion 中分享 ReMe 为你的智能体解锁了什么——我们非常乐意展示社区的优秀案例。
+- **需要新功能？** 提交 Feature Request，我们将一起完善它。
 
 ---
 
 ## 🤝 参与贡献
 
-我们相信，最好的记忆系统来自社区与团队的共同打磨。非常欢迎各种形式的贡献，具体流程见 [贡献指南](docs/contribution.md)：
+我们相信，最好的记忆系统来自社区的集体智慧。欢迎贡献 👉[贡献指南](docs/contribution.md)：
 
 ### 代码贡献
 
-- 新算子与新工具开发
-- 后端实现与性能优化
-- API 增强与新端点设计
+- **新算子**：开发自定义记忆处理算子（检索、总结等）
+- **后端实现**：添加对新向量存储或 LLM 提供商的支持
+- **记忆服务**：扩展新的记忆类型或能力
+- **API 增强**：改进现有端点或添加新端点
 
 ### 文档改进
 
-- 使用示例与实战教程
-- 最佳实践经验分享
+- **集成示例**：展示如何将 ReMe 与不同智能体框架集成
+- **算子教程**：记录自定义算子开发
+- **最佳实践指南**：分享有效的记忆管理模式
+- **用例研究**：展示 ReMe 在实际应用中的使用
 
 ---
 
@@ -816,9 +836,34 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
 ```bibtex
 @software{AgentscopeReMe2025,
   title = {AgentscopeReMe: Memory Management Kit for Agents},
-  author = {Li Yu, Jiaji Deng, Zouying Cao},
+  author = {Li Yu and
+            Jiaji Deng and
+            Zouying Cao and
+            Weikang Zhou and
+            Tiancheng Qin and
+            Qingxu Fu and
+            Sen Huang and
+            Xianzhe Xu and
+            Zhaoyang Liu and
+            Boyin Liu},
   url = {https://reme.agentscope.io},
   year = {2025}
+}
+
+@misc{AgentscopeReMe2025Paper,
+  title={Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution},
+  author={Zouying Cao and
+          Jiaji Deng and
+          Li Yu and
+          Weikang Zhou and
+          Zhaoyang Liu and
+          Bolin Ding and
+          Hai Zhao},
+  year={2025},
+  eprint={2512.10696},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI},
+  url={https://arxiv.org/abs/2512.10696},
 }
 ```
 
@@ -833,6 +878,3 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
 ## Star 历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=agentscope-ai/ReMe&type=Date)](https://www.star-history.com/#agentscope-ai/ReMe&Date)
-
-
-

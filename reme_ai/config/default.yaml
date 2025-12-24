@@ -14,7 +14,7 @@ http:
 
 flow:
   retrieve_task_memory:
-    flow_content: BuildQueryOp() >> RecallVectorStoreOp() >> RerankMemoryOp(enable_llm_rerank=True, enable_score_filter=False, top_k=5) >> RewriteMemoryOp(enable_llm_rewrite=True)
+    flow_content: BuildQueryOp() >> RecallVectorStoreOp() >> RerankMemoryOp(enable_llm_rerank=False, enable_score_filter=False, top_k=5) >> RewriteMemoryOp(enable_llm_rewrite=False)
     description: "Retrieves the most relevant top-k memory experiences from historical data based on the current query to enhance task-solving capabilities"
     input_schema:
       query:

@@ -36,7 +36,7 @@ class AppworldReactAgent:
         model_name: str = "qwen3-8b",
         temperature: float = 0.9,
         max_interactions: int = 30,
-        max_response_size: int = 2048,
+        max_response_size: int = 129024,
         num_trials: int = 1,
         use_memory: bool = False,
         use_memory_addition: bool = False,
@@ -112,7 +112,7 @@ class AppworldReactAgent:
                     self.retrieved_memory_list[run_id][task_index] = response["metadata"]["memory_list"]
                     task_memory = response["answer"]
                     logger.info(f"loaded task_memory: {task_memory}")
-                    query = "Task:\n" + query + "\n\nSome Related Experience to help you to complete the task:\n" + task_memory
+                    query = "Task:\n" + query + "\n\nSome Related Experience to help you to complete the task:\n" + re.sub(r'(?i)\bMemory\s*(\d+)\s*[:]', r'Experience \1:', task_memory)
             else:
                 formatted_memories = []
                 for i, memory in enumerate(previous_memories, 1):
@@ -186,9 +186,9 @@ class AppworldReactAgent:
                         self.history[run_id][task_index].append({"role": "assistant", "content": code})
 
                         output = world.execute(code)
-                        if len(output) > self.max_response_size:
-                            # logger.warning(f"output exceed max size={len(output)}")
-                            output = output[: self.max_response_size]
+                        # if len(output) > self.max_response_size:
+                        #     # logger.warning(f"output exceed max size={len(output)}")
+                        #     output = output[: self.max_response_size]
                         self.history[run_id][task_index].append({"role": "user", "content": "Output:\n```\n" + output + "```\n\n"})
 
                         if world.task_completed():

@@ -65,10 +65,10 @@ reme \
 and then init the task memory pool:
 
 ```bash
-python init_exp_pool.py
+python init_task_memory_pool.py
 ```
 
-**Configuration options in `init_exp_pool.py`:**
+**Configuration options in `init_task_memory_pool.py`:**
 - `jsonl_file`: Path to the collloaded trajectories
 - `service_url`: ReMe service URL (default: `http://localhost:8002`)
 - `workspace_id`: Workspace ID for the task memory pool (default: `bfcl_test`)

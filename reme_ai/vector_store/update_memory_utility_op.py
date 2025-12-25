@@ -44,7 +44,13 @@ class UpdateMemoryUtilityOp(BaseAsyncOp):
         memory_dicts: List[dict] = self.context.memory_dicts
         update_utility = self.context.update_utility
 
-        if not memory_dicts or not update_utility:
+        if not memory_dicts:
+            logger.info("No memories to update utility")
+            return
+
+        if not update_utility:
+            self.context.response.metadata["memory_list"] = self.context.memory_list
+            self.context.response.metadata["deleted_memory_ids"] = self.context.deleted_memory_ids
             logger.info("No memories to update utility")
             return
 

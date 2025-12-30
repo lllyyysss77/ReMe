@@ -13,20 +13,41 @@ class TestModelDefinitions(unittest.TestCase):
 
     def test_tool_attr_serialization(self):
         """Test if ToolAttr correctly dumps to JSON schema format."""
+        # Test simple string attribute with enum
         attr = ToolAttr(
             type="string",
             description="The city name",
             enum=["Beijing", "London"],
-            required=True,
         )
         dump = attr.simple_input_dump()
 
-        print("\n=== ToolAttr.simple_input_dump() ===")
+        print("\n=== ToolAttr.simple_input_dump() (string with enum) ===")
         print(dump)
 
         self.assertEqual(dump["type"], "string")
         self.assertEqual(dump["enum"], ["Beijing", "London"])
         self.assertIn("description", dump)
+        
+        # Test object attribute with required child properties
+        obj_attr = ToolAttr(
+            type="object",
+            description="User information",
+            properties={
+                "name": ToolAttr(type="string", description="User name"),
+                "age": ToolAttr(type="number", description="User age"),
+            },
+            required=["name"],  # 'name' is required, 'age' is optional
+        )
+        obj_dump = obj_attr.simple_input_dump()
+        
+        print("\n=== ToolAttr.simple_input_dump() (object with required) ===")
+        print(obj_dump)
+        
+        self.assertEqual(obj_dump["type"], "object")
+        self.assertIn("properties", obj_dump)
+        self.assertEqual(obj_dump["required"], ["name"])
+        self.assertIn("name", obj_dump["properties"])
+        self.assertIn("age", obj_dump["properties"])
 
     def test_tool_call_initialization(self):
         """Test if ToolCall correctly parses raw OpenAI-style tool definitions."""
@@ -39,6 +60,7 @@ class TestModelDefinitions(unittest.TestCase):
                     "type": "object",
                     "properties": {
                         "location": {"type": "string", "description": "City name"},
+                        "unit": {"type": "string", "description": "Temperature unit"},
                     },
                     "required": ["location"],
                 },
@@ -54,7 +76,10 @@ class TestModelDefinitions(unittest.TestCase):
 
         self.assertEqual(tc.name, "get_weather")
         self.assertIn("location", tc.input_schema)
-        self.assertTrue(tc.input_schema["location"].required)
+        self.assertIn("unit", tc.input_schema)
+        # Check that 'location' is in the required list at ToolCall level
+        self.assertIn("location", tc.input_required)
+        self.assertNotIn("unit", tc.input_required)
 
     def test_tool_call_argument_parsing(self):
         """Test JSON argument parsing and validation."""
@@ -128,7 +153,10 @@ class TestModelDefinitions(unittest.TestCase):
             description="adds numbers",
             inputSchema={
                 "type": "object",
-                "properties": {"a": {"type": "number"}},
+                "properties": {
+                    "a": {"type": "number", "description": "First number"},
+                    "b": {"type": "number", "description": "Second number"},
+                },
                 "required": ["a"],
             },
         )
@@ -142,7 +170,11 @@ class TestModelDefinitions(unittest.TestCase):
         print(tc.simple_output_dump())
 
         self.assertEqual(tc.name, "calculator")
-        self.assertTrue(tc.input_schema["a"].required)
+        self.assertIn("a", tc.input_schema)
+        self.assertIn("b", tc.input_schema)
+        # Check that 'a' is in the required list
+        self.assertIn("a", tc.input_required)
+        self.assertNotIn("b", tc.input_required)
 
         # From ToolCall back to MCP structure (via to_mcp_tool)
         # Note: This checks the logic of constructing the dict for Tool(...)
@@ -155,6 +187,8 @@ class TestModelDefinitions(unittest.TestCase):
 
         self.assertEqual(mcp_compatible.name, "calculator")
         self.assertIn("a", mcp_compatible.inputSchema["properties"])
+        self.assertIn("b", mcp_compatible.inputSchema["properties"])
+        self.assertEqual(mcp_compatible.inputSchema["required"], ["a"])
 
 
 if __name__ == "__main__":

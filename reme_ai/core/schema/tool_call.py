@@ -1,158 +1,153 @@
-"""Model definitions for MCP tools and LLM tool call interactions."""
-
+"""
+MCP Tool Schema definitions for recursive JSON Schema representation.
+"""
 import json
-from typing import Dict, Literal, Any
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from mcp.types import Tool
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-TOOL_ATTR_TYPE = Literal["string", "array", "integer", "number", "boolean", "object"]
+from ..enumeration.json_schema_enum import JsonSchemaEnum
 
 
 class ToolAttr(BaseModel):
-    """Represent attributes for tool parameters in a JSON schema format."""
-
-    type: TOOL_ATTR_TYPE = Field(default="string", description="Attribute data type")
-    description: str = Field(default="", description="Attribute purpose")
-    required: bool = Field(default=True, description="Whether the attribute is mandatory")
-    enum: list[str] | None = Field(default=None, description="Allowed values")
-    items: dict[str, Any] | None = Field(default=None, description="Schema for array items")
-
+    """Recursive model representing JSON Schema attributes for tool parameters."""
     model_config = ConfigDict(extra="allow")
 
+    type: Literal[
+        JsonSchemaEnum.STRING.value,
+        JsonSchemaEnum.NUMBER.value,
+        JsonSchemaEnum.INTEGER.value,
+        JsonSchemaEnum.OBJECT.value,
+        JsonSchemaEnum.ARRAY.value,
+        JsonSchemaEnum.BOOLEAN.value,
+        JsonSchemaEnum.NULL.value,
+    ] = Field(
+        default=JsonSchemaEnum.STRING.value, 
+        description="The data type of the attribute"
+    )
+    description: Optional[str] = Field(default=None, description="Description of the attribute")
+    required: Optional[List[str]] = Field(default=None, description="Required property names for object types")
+    properties: Optional[Dict[str, "ToolAttr"]] = Field(default=None, description="Child properties for objects")
+    items: Optional[Union[Dict[str, Any], "ToolAttr"]] = Field(default=None, description="Schema for array items")
+    enum: Optional[List[str]] = Field(default=None, description="Allowed values for the attribute")
+
+
     def simple_input_dump(self) -> dict:
-        """Export attribute as a standard JSON schema property dictionary."""
-        res: dict = {"type": self.type, "description": self.description}
+        """Serializes the attribute into a standard JSON Schema dictionary."""
+        res: dict = {"type": self.type}
+        if self.description:
+            res["description"] = self.description
         if self.enum:
             res["enum"] = self.enum
-        if self.items:
-            res["items"] = self.items
+
+        if self.type == "object" and self.properties:
+            res["properties"] = {k: v.simple_input_dump() if isinstance(v, ToolAttr) else v
+                                 for k, v in self.properties.items()}
+            if self.required:
+                res["required"] = self.required
+
+        if self.type == "array" and self.items:
+            res["items"] = self.items.simple_input_dump() if isinstance(self.items, ToolAttr) else self.items
+
         return res
 
 
-class ToolCall(BaseModel):
-    """
-    Handle tool definitions and execution arguments for LLM integrations.
-    input:
-    {
-        "type": "function",
-        "function": {
-            "name": "get_current_weather",
-            "description": "It is very useful when you want to check the weather of a specified city.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "Cities or counties, such as Beijing, Hangzhou, Yuhang District, etc.",
-                    }
-                },
-                "required": ["location"]
-            }
-        }
-    }
-    output:
-    {
-        "index": 0,
-        "id": "call_6596dafa2a6a46f7a217da",
-        "function": {
-            "arguments": "{\"location\": \"Beijing\"}",
-            "name": "get_current_weather"
-        },
-        "type": "function",
-    }
-    """
+# Enable recursive type resolution
+ToolAttr.model_rebuild()
 
-    index: int = Field(default=0)
-    id: str = Field(default="")
-    type: str = Field(default="function")
-    name: str = Field(default="")
-    arguments: str = Field(default="{}", description="JSON string of execution arguments")
-    description: str = Field(default="")
+
+class ToolCall(BaseModel):
+    """Model representing a tool definition and its call structure."""
+
+    index: int = 0
+    id: str = ""
+    type: str = "function"
+    name: str = ""
+    arguments: str = Field(default="", description="JSON string of tool execution arguments")
+    description: str = ""
     input_schema: Dict[str, ToolAttr] = Field(default_factory=dict)
+    input_required: List[str] = Field(default_factory=list)
     output_schema: Dict[str, ToolAttr] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
-    def init_tool_call(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Map raw API response data to the internal ToolCall structure."""
-        res = data.copy()
-        t_type = res.get("type", "function")
-        inner = res.get(t_type, {})
+    def init_tool_call(cls, data: dict) -> dict:
+        """Initializes the model by parsing tool-specific body data."""
+        data = data.copy()
+        t_type = data.get("type", "function")
+        body = data.get(t_type, {})
 
-        # Extract basic function metadata
-        for key in ("name", "arguments", "description"):
-            if key in inner:
-                res[key] = inner[key]
+        data["name"] = body.get("name", data.get("name", ""))
+        data["arguments"] = body.get("arguments", data.get("arguments", ""))
+        data["description"] = body.get("description", data.get("description", ""))
 
-        # Parse JSON schema parameters into ToolAttr objects
-        params = inner.get("parameters", {})
-        if params:
-            props = params.get("properties", {})
-            reqs = params.get("required", [])
-            res["input_schema"] = {k: ToolAttr(**v, required=k in reqs) for k, v in props.items()}
-        return res
+        if "parameters" in body:
+            params = body["parameters"]
+            data["input_required"] = params.get("required", [])
+            data["input_schema"] = {k: ToolAttr(**v) for k, v in params.get("properties", {}).items()}
 
-    @property
-    def argument_dict(self) -> dict:
-        """Parse the arguments string into a dictionary."""
-        return json.loads(self.arguments)
+        return data
 
-    def check_argument(self) -> bool:
-        """Verify if the arguments string is valid JSON."""
-        try:
-            _ = self.argument_dict
-            return True
-        except (json.JSONDecodeError, TypeError):
-            return False
-
-    @staticmethod
-    def _build_schema_dict(schema: Dict[str, ToolAttr]) -> dict:
-        """Construct a JSON schema object from a dictionary of ToolAttrs."""
+    def _build_full_schema(self) -> dict:
+        """Generates the top-level JSON Schema object for tool parameters."""
         return {
             "type": "object",
-            "properties": {k: v.simple_input_dump() for k, v in schema.items()},
-            "required": [k for k, v in schema.items() if v.required],
+            "properties": {k: v.simple_input_dump() for k, v in self.input_schema.items()},
+            "required": self.input_required,
         }
 
     def simple_input_dump(self) -> dict:
-        """Format the tool definition for LLM provider API requests."""
+        """Returns a standardized tool definition dictionary."""
         return {
             "type": self.type,
             self.type: {
                 "name": self.name,
                 "description": self.description,
-                "parameters": self._build_schema_dict(self.input_schema),
+                "parameters": self._build_full_schema(),
             },
-        }
-
-    def simple_output_dump(self) -> dict:
-        """Format the tool call result for LLM provider API responses."""
-        return {
-            "index": self.index,
-            "id": self.id,
-            "type": self.type,
-            self.type: {"arguments": self.arguments, "name": self.name},
         }
 
     @classmethod
     def from_mcp_tool(cls, tool: Tool) -> "ToolCall":
-        """Create a ToolCall instance from an MCP Tool object."""
-        props = tool.inputSchema.get("properties", {})
-        reqs = tool.inputSchema.get("required", [])
+        """Creates a ToolCall instance from an MCP Tool object."""
+        schema = tool.inputSchema
         return cls(
             name=tool.name,
             description=tool.description or "",
-            input_schema={k: ToolAttr(**v, required=k in reqs) for k, v in props.items()},
+            input_schema={k: ToolAttr(**v) for k, v in schema.get("properties", {}).items()},
+            input_required=schema.get("required", []),
         )
 
     def to_mcp_tool(self) -> Tool:
-        """Convert the current instance into an MCP Tool object."""
-        kwargs = {
-            "name": self.name,
-            "description": self.description,
-            "inputSchema": self._build_schema_dict(self.input_schema),
+        """Converts the instance back into an MCP Tool object."""
+        return Tool(
+            name=self.name,
+            description=self.description,
+            inputSchema=self._build_full_schema(),
+        )
+
+    @property
+    def argument_dict(self) -> dict:
+        """Parse and return arguments as a dictionary."""
+        return json.loads(self.arguments)
+
+    def check_argument(self) -> bool:
+        """Check if arguments can be parsed as valid JSON."""
+        try:
+            _ = self.argument_dict
+            return True
+        except Exception:
+            return False
+
+    def simple_output_dump(self) -> dict:
+        """Convert ToolCall to output format dictionary for API responses."""
+        return {
+            "index": self.index,
+            "id": self.id,
+            self.type: {
+                "arguments": self.arguments,
+                "name": self.name,
+            },
+            "type": self.type,
         }
-        if self.output_schema:
-            kwargs["outputSchema"] = self._build_schema_dict(self.output_schema)
-        return Tool(**kwargs)

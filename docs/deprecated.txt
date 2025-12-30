@@ -1,6 +1,7 @@
 from loguru import logger
 
 用英文注释，完善module/class/function docstring，要一句话简洁，不要变更代码
+用英文注释，完善module/class/function docstring，要一句话简洁，代码要简洁，符合pep和pylint规范
 C0114: Missing module docstring (missing-module-docstring)
 C0115: Missing class docstring (missing-class-docstring)
 C0116: Missing function or method docstring (missing-function-docstring)

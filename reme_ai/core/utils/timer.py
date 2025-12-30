@@ -45,7 +45,7 @@ def timer(func: F) -> F:
             # Use patch to inject metadata instead of relying on stack depth
             logger.patch(patcher).info(
                 "========== cost={:.6f}s ==========",
-                duration
+                duration,
             )
 
     @functools.wraps(func)
@@ -58,7 +58,7 @@ def timer(func: F) -> F:
             duration = time.perf_counter() - start_time
             logger.patch(patcher).info(
                 "========== cost={:.6f}s ==========",
-                duration
+                duration,
             )
 
     if inspect.iscoroutinefunction(func):

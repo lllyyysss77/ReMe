@@ -62,6 +62,34 @@ class ToolCall(BaseModel):
     """
     Model representing a tool definition and its call structure.
     Supports parsing from standard JSON Schema formats and converting to MCP Tool objects.
+    input:
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "It is very useful when you want to check the weather of a specified city.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "Cities or counties, such as Beijing, Hangzhou, Yuhang District, etc.",
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+    output:
+    {
+        "index": 0,
+        "id": "call_6596dafa2a6a46f7a217da",
+        "function": {
+            "arguments": "{\"location\": \"Beijing\"}",
+            "name": "get_current_weather"
+        },
+        "type": "function",
+    }
     """
 
     index: int = 0

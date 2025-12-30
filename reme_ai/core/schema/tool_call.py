@@ -1,7 +1,7 @@
 """Model definitions for MCP tools and LLM tool call interactions."""
 
 import json
-from typing import Dict, List, Literal, Optional, Any
+from typing import Dict, Literal, Any
 
 from mcp.types import Tool
 from pydantic import BaseModel, Field, model_validator, ConfigDict
@@ -15,8 +15,8 @@ class ToolAttr(BaseModel):
     type: TOOL_ATTR_TYPE = Field(default="string", description="Attribute data type")
     description: str = Field(default="", description="Attribute purpose")
     required: bool = Field(default=True, description="Whether the attribute is mandatory")
-    enum: Optional[List[str]] = Field(default=None, description="Allowed values")
-    items: Dict[str, Any] = Field(default_factory=dict, description="Schema for array items")
+    enum: list[str] | None = Field(default=None, description="Allowed values")
+    items: dict[str, Any] | None = Field(default=None, description="Schema for array items")
 
     model_config = ConfigDict(extra="allow")
 
@@ -31,7 +31,37 @@ class ToolAttr(BaseModel):
 
 
 class ToolCall(BaseModel):
-    """Handle tool definitions and execution arguments for LLM integrations."""
+    """
+    Handle tool definitions and execution arguments for LLM integrations.
+    input:
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "It is very useful when you want to check the weather of a specified city.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "Cities or counties, such as Beijing, Hangzhou, Yuhang District, etc.",
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+    output:
+    {
+        "index": 0,
+        "id": "call_6596dafa2a6a46f7a217da",
+        "function": {
+            "arguments": "{\"location\": \"Beijing\"}",
+            "name": "get_current_weather"
+        },
+        "type": "function",
+    }
+    """
 
     index: int = Field(default=0)
     id: str = Field(default="")

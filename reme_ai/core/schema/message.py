@@ -11,7 +11,31 @@ from ..enumeration import Role
 
 
 class ContentBlock(BaseModel):
-    """Individual unit of multi-modal content like text, images, or video."""
+    """
+    Individual unit of multi-modal content like text, images, or video.
+    examples:
+    {
+        "type": "image_url",
+        "image_url": {
+            "url": "https://img.alicdn.com/imgextra/i1/O1CN01gDEY8M1W114Hi3XcN_!!6000000002727-0-tps-1024-406.jpg"
+        },
+    }
+
+    {
+        "type": "video",
+        "video": [
+            "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/xzsgiz/football1.jpg",
+            "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/tdescd/football2.jpg",
+            "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/zefdja/football3.jpg",
+            "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/aedbqh/football4.jpg",
+        ],
+    }
+
+    {
+        "type": "text",
+        "text": "How do you solve this problem?"
+    }
+    """
 
     model_config = ConfigDict(extra="allow")
 

@@ -3,10 +3,10 @@ MCP Tool Schema definitions for recursive JSON Schema representation.
 """
 
 import json
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from mcp.types import Tool
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 from ..enumeration.json_schema_enum import JsonSchemaEnum
 
@@ -16,23 +16,22 @@ class ToolAttr(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    type: Literal[
-        JsonSchemaEnum.STRING.value,
-        JsonSchemaEnum.NUMBER.value,
-        JsonSchemaEnum.INTEGER.value,
-        JsonSchemaEnum.OBJECT.value,
-        JsonSchemaEnum.ARRAY.value,
-        JsonSchemaEnum.BOOLEAN.value,
-        JsonSchemaEnum.NULL.value,
-    ] = Field(
-        default=JsonSchemaEnum.STRING.value,
-        description="The data type of the attribute",
-    )
+    type: str = Field(default=JsonSchemaEnum.STRING.value, description="The data type of the attribute")
     description: Optional[str] = Field(default=None, description="Description of the attribute")
     required: Optional[List[str]] = Field(default=None, description="Required property names for object types")
     properties: Optional[Dict[str, "ToolAttr"]] = Field(default=None, description="Child properties for objects")
     items: Optional[Union[Dict[str, Any], "ToolAttr"]] = Field(default=None, description="Schema for array items")
     enum: Optional[List[str]] = Field(default=None, description="Allowed values for the attribute")
+
+    @field_validator("type")
+    @classmethod
+    def validate_type_is_valid_enum(cls, v: str) -> str:
+        """Validates that the provided type string exists within JsonSchemaEnum values."""
+        valid_types = [e.value for e in JsonSchemaEnum]
+
+        if v not in valid_types:
+            raise ValueError(f"Invalid type: '{v}'. Must be one of {valid_types}")
+        return v
 
     def simple_input_dump(self) -> dict:
         """Serializes the attribute into a standard JSON Schema dictionary."""
@@ -60,17 +59,28 @@ ToolAttr.model_rebuild()
 
 
 class ToolCall(BaseModel):
-    """Model representing a tool definition and its call structure."""
+    """
+    Model representing a tool definition and its call structure.
+    Supports parsing from standard JSON Schema formats and converting to MCP Tool objects.
+    """
 
     index: int = 0
     id: str = ""
     type: str = "function"
     name: str = ""
-    arguments: str = Field(default="", description="JSON string of tool execution arguments")
     description: str = ""
-    input_schema: Dict[str, ToolAttr] = Field(default_factory=dict)
-    input_required: List[str] = Field(default_factory=list)
-    output_schema: Dict[str, ToolAttr] = Field(default_factory=dict)
+
+    arguments: str = Field(default="", description="JSON string of tool execution arguments")
+
+    parameters: ToolAttr = Field(
+        default_factory=lambda: ToolAttr(type="object", properties={}, required=[]),
+        description="Specification for input parameters",
+    )
+
+    output: ToolAttr = Field(
+        default_factory=lambda: ToolAttr(type="object", properties={}),
+        description="Specification for the execution result (Schema)",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -80,24 +90,23 @@ class ToolCall(BaseModel):
         t_type = data.get("type", "function")
         body = data.get(t_type, {})
 
+        # Extract basic metadata
         data["name"] = body.get("name", data.get("name", ""))
         data["arguments"] = body.get("arguments", data.get("arguments", ""))
         data["description"] = body.get("description", data.get("description", ""))
 
+        # Handle parameters mapping
         if "parameters" in body:
             params = body["parameters"]
-            data["input_required"] = params.get("required", [])
-            data["input_schema"] = {k: ToolAttr(**v) for k, v in params.get("properties", {}).items()}
+            # If parameters is already a dict, ensure it matches ToolAttr structure
+            if isinstance(params, dict):
+                data["parameters"] = ToolAttr(**params)
+
+        # Handle output mapping (if provided in source)
+        if "output" in body and isinstance(body["output"], dict):
+            data["output"] = ToolAttr(**body["output"])
 
         return data
-
-    def _build_full_schema(self) -> dict:
-        """Generates the top-level JSON Schema object for tool parameters."""
-        return {
-            "type": "object",
-            "properties": {k: v.simple_input_dump() for k, v in self.input_schema.items()},
-            "required": self.input_required,
-        }
 
     def simple_input_dump(self) -> dict:
         """Returns a standardized tool definition dictionary."""
@@ -106,19 +115,18 @@ class ToolCall(BaseModel):
             self.type: {
                 "name": self.name,
                 "description": self.description,
-                "parameters": self._build_full_schema(),
+                "parameters": self.parameters.simple_input_dump(),
             },
         }
 
     @classmethod
     def from_mcp_tool(cls, tool: Tool) -> "ToolCall":
         """Creates a ToolCall instance from an MCP Tool object."""
-        schema = tool.inputSchema
+        # MCP Tool inputSchema maps directly to our parameters ToolAttr
         return cls(
             name=tool.name,
             description=tool.description or "",
-            input_schema={k: ToolAttr(**v) for k, v in schema.get("properties", {}).items()},
-            input_required=schema.get("required", []),
+            parameters=ToolAttr(**tool.inputSchema),
         )
 
     def to_mcp_tool(self) -> Tool:
@@ -126,7 +134,7 @@ class ToolCall(BaseModel):
         return Tool(
             name=self.name,
             description=self.description,
-            inputSchema=self._build_full_schema(),
+            inputSchema=self.parameters.simple_input_dump(),
         )
 
     @property

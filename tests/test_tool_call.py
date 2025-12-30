@@ -28,7 +28,7 @@ def test_simple_schema():
     # 解析
     tool_call = ToolCall.model_validate(raw_definition)
     print(f"工具名称: {tool_call.name}")
-    print(f"必填参数: {tool_call.input_required}")
+    print(f"必填参数: {tool_call.parameters.required}")
 
     # 导出并验证相等性
     dumped_data = tool_call.simple_input_dump()
@@ -73,9 +73,9 @@ def test_medium_nested_schema():
     # 解析
     tool_call = ToolCall.model_validate(raw_definition)
     print(f"工具名称: {tool_call.name}")
-    print(f"根级必填项: {tool_call.input_required}")
+    print(f"根级必填项: {tool_call.parameters.required}")
 
-    customer_attr = tool_call.input_schema["customer"]
+    customer_attr = tool_call.parameters.properties["customer"]
     print(f"Customer 子属性: {list(customer_attr.properties.keys())}")
     print(f"Customer 必填项: {customer_attr.required}")
 
@@ -134,10 +134,10 @@ def test_nested_schema():
     tool_call = ToolCall.model_validate(raw_definition)
 
     print(f"工具名称: {tool_call.name}")
-    print(f"根级必填项: {tool_call.input_required}")
+    print(f"根级必填项: {tool_call.parameters.required}")
 
     # 验证嵌套深度
-    metadata_attr = tool_call.input_schema["metadata"]
+    metadata_attr = tool_call.parameters.properties["metadata"]
     print(f"Metadata 子属性: {list(metadata_attr.properties.keys())}")
     print(f"Metadata 必填项: {metadata_attr.required}")
 
@@ -189,9 +189,9 @@ def test_array_of_primitives():
     # 解析
     tool_call = ToolCall.model_validate(raw_definition)
     print(f"工具名称: {tool_call.name}")
-    print(f"必填参数: {tool_call.input_required}")
+    print(f"必填参数: {tool_call.parameters.required}")
 
-    file_paths_attr = tool_call.input_schema["file_paths"]
+    file_paths_attr = tool_call.parameters.properties["file_paths"]
     print(f"file_paths 类型: {file_paths_attr.type}")
     t_items_type = file_paths_attr.items.type if hasattr(file_paths_attr.items, "type") else file_paths_attr.items
     print(f"file_paths items 类型: {t_items_type}")
@@ -267,9 +267,9 @@ def test_deep_nested_schema():
     # 解析
     tool_call = ToolCall.model_validate(raw_definition)
     print(f"工具名称: {tool_call.name}")
-    print(f"根级必填项: {tool_call.input_required}")
+    print(f"根级必填项: {tool_call.parameters.required}")
 
-    team_attr = tool_call.input_schema["team"]
+    team_attr = tool_call.parameters.properties["team"]
     leader_attr = team_attr.properties["leader"]
     contact_attr = leader_attr.properties["contact"]
     print(f"Team 必填项: {team_attr.required}")
@@ -330,13 +330,13 @@ def test_mixed_types_schema():
     # 解析
     tool_call = ToolCall.model_validate(raw_definition)
     print(f"工具名称: {tool_call.name}")
-    print(f"根级必填项: {tool_call.input_required}")
+    print(f"根级必填项: {tool_call.parameters.required}")
 
     # 验证各种类型
-    print(f"enabled 类型: {tool_call.input_schema['enabled'].type}")
-    print(f"max_connections 类型: {tool_call.input_schema['max_connections'].type}")
-    print(f"timeout 类型: {tool_call.input_schema['timeout'].type}")
-    print(f"mode 枚举值: {tool_call.input_schema['mode'].enum}")
+    print(f"enabled 类型: {tool_call.parameters.properties['enabled'].type}")
+    print(f"max_connections 类型: {tool_call.parameters.properties['max_connections'].type}")
+    print(f"timeout 类型: {tool_call.parameters.properties['timeout'].type}")
+    print(f"mode 枚举值: {tool_call.parameters.properties['mode'].enum}")
 
     # 导出并验证相等性
     dumped_data = tool_call.simple_input_dump()

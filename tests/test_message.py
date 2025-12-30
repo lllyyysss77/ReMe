@@ -75,11 +75,11 @@ class TestModelDefinitions(unittest.TestCase):
         print(tc.simple_output_dump())
 
         self.assertEqual(tc.name, "get_weather")
-        self.assertIn("location", tc.input_schema)
-        self.assertIn("unit", tc.input_schema)
+        self.assertIn("location", tc.parameters.properties)
+        self.assertIn("unit", tc.parameters.properties)
         # Check that 'location' is in the required list at ToolCall level
-        self.assertIn("location", tc.input_required)
-        self.assertNotIn("unit", tc.input_required)
+        self.assertIn("location", tc.parameters.required)
+        self.assertNotIn("unit", tc.parameters.required)
 
     def test_tool_call_argument_parsing(self):
         """Test JSON argument parsing and validation."""
@@ -170,11 +170,11 @@ class TestModelDefinitions(unittest.TestCase):
         print(tc.simple_output_dump())
 
         self.assertEqual(tc.name, "calculator")
-        self.assertIn("a", tc.input_schema)
-        self.assertIn("b", tc.input_schema)
+        self.assertIn("a", tc.parameters.properties)
+        self.assertIn("b", tc.parameters.properties)
         # Check that 'a' is in the required list
-        self.assertIn("a", tc.input_required)
-        self.assertNotIn("b", tc.input_required)
+        self.assertIn("a", tc.parameters.required)
+        self.assertNotIn("b", tc.parameters.required)
 
         # From ToolCall back to MCP structure (via to_mcp_tool)
         # Note: This checks the logic of constructing the dict for Tool(...)

@@ -1,6 +1,7 @@
 """
 MCP Tool Schema definitions for recursive JSON Schema representation.
 """
+
 import json
 from typing import Any, Dict, List, Literal, Optional, Union
 
@@ -12,6 +13,7 @@ from ..enumeration.json_schema_enum import JsonSchemaEnum
 
 class ToolAttr(BaseModel):
     """Recursive model representing JSON Schema attributes for tool parameters."""
+
     model_config = ConfigDict(extra="allow")
 
     type: Literal[
@@ -23,15 +25,14 @@ class ToolAttr(BaseModel):
         JsonSchemaEnum.BOOLEAN.value,
         JsonSchemaEnum.NULL.value,
     ] = Field(
-        default=JsonSchemaEnum.STRING.value, 
-        description="The data type of the attribute"
+        default=JsonSchemaEnum.STRING.value,
+        description="The data type of the attribute",
     )
     description: Optional[str] = Field(default=None, description="Description of the attribute")
     required: Optional[List[str]] = Field(default=None, description="Required property names for object types")
     properties: Optional[Dict[str, "ToolAttr"]] = Field(default=None, description="Child properties for objects")
     items: Optional[Union[Dict[str, Any], "ToolAttr"]] = Field(default=None, description="Schema for array items")
     enum: Optional[List[str]] = Field(default=None, description="Allowed values for the attribute")
-
 
     def simple_input_dump(self) -> dict:
         """Serializes the attribute into a standard JSON Schema dictionary."""
@@ -42,8 +43,9 @@ class ToolAttr(BaseModel):
             res["enum"] = self.enum
 
         if self.type == "object" and self.properties:
-            res["properties"] = {k: v.simple_input_dump() if isinstance(v, ToolAttr) else v
-                                 for k, v in self.properties.items()}
+            res["properties"] = {
+                k: v.simple_input_dump() if isinstance(v, ToolAttr) else v for k, v in self.properties.items()
+            }
             if self.required:
                 res["required"] = self.required
 

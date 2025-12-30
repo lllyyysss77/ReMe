@@ -1,3 +1,5 @@
+"""simple tool call test"""
+
 import json
 
 from reme_ai.core.schema.tool_call import ToolCall
@@ -16,11 +18,11 @@ def test_simple_schema():
                 "type": "object",
                 "properties": {
                     "city": {"type": "string", "description": "城市名称"},
-                    "unit": {"type": "string", "description": "温度单位", "enum": ["celsius", "fahrenheit"]}
+                    "unit": {"type": "string", "description": "温度单位", "enum": ["celsius", "fahrenheit"]},
                 },
-                "required": ["city"]
-            }
-        }
+                "required": ["city"],
+            },
+        },
     }
 
     # 解析
@@ -58,14 +60,14 @@ def test_medium_nested_schema():
                         "properties": {
                             "name": {"type": "string", "description": "客户姓名"},
                             "email": {"type": "string", "description": "客户邮箱"},
-                            "phone": {"type": "string", "description": "联系电话"}
+                            "phone": {"type": "string", "description": "联系电话"},
                         },
-                        "required": ["name", "email"]
-                    }
+                        "required": ["name", "email"],
+                    },
                 },
-                "required": ["order_id", "customer"]
-            }
-        }
+                "required": ["order_id", "customer"],
+            },
+        },
     }
 
     # 解析
@@ -106,9 +108,9 @@ def test_nested_schema():
                         "description": "用户元数据",
                         "properties": {
                             "age": {"type": "integer"},
-                            "location": {"type": "string"}
+                            "location": {"type": "string"},
                         },
-                        "required": ["age"]
+                        "required": ["age"],
                     },
                     "tags": {
                         "type": "array",
@@ -117,15 +119,15 @@ def test_nested_schema():
                             "type": "object",
                             "properties": {
                                 "tag_id": {"type": "string"},
-                                "level": {"type": "number"}
+                                "level": {"type": "number"},
                             },
-                            "required": ["tag_id"]
-                        }
-                    }
+                            "required": ["tag_id"],
+                        },
+                    },
                 },
-                "required": ["username", "metadata"]
-            }
-        }
+                "required": ["username", "metadata"],
+            },
+        },
     }
 
     # 2. 解析：将原始字典转化为 ToolCall 实例
@@ -171,17 +173,17 @@ def test_array_of_primitives():
                     "file_paths": {
                         "type": "array",
                         "description": "文件路径列表",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
                     },
                     "priorities": {
                         "type": "array",
                         "description": "优先级列表",
-                        "items": {"type": "integer"}
-                    }
+                        "items": {"type": "integer"},
+                    },
                 },
-                "required": ["file_paths"]
-            }
-        }
+                "required": ["file_paths"],
+            },
+        },
     }
 
     # 解析
@@ -191,8 +193,8 @@ def test_array_of_primitives():
 
     file_paths_attr = tool_call.input_schema["file_paths"]
     print(f"file_paths 类型: {file_paths_attr.type}")
-    print(
-        f"file_paths items 类型: {file_paths_attr.items.type if hasattr(file_paths_attr.items, 'type') else file_paths_attr.items}")
+    t_items_type = file_paths_attr.items.type if hasattr(file_paths_attr.items, "type") else file_paths_attr.items
+    print(f"file_paths items 类型: {t_items_type}")
 
     # 导出并验证相等性
     dumped_data = tool_call.simple_input_dump()
@@ -230,12 +232,12 @@ def test_deep_nested_schema():
                                         "type": "object",
                                         "properties": {
                                             "email": {"type": "string"},
-                                            "phone": {"type": "string"}
+                                            "phone": {"type": "string"},
                                         },
-                                        "required": ["email"]
-                                    }
+                                        "required": ["email"],
+                                    },
                                 },
-                                "required": ["name", "contact"]
+                                "required": ["name", "contact"],
                             },
                             "members": {
                                 "type": "array",
@@ -247,19 +249,19 @@ def test_deep_nested_schema():
                                         "role": {"type": "string"},
                                         "skills": {
                                             "type": "array",
-                                            "items": {"type": "string"}
-                                        }
+                                            "items": {"type": "string"},
+                                        },
                                     },
-                                    "required": ["name", "role"]
-                                }
-                            }
+                                    "required": ["name", "role"],
+                                },
+                            },
                         },
-                        "required": ["leader"]
-                    }
+                        "required": ["leader"],
+                    },
                 },
-                "required": ["project_name", "team"]
-            }
-        }
+                "required": ["project_name", "team"],
+            },
+        },
     }
 
     # 解析
@@ -302,12 +304,12 @@ def test_mixed_types_schema():
                     "mode": {
                         "type": "string",
                         "description": "运行模式",
-                        "enum": ["development", "production", "testing"]
+                        "enum": ["development", "production", "testing"],
                     },
                     "allowed_ips": {
                         "type": "array",
                         "description": "允许的IP地址列表",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
                     },
                     "database": {
                         "type": "object",
@@ -315,14 +317,14 @@ def test_mixed_types_schema():
                         "properties": {
                             "host": {"type": "string"},
                             "port": {"type": "integer"},
-                            "ssl_enabled": {"type": "boolean"}
+                            "ssl_enabled": {"type": "boolean"},
                         },
-                        "required": ["host", "port"]
-                    }
+                        "required": ["host", "port"],
+                    },
                 },
-                "required": ["enabled", "mode"]
-            }
-        }
+                "required": ["enabled", "mode"],
+            },
+        },
     }
 
     # 解析

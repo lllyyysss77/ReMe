@@ -27,7 +27,7 @@ class TestModelDefinitions(unittest.TestCase):
         self.assertEqual(dump["type"], "string")
         self.assertEqual(dump["enum"], ["Beijing", "London"])
         self.assertIn("description", dump)
-        
+
         # Test object attribute with required child properties
         obj_attr = ToolAttr(
             type="object",
@@ -39,10 +39,10 @@ class TestModelDefinitions(unittest.TestCase):
             required=["name"],  # 'name' is required, 'age' is optional
         )
         obj_dump = obj_attr.simple_input_dump()
-        
+
         print("\n=== ToolAttr.simple_input_dump() (object with required) ===")
         print(obj_dump)
-        
+
         self.assertEqual(obj_dump["type"], "object")
         self.assertIn("properties", obj_dump)
         self.assertEqual(obj_dump["required"], ["name"])

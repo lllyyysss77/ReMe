@@ -21,7 +21,7 @@ class ServiceContext(BaseContext):
         self.language: str = ""
         self.thread_pool: ThreadPoolExecutor | None = None
         self.vector_store_dict: dict[str, dict] = {}
-        self.external_mcp_tool_call_dict: dict = {}
+        self.mcp_server_tool_call_mapping: dict = {}
         # Initialize a registry for every category defined in RegistryEnum
         self.registry_dict: dict[RegistryEnum, Registry] = {v: Registry() for v in RegistryEnum.__members__.values()}
         self.flow_dict: dict = {}

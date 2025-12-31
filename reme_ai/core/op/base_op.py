@@ -194,6 +194,11 @@ class BaseOp:
             )
         return self._token_counter
 
+    @property
+    def service_metadata(self) -> dict:
+        """Get service configuration metadata."""
+        return C.service_config.model_extra
+
     async def before_execute(self):
         """Prepare context and validate before async execution."""
         self.context.apply_mapping(self.input_mapping)
@@ -334,3 +339,19 @@ class BaseOp:
         par = ParallelOp(sub_ops=[self], async_mode=self.async_mode)
         par.add_sub_ops(op.sub_ops if isinstance(op, ParallelOp) else op)
         return par
+
+    def prompt_format(self, prompt_name: str, **kwargs) -> str:
+        """Format a prompt template with provided keyword arguments."""
+        return self.prompt.prompt_format(prompt_name=prompt_name, **kwargs)
+
+    def get_prompt(self, prompt_name: str) -> str:
+        """Get a prompt template by name."""
+        return self.prompt.get_prompt(prompt_name=prompt_name)
+
+    def copy(self, **kwargs):
+        """Create a copy of this operator with optional parameter overrides."""
+        copy_op = self.__class__(*self._init_args, **self._init_kwargs, **kwargs)
+        if self.sub_ops:
+            copy_op.sub_ops.clear()
+            copy_op.add_sub_ops(self.sub_ops)
+        return copy_op

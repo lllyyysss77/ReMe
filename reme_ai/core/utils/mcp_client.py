@@ -9,7 +9,7 @@ from mcp import ClientSession, StdioServerParameters, Tool
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
-from mcp.types import CallToolResult
+from mcp.types import CallToolResult, TextContent
 
 from ..schema import ToolCall
 
@@ -101,7 +101,21 @@ class MCPClient:
 
         return tool_calls
 
-    async def call_tool(self, server_name: str, tool_name: str, arguments: dict[str, Any]) -> CallToolResult:
+    async def call_tool(
+        self,
+        server_name: str,
+        tool_name: str,
+        arguments: dict[str, Any],
+        parse_text_result: bool = False,
+    ) -> CallToolResult | str:
         """Execute a tool on a specific server."""
         async with self.connect_to_server(server_name) as session:
-            return await session.call_tool(tool_name, arguments)
+            tool_results: CallToolResult = await session.call_tool(tool_name, arguments)
+            if not parse_text_result:
+                return tool_results
+
+            text_result = []
+            for block in tool_results.content:
+                if isinstance(block, TextContent):
+                    text_result.append(block.text)
+            return "\n".join(text_result)

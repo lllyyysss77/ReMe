@@ -27,11 +27,8 @@ class RuntimeContext(BaseContext):
         if context is None:
             return cls(**kwargs)
 
-        new_instance = cls(response=context.response, stream_queue=context.stream_queue)
-        new_instance.update(context)
-        if kwargs:
-            new_instance.update(kwargs)
-        return new_instance
+        context.update(kwargs)
+        return context
 
     async def _enqueue(self, chunk: StreamChunk) -> None:
         """Internal helper to put a chunk into the queue if it exists."""

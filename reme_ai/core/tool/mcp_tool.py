@@ -20,7 +20,7 @@ class MCPTool(BaseOp):
         self,
         mcp_server: str = "",
         tool_name: str = "",
-        enable_tool_response: bool = True,
+        save_response_result: bool = True,
         parameter_required: List[str] | None = None,
         parameter_optional: List[str] | None = None,
         parameter_deleted: List[str] | None = None,
@@ -31,7 +31,7 @@ class MCPTool(BaseOp):
     ):
 
         super().__init__(
-            enable_tool_response=enable_tool_response,
+            save_response_result=save_response_result,
             max_retries=max_retries,
             raise_exception=raise_exception,
             **kwargs,

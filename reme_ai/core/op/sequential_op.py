@@ -8,13 +8,13 @@ class SequentialOp(BaseOp):
 
     async def execute(self):
         """Executes sub-operations sequentially using asynchronous awaits."""
-        for op in self.sub_ops.values():
+        for op in self.sub_ops:
             assert op.async_mode
             await op.call(context=self.context)
 
     def execute_sync(self):
         """Executes sub-operations sequentially in a synchronous blocking manner."""
-        for op in self.sub_ops.values():
+        for op in self.sub_ops:
             assert not op.async_mode
             op.call_sync(context=self.context)
 

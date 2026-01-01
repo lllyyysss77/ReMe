@@ -4,15 +4,15 @@ import asyncio
 import copy
 import inspect
 from pathlib import Path
-from typing import Callable, Any, Union
+from typing import Callable, Any, Optional
 
 from loguru import logger
 from tqdm import tqdm
 
-from ..context import RuntimeContext, PromptHandler, C, BaseContext
+from ..context import RuntimeContext, PromptHandler, C
 from ..embedding import BaseEmbeddingModel
 from ..llm import BaseLLM
-from ..schema import ToolCall, ToolAttr
+from ..schema import ToolCall, ToolAttr, Response
 from ..token_counter import BaseTokenCounter
 from ..utils import camel_to_snake, CacheHandler, timer
 from ..vector_store import BaseVectorStore
@@ -40,10 +40,10 @@ class BaseOp:
         token_counter: str | BaseTokenCounter = "default",
         enable_cache: bool = False,
         cache_path: str = "cache/op",
-        sub_ops: Union[list["BaseOp"], dict[str, "BaseOp"], "BaseOp", None] = None,
+        sub_ops: dict[str, "BaseOp"] | list["BaseOp"] | Optional["BaseOp"] = None,
         input_mapping: dict[str, str] | None = None,
         output_mapping: dict[str, str] | None = None,
-        enable_tool_response: bool = False,
+        save_response_result: bool = False,
         enable_sync_thread_pool: bool = True,
         max_retries: int = 1,
         raise_exception: bool = False,
@@ -62,12 +62,12 @@ class BaseOp:
 
         self.enable_cache = enable_cache
         self.cache_path = cache_path
-        self.sub_ops = BaseContext[str, BaseOp]()
+        self.sub_ops: list[BaseOp] = []
         self.add_sub_ops(sub_ops)
 
         self.input_mapping = input_mapping
         self.output_mapping = output_mapping
-        self.enable_tool_response = enable_tool_response
+        self.save_response_result = save_response_result
         self.enable_sync_thread_pool = enable_sync_thread_pool
         self.max_retries = max(1, max_retries)
         self.raise_exception = raise_exception
@@ -89,7 +89,7 @@ class BaseOp:
 
     def _validate_inputs(self):
         """Ensure all required tool inputs are present in context."""
-        if self.tool_call:
+        if self.tool_call is not None:
             parameters = self.tool_call.parameters
             if parameters.type == "object" and parameters.properties:
                 required_list = parameters.required or []
@@ -98,29 +98,46 @@ class BaseOp:
 
     def _handle_failure(self, e: Exception, attempt: int):
         """Log failures and handle final retry logic."""
-        logger.exception(f"{self.name} failed (attempt {attempt + 1}): {e}")
+        message = f"{self.name} failed (attempt {attempt + 1}): {e}"
         if attempt == self.max_retries - 1:
+            logger.exception(message)
             if self.raise_exception:
                 raise e
 
-            if self.tool_call:
+            if self.tool_call is not None:
                 self.output = f"{self.name} failed: {e}"
+        else:
+            logger.warning(message)
 
     @property
-    def tool_call(self) -> ToolCall:
+    def tool_call(self) -> ToolCall | None:
         """Lazily construct and return the tool call metadata."""
         if self._tool_call is None:
             self._tool_call = self._build_tool_call()
-            assert self._tool_call, "tool_call is not defined!"
+            if self._tool_call is None:
+                return None
+
             self._tool_call.name = self._tool_call.name or self.name
             if not self._tool_call.output.properties:
-                self._tool_call.output = ToolAttr(
-                    type="object",
-                    properties={
-                        f"{self.name}_result": ToolAttr(type="string", description=f"Execution result of {self.name}"),
-                    },
-                )
+                self._tool_call.output.properties = {
+                    f"{self.name}_result": ToolAttr(type="string", description=f"Execution result of {self.name}"),
+                }
         return self._tool_call
+
+    def set_tool_call(self, tool_call: ToolCall | dict):
+        """Set the tool call."""
+        if isinstance(tool_call, dict):
+            self._tool_call = ToolCall(**tool_call)
+        elif isinstance(tool_call, ToolCall):
+            self._tool_call = tool_call
+        else:
+            raise ValueError(f"Invalid tool call: {tool_call}")
+
+        self._tool_call.name = self._tool_call.name or self.name
+        if not self._tool_call.output.properties:
+            self._tool_call.output.properties = {
+                f"{self.name}_result": ToolAttr(type="string", description=f"Execution result of {self.name}"),
+            }
 
     @property
     def input_dict(self) -> dict:
@@ -137,6 +154,7 @@ class BaseOp:
         output_properties = self.tool_call.output.properties
         if not output_properties:
             return None
+
         keys = list(output_properties.keys())
         return self.context[keys[0]]
 
@@ -146,6 +164,7 @@ class BaseOp:
         output_properties = self.tool_call.output.properties
         if not output_properties:
             return
+
         keys = list(output_properties.keys())
         self.context[keys[0]] = value
 
@@ -188,16 +207,18 @@ class BaseOp:
         """Lazily initialize and return the token counter instance."""
         if isinstance(self._token_counter, str):
             cfg = C.service_config.token_counter[self._token_counter]
-            self._token_counter = C.get_token_counter_class(cfg.backend)(
-                model_name=cfg.model_name,
-                **cfg.model_extra,
-            )
+            self._token_counter = C.get_token_counter_class(cfg.backend)(model_name=cfg.model_name, **cfg.model_extra)
         return self._token_counter
 
     @property
     def service_metadata(self) -> dict:
         """Get service configuration metadata."""
         return C.service_config.model_extra
+
+    @property
+    def response(self) -> Response:
+        """Get the response object."""
+        return self.context.response
 
     async def before_execute(self):
         """Prepare context and validate before async execution."""
@@ -210,7 +231,7 @@ class BaseOp:
     async def after_execute(self):
         """Finalize context and mappings after async execution."""
         self.context.apply_mapping(self.output_mapping)
-        if self.tool_call and self.enable_tool_response:
+        if self.tool_call is not None and self.save_response_result:
             self.context.response.answer = self.output
 
         if not isinstance(self._llm, str) and hasattr(self._llm, "close"):
@@ -229,7 +250,7 @@ class BaseOp:
     def after_execute_sync(self):
         """Finalize context and mappings after sync execution."""
         self.context.apply_mapping(self.output_mapping)
-        if self.tool_call and self.enable_tool_response:
+        if self.tool_call is not None and self.save_response_result:
             self.context.response.answer = self.output
 
         if not isinstance(self._llm, str) and hasattr(self._llm, "close_sync"):
@@ -249,7 +270,7 @@ class BaseOp:
                 break
             except Exception as e:
                 self._handle_failure(e, i)
-        return self.output if self.tool_call else None
+        return self.output if self.tool_call is not None else None
 
     async def call(self, context: RuntimeContext = None, **kwargs):
         """Execute the operator asynchronously with retry logic."""
@@ -262,7 +283,7 @@ class BaseOp:
                 break
             except Exception as e:
                 self._handle_failure(e, i)
-        return self.output if self.tool_call else None
+        return self.output if self.tool_call is not None else None
 
     def submit_sync_task(self, fn: Callable, *args, **kwargs) -> "BaseOp":
         """Submit a task to the thread pool or local queue."""
@@ -301,23 +322,27 @@ class BaseOp:
         finally:
             self._pending_tasks.clear()
 
-    def add_sub_ops(self, sub_ops: Union[list["BaseOp"], dict[str, "BaseOp"], "BaseOp", None]):
-        """Add child operators to this operator's sub_ops context."""
+    def add_sub_ops(self, sub_ops: dict[str, "BaseOp"] | list["BaseOp"] | Optional["BaseOp"]):
+        """Add child operators to this operator's sub_ops."""
         if not sub_ops:
             return
 
         if isinstance(sub_ops, dict):
-            ops_dict = sub_ops
+            for name, op in sub_ops.items():
+                assert self.async_mode == op.async_mode, "Async mode mismatch!"
+                op.name = name
+                self.sub_ops.append(op)
+        elif isinstance(sub_ops, list):
+            for op in sub_ops:
+                assert self.async_mode == op.async_mode, "Async mode mismatch!"
+                self.sub_ops.append(op)
         else:
-            ops_dict = {op.name: op for op in (sub_ops if isinstance(sub_ops, list) else [sub_ops])}
-
-        for name, op in ops_dict.items():
-            assert self.async_mode == op.async_mode, "Async mode mismatch!"
-            self.sub_ops[name] = op
+            assert self.async_mode == sub_ops.async_mode, "Async mode mismatch!"
+            self.sub_ops.append(sub_ops)
 
     def add_sub_op(self, sub_op: "BaseOp"):
-        """Add a single child operator to this operator's sub_ops context."""
-        self.add_sub_ops(sub_op)
+        """Add a single child operator to this operator's sub_ops."""
+        self.sub_ops.append(sub_op)
 
     def __lshift__(self, ops):
         """Operator overload for adding sub-operators."""
@@ -350,7 +375,7 @@ class BaseOp:
 
     def copy(self, **kwargs):
         """Create a copy of this operator with optional parameter overrides."""
-        copy_op = self.__class__(*self._init_args, **self._init_kwargs, **kwargs)
+        copy_op = self.__class__(*self._init_args, **{**self._init_kwargs, **kwargs})
         if self.sub_ops:
             copy_op.sub_ops.clear()
             copy_op.add_sub_ops(self.sub_ops)

@@ -8,14 +8,14 @@ class ParallelOp(BaseOp):
 
     async def execute(self):
         """Executes all sub-operations concurrently using asynchronous tasks."""
-        for op in self.sub_ops.values():
+        for op in self.sub_ops:
             assert op.async_mode
             self.submit_async_task(op.call, context=self.context)
         await self.join_async_tasks()
 
     def execute_sync(self):
         """Executes all sub-operations concurrently using synchronous task management."""
-        for op in self.sub_ops.values():
+        for op in self.sub_ops:
             assert not op.async_mode
             self.submit_sync_task(op.call_sync, context=self.context)
         self.join_sync_tasks()

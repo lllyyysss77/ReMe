@@ -1,5 +1,5 @@
 """Configuration schemas for service components using Pydantic models."""
-
+import os
 from typing import Dict, List
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -12,7 +12,7 @@ class MCPConfig(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    transport: str = Field(default="")
+    transport: str = Field(default="stdio")
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8001)
 
@@ -92,6 +92,7 @@ class ServiceConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     backend: str = Field(default="")
+    app_name: str = Field(default=os.getenv("APP_NAME", "ReMe"))
     enable_logo: bool = Field(default=True)
     language: str = Field(default="")
     thread_pool_max_workers: int = Field(default=16)

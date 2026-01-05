@@ -16,6 +16,10 @@ llm:
   default:
     backend: openai
     model_name: qwen3-30b-a3b-instruct-2507
+
+  qwen3_max_instruct:
+    backend: openai
+    model_name: qwen3-max
     temperature: 0.6
 
 embedding_model:
@@ -32,3 +36,8 @@ vector_store:
 token_counter:
   default:
     backend: base
+
+  hf:
+    backend: hf
+    model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct
+    use_mirror: true

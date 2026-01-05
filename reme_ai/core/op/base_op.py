@@ -40,6 +40,7 @@ class BaseOp:
         token_counter: str | BaseTokenCounter = "default",
         enable_cache: bool = False,
         cache_path: str = "cache/op",
+        cache_expire_hours: float = 0.1,
         sub_ops: dict[str, "BaseOp"] | list["BaseOp"] | Optional["BaseOp"] = None,
         input_mapping: dict[str, str] | None = None,
         output_mapping: dict[str, str] | None = None,
@@ -62,6 +63,7 @@ class BaseOp:
 
         self.enable_cache = enable_cache
         self.cache_path = cache_path
+        self.cache_expire_hours = cache_expire_hours
         self.sub_ops: list[BaseOp] = []
         self.add_sub_ops(sub_ops)
 
@@ -156,7 +158,10 @@ class BaseOp:
             return None
 
         keys = list(output_properties.keys())
-        return self.context[keys[0]]
+        if len(keys) >= 1 and keys[0] in self.context:
+            return self.context[keys[0]]
+        else:
+            return None
 
     @output.setter
     def output(self, value: Any):

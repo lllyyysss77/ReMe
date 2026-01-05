@@ -26,9 +26,9 @@ def run_coro_safely(coro: Coroutine[Any, Any, Any]) -> Any | asyncio.Task[Any]:
 
 
 async def execute_stream_task(
-    queue: asyncio.Queue,
+    stream_queue: asyncio.Queue,
     task: asyncio.Task,
-    flow_name: str | None = None,
+    task_name: str | None = None,
     as_bytes: bool = False,
 ) -> AsyncGenerator[str | bytes, None]:
     """
@@ -38,9 +38,9 @@ async def execute_stream_task(
     Properly manages errors and resource cleanup.
 
     Args:
-        queue: Queue to receive StreamChunk objects from
+        stream_queue: Queue to receive StreamChunk objects from
         task: Background task executing the flow
-        flow_name: Optional flow name for logging purposes
+        task_name: Optional flow name for logging purposes
         as_bytes: If True, yield bytes for HTTP responses; if False, yield strings
 
     Yields:
@@ -51,7 +51,7 @@ async def execute_stream_task(
     try:
         while True:
             # Wait for next chunk or check if task failed
-            get_chunk = asyncio.create_task(queue.get())
+            get_chunk = asyncio.create_task(stream_queue.get())
             done, _ = await asyncio.wait({get_chunk, task}, return_when=asyncio.FIRST_COMPLETED)
 
             if get_chunk in done:
@@ -69,7 +69,7 @@ async def execute_stream_task(
                 break
 
     except Exception as e:
-        log_msg = f"Stream error in {flow_name}: {e}" if flow_name else f"Stream error: {e}"
+        log_msg = f"Stream error in {task_name}: {e}" if task_name else f"Stream error: {e}"
         logger.exception(log_msg)
 
         err = StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e), done=True)

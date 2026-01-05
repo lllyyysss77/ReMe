@@ -6,7 +6,7 @@ import os
 from .context import C
 from .flow import BaseFlow
 from .schema import ServiceConfig, Response
-from .utils import PydanticConfigParser, init_logger, execute_stream_task, run_coro_safely
+from .utils import PydanticConfigParser, init_logger, execute_stream_task, run_coro_safely, load_env
 
 
 class Application:
@@ -52,6 +52,8 @@ class Application:
             token_counter: Token counter configuration dictionary
             **kwargs: Additional configuration arguments
         """
+
+        load_env()
         self._update_env("REME_LLM_API_KEY", llm_api_key)
         self._update_env("REME_LLM_BASE_URL", llm_api_base)
         self._update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
@@ -195,9 +197,9 @@ class Application:
         task = asyncio.create_task(flow.call(stream_queue=stream_queue, **kwargs))
 
         async for chunk in execute_stream_task(
-            queue=stream_queue,
+            stream_queue=stream_queue,
             task=task,
-            flow_name=name,
+            task_name=name,
             as_bytes=False,
         ):
             yield chunk

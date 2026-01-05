@@ -32,12 +32,14 @@ class MCPService(BaseService):
             response = await flow.call(**request_instance.model_dump(exclude_none=True))
             return response.answer
 
-        self.mcp.add_tool(FunctionTool(
-            name=tool_call.name,
-            description=tool_call.description,
-            fn=execute_tool,
-            parameters=tool_call.parameters.simple_input_dump(),
-        ))
+        self.mcp.add_tool(
+            FunctionTool(
+                name=tool_call.name,
+                description=tool_call.description,
+                fn=execute_tool,
+                parameters=tool_call.parameters.simple_input_dump(),
+            ),
+        )
         return tool_call.name
 
     def run(self):

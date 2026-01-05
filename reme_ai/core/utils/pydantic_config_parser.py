@@ -17,7 +17,7 @@ class PydanticConfigParser:
 
     def __init__(self, config_class: type[T], default_config: str = "default"):
         """Initialize parser with a Pydantic config class.
-        
+
         Args:
             config_class: Pydantic BaseModel class to validate configs against.
             default_config: Default config file name to use if not specified in args.
@@ -69,13 +69,13 @@ class PydanticConfigParser:
     @staticmethod
     def load_from_yaml(yaml_path: str | Path) -> dict:
         """Load configuration from YAML file.
-        
+
         Args:
             yaml_path: Path to YAML configuration file.
-            
+
         Returns:
             Dictionary containing configuration data.
-            
+
         Raises:
             FileNotFoundError: If YAML file does not exist.
         """
@@ -90,10 +90,10 @@ class PydanticConfigParser:
 
     def merge_configs(self, *config_dicts: dict) -> dict:
         """Merge multiple config dictionaries in order.
-        
+
         Args:
             *config_dicts: Variable number of config dictionaries to merge.
-            
+
         Returns:
             Merged configuration dictionary.
         """
@@ -104,10 +104,10 @@ class PydanticConfigParser:
 
     def parse_dot_notation(self, dot_list: list[str]) -> dict:
         """Parse dot notation strings into nested dictionary.
-        
+
         Args:
             dot_list: List of strings in format "key.subkey=value".
-            
+
         Returns:
             Nested dictionary representation of dot notation.
         """
@@ -118,7 +118,7 @@ class PydanticConfigParser:
 
             key_path, value_str = item.split("=", 1)
             keys = key_path.split(".")
-            
+
             # Build nested dictionary
             current = config_dict
             for key in keys[:-1]:
@@ -131,13 +131,13 @@ class PydanticConfigParser:
         """Find config file path, trying parser directory first then current directory."""
         if not config_name.endswith(".yaml"):
             config_name += ".yaml"
-        
+
         # Try parser class directory first
         config_path = Path(inspect.getfile(self.__class__)).parent / config_name
         if config_path.exists():
             logger.info(f"load config={config_path}")
             return config_path
-        
+
         # Try current directory
         logger.warning(f"config={config_path} not found, try {config_name}")
         config_path = Path(config_name)
@@ -147,13 +147,13 @@ class PydanticConfigParser:
 
     def parse_args(self, *args: str) -> T:
         """Parse CLI arguments and load configs from YAML files.
-        
+
         Args:
             *args: CLI arguments in format "key=value" or "config=file.yaml".
-            
+
         Returns:
             Validated Pydantic config instance.
-            
+
         Raises:
             ValueError: If no config file is specified.
             FileNotFoundError: If specified config file does not exist.
@@ -174,8 +174,6 @@ class PydanticConfigParser:
 
         # Use default config if not specified
         config = config or self.default_config
-        if not config:
-            raise ValueError("add `config=<config_file>` in cmd!")
 
         # Load each config file
         for single_config in (c.strip() for c in config.split(",") if c.strip()):
@@ -192,17 +190,17 @@ class PydanticConfigParser:
 
     def update_config(self, **kwargs) -> T:
         """Update current config with new values using kwargs.
-        
+
         Args:
             **kwargs: Key-value pairs where __ in keys represents nested levels.
-            
+
         Returns:
             Updated and validated Pydantic config instance.
         """
         # Convert kwargs to dot notation and parse
         dot_list = [f"{key.replace('__', '.')}={value}" for key, value in kwargs.items()]
         override_config = self.parse_dot_notation(dot_list)
-        
+
         # Merge with existing config
         final_config = self.merge_configs(self.config_dict, override_config)
         return self.config_class.model_validate(final_config)

@@ -1,4 +1,5 @@
 """Configuration schemas for service components using Pydantic models."""
+
 import os
 from typing import Dict, List
 

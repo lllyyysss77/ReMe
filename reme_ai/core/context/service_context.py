@@ -22,9 +22,20 @@ class ServiceContext(BaseContext):
         self.thread_pool: ThreadPoolExecutor | None = None
         self.vector_store_dict: dict[str, dict] = {}
         self.mcp_server_tool_call_mapping: dict = {}
-        # Initialize a registry for every category defined in RegistryEnum
+
         self.registry_dict: dict[RegistryEnum, Registry] = {v: Registry() for v in RegistryEnum.__members__.values()}
         self.flow_dict: dict = {}
+
+    def _update_config_section(self, section_name: str, update_dict: dict | None):
+        if not update_dict:
+            return
+
+        target_registry = getattr(self.service_config, section_name)
+        if "default" not in target_registry:
+            raise KeyError(f"Default `{section_name}` config not found in service_config")
+
+        current_config = target_registry["default"]
+        target_registry["default"] = current_config.model_copy(update=update_dict, deep=True)
 
     def register(self, name: str, register_type: RegistryEnum):
         """Return a decorator to register a component within a specific registry category."""

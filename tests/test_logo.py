@@ -1,3 +1,5 @@
+"""test logo"""
+
 from reme_ai.core.schema import ServiceConfig, MCPConfig
 
 if __name__ == "__main__":

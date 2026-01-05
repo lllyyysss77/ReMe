@@ -43,7 +43,7 @@ class HttpService(BaseService):
         self.app.post(
             path=f"/{tool_call.name}",
             response_model=Response,
-            description=tool_call.description
+            description=tool_call.description,
         )(execute_endpoint)
         return tool_call.name
 

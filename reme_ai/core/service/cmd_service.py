@@ -1,7 +1,5 @@
 """Command service module for managing and executing command-based workflows."""
 
-from typing import Any
-
 from loguru import logger
 
 from .base_service import BaseService
@@ -22,7 +20,6 @@ class CmdService(BaseService):
     def integrate_flow(self, flow: BaseFlow) -> str | None:
         """Integrate the workflow configuration into the command service."""
         self._cmd_flow = CmdFlow(flow=C.service_config.flow)
-        return None
 
     def run(self) -> None:
         """Execute the command flow in either asynchronous or synchronous mode."""
@@ -30,7 +27,7 @@ class CmdService(BaseService):
 
         if self._cmd_flow.async_mode:
             response = run_coro_safely(
-                self._cmd_flow.call(**C.service_config.cmd.model_extra)
+                self._cmd_flow.call(**C.service_config.cmd.model_extra),
             )
         else:
             response = self._cmd_flow.call_sync(**C.service_config.cmd.model_extra)

@@ -29,7 +29,7 @@ class BaseService(ABC):
         model = create_pydantic_model(tool_call.name, tool_call.parameters)
         return tool_call, model
 
-    def run(self) -> None:
+    def run(self):
         """Initialize and integrate all flows registered in the global context."""
         flow_names: list[str] = []
         for _, flow in C.flow_dict.items():

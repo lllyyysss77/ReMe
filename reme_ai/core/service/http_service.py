@@ -7,13 +7,12 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from loguru import logger
 
 from .base_service import BaseService
 from ..context import C
-from ..enumeration import ChunkEnum
 from ..flow import BaseFlow
-from ..schema import Response, StreamChunk
+from ..schema import Response
+from ..utils.common_utils import execute_stream_task
 
 
 @C.register_service("http")
@@ -57,34 +56,13 @@ class HttpService(BaseService):
             task = asyncio.create_task(flow.call(stream_queue=queue, **request.model_dump(exclude_none=True)))
 
             async def generate_stream() -> AsyncGenerator[bytes, None]:
-                done_bytes = b"data:[DONE]\n\n"
-                try:
-                    while True:
-                        # Wait for next chunk or check if task failed
-                        get_chunk = asyncio.create_task(queue.get())
-                        done, _ = await asyncio.wait({get_chunk, task}, return_when=asyncio.FIRST_COMPLETED)
-
-                        if get_chunk in done:
-                            chunk: StreamChunk = get_chunk.result()
-                            if chunk.done:
-                                yield done_bytes
-                                break
-                            yield f"data:{chunk.model_dump_json()}\n\n".encode()
-                        else:
-                            # Task finished unexpectedly or raised exception
-                            await task
-                            yield done_bytes
-                            break
-
-                except Exception as e:
-                    logger.exception(f"Stream error in {tool_call.name}: {e}")
-                    err = StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e), done=True)
-                    yield f"data:{err.model_dump_json()}\n\n".encode()
-                    yield done_bytes
-
-                finally:
-                    if not task.done():
-                        task.cancel()
+                async for chunk in execute_stream_task(
+                    queue=queue,
+                    task=task,
+                    flow_name=tool_call.name,
+                    as_bytes=True,
+                ):
+                    yield chunk
 
             return StreamingResponse(generate_stream(), media_type="text/event-stream")
 
@@ -95,7 +73,7 @@ class HttpService(BaseService):
         """Register a flow based on its streaming configuration."""
         return self._integrate_stream_flow(flow) if flow.stream else self._integrate_flow(flow)
 
-    def run(self) -> None:
+    def run(self):
         """Start the Uvicorn server."""
         super().run()
         cfg = C.service_config.http

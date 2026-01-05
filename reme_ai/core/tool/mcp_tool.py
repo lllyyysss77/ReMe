@@ -48,7 +48,7 @@ class MCPTool(BaseOp):
         self._client = MCPClient(C.service_config.mcp_servers)
 
     def _build_tool_call(self) -> ToolCall:
-        tool_call_dict = C.mcp_server_tool_call_mapping[self.mcp_server]
+        tool_call_dict = C.mcp_server_mapping[self.mcp_server]
         tool_call: ToolCall = tool_call_dict[self.tool_name].model_copy(deep=True)
 
         # Initialize required list if not exists

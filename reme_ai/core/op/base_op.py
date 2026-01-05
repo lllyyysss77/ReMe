@@ -178,21 +178,16 @@ class BaseOp:
 
     @property
     def llm(self) -> BaseLLM:
-        """Lazily initialize and return the LLM instance."""
+        """Get the LLM instance from ServiceContext."""
         if isinstance(self._llm, str):
-            cfg = C.service_config.llm[self._llm]
-            self._llm = C.get_llm_class(cfg.backend)(model_name=cfg.model_name, **cfg.model_extra)
+            self._llm = C.get_llm(self._llm)
         return self._llm
 
     @property
     def embedding_model(self) -> BaseEmbeddingModel:
-        """Lazily initialize and return the embedding model instance."""
+        """Get the embedding model instance from ServiceContext."""
         if isinstance(self._embedding_model, str):
-            cfg = C.service_config.embedding_model[self._embedding_model]
-            self._embedding_model = C.get_embedding_model_class(cfg.backend)(
-                model_name=cfg.model_name,
-                **cfg.model_extra,
-            )
+            self._embedding_model = C.get_embedding_model(self._embedding_model)
         return self._embedding_model
 
     @property
@@ -204,10 +199,9 @@ class BaseOp:
 
     @property
     def token_counter(self) -> BaseTokenCounter:
-        """Lazily initialize and return the token counter instance."""
+        """Get the token counter instance from ServiceContext."""
         if isinstance(self._token_counter, str):
-            cfg = C.service_config.token_counter[self._token_counter]
-            self._token_counter = C.get_token_counter_class(cfg.backend)(model_name=cfg.model_name, **cfg.model_extra)
+            self._token_counter = C.get_token_counter(self._token_counter)
         return self._token_counter
 
     @property
@@ -219,25 +213,6 @@ class BaseOp:
     def response(self) -> Response:
         """Get the response object."""
         return self.context.response
-
-    async def before_execute(self):
-        """Prepare context and validate before async execution."""
-        self.context.apply_mapping(self.input_mapping)
-        self._validate_inputs()
-
-    async def execute(self):
-        """Define core async logic in subclasses."""
-
-    async def after_execute(self):
-        """Finalize context and mappings after async execution."""
-        self.context.apply_mapping(self.output_mapping)
-        if self.tool_call is not None and self.save_response_result:
-            self.context.response.answer = self.output
-
-        if not isinstance(self._llm, str) and hasattr(self._llm, "close"):
-            await self._llm.close()
-        if not isinstance(self._embedding_model, str) and hasattr(self._embedding_model, "close"):
-            await self._embedding_model.close()
 
     def before_execute_sync(self):
         """Prepare context and validate before sync execution."""
@@ -253,10 +228,16 @@ class BaseOp:
         if self.tool_call is not None and self.save_response_result:
             self.context.response.answer = self.output
 
-        if not isinstance(self._llm, str) and hasattr(self._llm, "close_sync"):
-            self._llm.close_sync()
-        if not isinstance(self._embedding_model, str) and hasattr(self._embedding_model, "close_sync"):
-            self._embedding_model.close_sync()
+    async def before_execute(self):
+        """Prepare context and validate before async execution."""
+        self.before_execute_sync()
+
+    async def execute(self):
+        """Define core async logic in subclasses."""
+
+    async def after_execute(self):
+        """Finalize context and mappings after async execution."""
+        self.after_execute_sync()
 
     @timer
     def call_sync(self, context: RuntimeContext = None, **kwargs):

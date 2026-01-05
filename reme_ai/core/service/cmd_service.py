@@ -21,7 +21,7 @@ class CmdService(BaseService):
         """Integrate the workflow configuration into the command service."""
         self._cmd_flow = CmdFlow(flow=C.service_config.flow)
 
-    def run(self) -> None:
+    def run(self):
         """Execute the command flow in either asynchronous or synchronous mode."""
         super().run()
 

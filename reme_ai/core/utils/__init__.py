@@ -2,7 +2,7 @@
 
 from .cache_handler import CacheHandler
 from .case_converter import snake_to_camel, camel_to_snake
-from .common_utils import run_coro_safely
+from .common_utils import run_coro_safely, execute_stream_task
 from .env_utils import load_env
 from .http_client import HttpClient
 from .llm_utils import extract_content, format_messages
@@ -19,6 +19,7 @@ __all__ = [
     "snake_to_camel",
     "camel_to_snake",
     "run_coro_safely",
+    "execute_stream_task",
     "load_env",
     "HttpClient",
     "extract_content",

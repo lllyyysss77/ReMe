@@ -13,7 +13,7 @@ from .mcp_client import MCPClient
 from .pydantic_config_parser import PydanticConfigParser
 from .pydantic_utils import create_pydantic_model
 from .singleton import singleton
-from .timer import timer
+from .time import timer, get_now_time
 
 __all__ = [
     "CacheHandler",
@@ -34,4 +34,5 @@ __all__ = [
     "create_pydantic_model",
     "singleton",
     "timer",
+    "get_now_time",
 ]

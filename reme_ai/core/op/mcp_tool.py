@@ -2,10 +2,10 @@
 
 from typing import List
 
-from ..core.context import C
-from ..core.op import BaseOp
-from ..core.schema import ToolCall
-from ..core.utils import MCPClient
+from .base_op import BaseOp
+from ..context import C
+from ..schema import ToolCall
+from ..utils import MCPClient
 
 
 @C.register_op()

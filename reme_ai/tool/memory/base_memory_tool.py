@@ -3,10 +3,10 @@
 from abc import ABCMeta
 from pathlib import Path
 
-from ..core.enumeration import MemoryType
-from ..core.op import BaseOp
-from ..core.schema import ToolCall, MemoryNode
-from ..core.utils import CacheHandler
+from ...core.enumeration import MemoryType
+from ...core.op import BaseOp
+from ...core.schema import ToolCall, MemoryNode
+from ...core.utils import CacheHandler
 
 
 class BaseMemoryTool(BaseOp, metaclass=ABCMeta):

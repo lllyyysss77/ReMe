@@ -4,13 +4,13 @@ This module provides a tool that prompts the model for explicit reflection
 before taking actions, helping agents reason about their next steps.
 """
 
-from ..core.context import C
-from ..core.op import BaseOp
-from ..core.schema import ToolCall
+from .base_memory_tool import BaseMemoryTool
+from ...core.context import C
+from ...core.schema import ToolCall
 
 
 @C.register_op()
-class ThinkTool(BaseOp):
+class ThinkTool(BaseMemoryTool):
     """Utility that prompts the model for explicit reflection text.
 
     This tool provides a thinking mechanism for agents to reflect on:
@@ -20,7 +20,7 @@ class ThinkTool(BaseOp):
     """
 
     def __init__(self, add_output_reflection: bool = False, **kwargs):
-        """Initialize the think tool tool.
+        """Initialize the think tool.
 
         Args:
             add_output_reflection: If True, outputs the reflection content;

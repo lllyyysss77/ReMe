@@ -126,21 +126,6 @@ class BaseOp:
                 }
         return self._tool_call
 
-    def set_tool_call(self, tool_call: ToolCall | dict):
-        """Set the tool call."""
-        if isinstance(tool_call, dict):
-            self._tool_call = ToolCall(**tool_call)
-        elif isinstance(tool_call, ToolCall):
-            self._tool_call = tool_call
-        else:
-            raise ValueError(f"Invalid tool call: {tool_call}")
-
-        self._tool_call.name = self._tool_call.name or self.name
-        if not self._tool_call.output.properties:
-            self._tool_call.output.properties = {
-                f"{self.name}_result": ToolAttr(type="string", description=f"Execution result of {self.name}"),
-            }
-
     @property
     def input_dict(self) -> dict:
         """Extract required and optional inputs from context based on schema."""
@@ -218,6 +203,26 @@ class BaseOp:
     def response(self) -> Response:
         """Get the response object."""
         return self.context.response
+
+    def set_tool_call(self, tool_call: ToolCall | dict):
+        """Set the tool call."""
+        if isinstance(tool_call, dict):
+            self._tool_call = ToolCall(**tool_call)
+        elif isinstance(tool_call, ToolCall):
+            self._tool_call = tool_call
+        else:
+            raise ValueError(f"Invalid tool call: {tool_call}")
+
+        self._tool_call.name = self._tool_call.name or self.name
+        if not self._tool_call.output.properties:
+            self._tool_call.output.properties = {
+                f"{self.name}_result": ToolAttr(type="string", description=f"Execution result of {self.name}"),
+            }
+
+    def set_language(self, language: str):
+        """Set the language."""
+        self.language = language
+        return self
 
     def before_execute_sync(self):
         """Prepare context and validate before sync execution."""
@@ -318,10 +323,12 @@ class BaseOp:
                 assert self.async_mode == op.async_mode, "Async mode mismatch!"
                 op.name = name
                 self.sub_ops.append(op)
+
         elif isinstance(sub_ops, list):
             for op in sub_ops:
                 assert self.async_mode == op.async_mode, "Async mode mismatch!"
                 self.sub_ops.append(op)
+
         else:
             assert self.async_mode == sub_ops.async_mode, "Async mode mismatch!"
             self.sub_ops.append(sub_ops)

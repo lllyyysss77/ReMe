@@ -1,5 +1,6 @@
 """schema"""
 
+from .memory_node import MemoryNode
 from .message import ContentBlock, Message, Trajectory
 from .request import Request
 from .response import Response
@@ -19,6 +20,7 @@ from .tool_call import ToolAttr, ToolCall
 from .vector_node import VectorNode
 
 __all__ = [
+    "MemoryNode",
     "ContentBlock",
     "EmbeddingModelConfig",
     "FlowConfig",

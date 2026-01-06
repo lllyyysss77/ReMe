@@ -51,15 +51,14 @@ class HttpService(BaseService):
         tool_call, request_model = self._prepare_route(flow)
 
         async def execute_stream_endpoint(request: request_model) -> StreamingResponse:
-            queue = asyncio.Queue()
-            # Start flow as a background task
-            task = asyncio.create_task(flow.call(stream_queue=queue, **request.model_dump(exclude_none=True)))
+            stream_queue = asyncio.Queue()
+            task = asyncio.create_task(flow.call(stream_queue=stream_queue, **request.model_dump(exclude_none=True)))
 
             async def generate_stream() -> AsyncGenerator[bytes, None]:
                 async for chunk in execute_stream_task(
-                    queue=queue,
+                    stream_queue=stream_queue,
                     task=task,
-                    flow_name=tool_call.name,
+                    task_name=tool_call.name,
                     as_bytes=True,
                 ):
                     yield chunk

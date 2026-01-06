@@ -6,7 +6,7 @@ import os
 from .context import C
 from .flow import BaseFlow
 from .schema import ServiceConfig, Response
-from .utils import PydanticConfigParser, init_logger, execute_stream_task, run_coro_safely
+from .utils import PydanticConfigParser, init_logger, execute_stream_task, run_coro_safely, load_env
 
 
 class Application:
@@ -38,6 +38,15 @@ class Application:
         Initialize the Application with configuration settings.
 
         Args:
+            *args: Additional arguments passed to parser. Examples:
+                - "llm.default.model_name=qwen3-30b-a3b-thinking-2507"
+                - "llm.default.backend=openai_compatible"
+                - "llm.default.temperature=0.6"
+                - "embedding_model.default.model_name=text-embedding-v4"
+                - "embedding_model.default.backend=openai_compatible"
+                - "embedding_model.default.dimensions=1024"
+                - "vector_store.default.backend=memory"
+                - "vector_store.default.embedding_model=default"
             llm_api_key: API key for LLM service
             llm_api_base: Base URL for LLM service
             embedding_api_key: API key for embedding service
@@ -50,8 +59,11 @@ class Application:
             embedding_model: Embedding model configuration dictionary
             vector_store: Vector store configuration dictionary
             token_counter: Token counter configuration dictionary
-            **kwargs: Additional configuration arguments
+            **kwargs: Additional keyword arguments passed to parser. Same format as args but as kwargs. Examples:
+                - **{"llm.default.model_name": "qwen3-30b-a3b-thinking-2507"}
         """
+
+        load_env()
         self._update_env("REME_LLM_API_KEY", llm_api_key)
         self._update_env("REME_LLM_BASE_URL", llm_api_base)
         self._update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
@@ -87,25 +99,25 @@ class Application:
         C.print_logo()
 
     @staticmethod
-    def _update_env(key: str, value: str | None) -> None:
+    def _update_env(key: str, value: str | None):
         """Update environment variable if value is provided."""
         if value:
             os.environ[key] = value
 
     @staticmethod
-    async def start() -> None:
+    async def start():
         """Initialize the service context and prepare external MCP servers."""
         C.initialize_service_context()
         await C.prepare_mcp_servers()
 
     @staticmethod
-    def start_sync() -> None:
+    def start_sync():
         """Synchronous version of start()."""
         C.initialize_service_context()
         run_coro_safely(C.prepare_mcp_servers())
 
     @staticmethod
-    async def stop(wait_thread_pool: bool = True, wait_ray: bool = True) -> None:
+    async def stop(wait_thread_pool: bool = True, wait_ray: bool = True):
         """
         Stop the application and cleanup resources.
 
@@ -118,7 +130,7 @@ class Application:
         C.shutdown_ray(wait=wait_ray)
 
     @staticmethod
-    def stop_sync(wait_thread_pool: bool = True, wait_ray: bool = True) -> None:
+    def stop_sync(wait_thread_pool: bool = True, wait_ray: bool = True):
         """Synchronous version of stop()."""
         C.close_sync()
         C.shutdown_thread_pool(wait=wait_thread_pool)
@@ -195,9 +207,9 @@ class Application:
         task = asyncio.create_task(flow.call(stream_queue=stream_queue, **kwargs))
 
         async for chunk in execute_stream_task(
-            queue=stream_queue,
+            stream_queue=stream_queue,
             task=task,
-            flow_name=name,
+            task_name=name,
             as_bytes=False,
         ):
             yield chunk

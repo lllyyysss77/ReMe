@@ -2,6 +2,7 @@
 Utility module for timing function execution with log metadata preservation.
 """
 
+import datetime
 import functools
 import inspect
 import time
@@ -11,6 +12,15 @@ from loguru import logger
 
 # Type variable to preserve the signature of the decorated callable
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+def get_now_time() -> str:
+    """Get current timestamp in YYYY-MM-DD HH:MM:SS format.
+
+    Returns:
+        str: Current timestamp string in format 'YYYY-MM-DD HH:MM:SS'.
+    """
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def timer(func: F) -> F:

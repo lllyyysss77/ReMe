@@ -6,7 +6,7 @@ from .common_utils import run_coro_safely, execute_stream_task
 from .env_utils import load_env
 from .execute_tuils import exec_code, run_shell_command
 from .http_client import HttpClient
-from .llm_utils import extract_content, format_messages
+from .llm_utils import extract_content, format_messages, deduplicate_memories
 from .logger_utils import init_logger
 from .logo_utils import print_logo
 from .mcp_client import MCPClient
@@ -27,6 +27,7 @@ __all__ = [
     "HttpClient",
     "extract_content",
     "format_messages",
+    "deduplicate_memories",
     "init_logger",
     "print_logo",
     "MCPClient",

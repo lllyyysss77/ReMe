@@ -1,16 +1,16 @@
-"""Simple chat agent for non-streaming conversations."""
+"""Streaming chat agent for real-time conversation streaming."""
 
 from loguru import logger
 
-from ..context import C
-from ..enumeration import Role
-from ..op import BaseOp
-from ..schema import Message, ToolCall
+from ..core.context import C
+from ..core.enumeration import Role, ChunkEnum
+from ..core.op import BaseOp
+from ..core.schema import Message, ToolCall
 
 
 @C.register_op()
-class SimpleChat(BaseOp):
-    """Simple chat agent that handles non-streaming conversations."""
+class StreamChat(BaseOp):
+    """Streaming chat agent that handles real-time conversation streaming."""
 
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
@@ -47,6 +47,7 @@ class SimpleChat(BaseOp):
         )
 
     async def execute(self):
+        """Execute streaming chat operation with query or messages."""
         if "query" in self.context:
             messages = [
                 Message(role=Role.SYSTEM, content="You are a helpful assistant."),
@@ -57,6 +58,7 @@ class SimpleChat(BaseOp):
         else:
             raise ValueError("query or messages must be provided!")
         logger.info(f"messages={messages}")
-        assistant_message = await self.llm.chat(messages=messages)
-        logger.info(f"assistant_message={assistant_message.simple_dump()}")
-        self.output = assistant_message.content
+
+        async for stream_chunk in self.llm.stream_chat(messages):
+            if stream_chunk.chunk_type in [ChunkEnum.ANSWER, ChunkEnum.THINK, ChunkEnum.ERROR, ChunkEnum.TOOL]:
+                await self.context.add_stream_chunk(stream_chunk)

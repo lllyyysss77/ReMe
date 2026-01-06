@@ -40,7 +40,7 @@ class BaseOp:
         token_counter: str | BaseTokenCounter = "default",
         enable_cache: bool = False,
         cache_path: str = "cache/op",
-        cache_expire_hours: float = 0.1,
+        cache_expire_hours: float | None = None,
         sub_ops: dict[str, "BaseOp"] | list["BaseOp"] | Optional["BaseOp"] = None,
         input_mapping: dict[str, str] | None = None,
         output_mapping: dict[str, str] | None = None,

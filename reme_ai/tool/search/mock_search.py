@@ -9,11 +9,11 @@ import random
 
 from loguru import logger
 
-from ...context import C
-from ...enumeration import Role
-from ...op import BaseOp
-from ...schema import ToolCall, Message
-from ...utils import extract_content
+from ...core.context import C
+from ...core.enumeration import Role
+from ...core.op import BaseOp
+from ...core.schema import ToolCall, Message
+from ...core.utils import extract_content
 
 
 @C.register_op()

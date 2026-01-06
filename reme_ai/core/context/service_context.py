@@ -60,6 +60,9 @@ class ServiceContext(BaseContext):
         # MCP server mapping: maps server_name -> {tool_name: ToolCall}
         self.mcp_server_mapping: dict[str, dict] = {}
 
+        # Initialization flag: ensures initialize_service_context is called only once
+        self._initialized: bool = False
+
     def register(self, name: str, register_type: RegistryEnum):
         """Return a decorator to register a component within a specific registry category.
 
@@ -268,7 +271,12 @@ class ServiceContext(BaseContext):
         9. Service backend instance
 
         Note: This method should be called after service_config is set.
+        This method can only be called once. Subsequent calls will be ignored.
         """
+        if self._initialized:
+            logger.warning("initialize_service_context has already been called. Skipping re-initialization.")
+            return
+
         self.language = self.service_config.language
         self.thread_pool = ThreadPoolExecutor(max_workers=self.service_config.thread_pool_max_workers)
 
@@ -285,6 +293,9 @@ class ServiceContext(BaseContext):
         self._initialize_vector_store()  # Depends on embedding models
         self._initialize_flow()
         self._initialize_service()
+
+        # Mark as initialized
+        self._initialized = True
 
     def _initialize_llm(self):
         """Initialize all configured LLM instances.

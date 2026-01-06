@@ -4,11 +4,11 @@ This module provides an operation that can execute shell commands
 asynchronously and return the output, error, and exit code.
 """
 
-from ...context import C
-from ...op import BaseOp
-from ...schema import ToolCall
+from ...core.context import C
+from ...core.op import BaseOp
+from ...core.schema import ToolCall
 
-from ...utils import run_shell_command
+from ...core.utils import run_shell_command
 
 
 @C.register_op()

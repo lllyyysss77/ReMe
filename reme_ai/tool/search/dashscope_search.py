@@ -9,9 +9,9 @@ from typing import Literal
 
 from loguru import logger
 
-from ...context import C
-from ...op import BaseOp
-from ...schema import ToolCall
+from ...core.context import C
+from ...core.op import BaseOp
+from ...core.schema import ToolCall
 
 
 @C.register_op()

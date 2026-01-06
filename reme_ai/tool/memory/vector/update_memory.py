@@ -126,7 +126,13 @@ class UpdateMemory(BaseMemoryTool):
                     logger.warning(f"Skipping memory with missing id or content: {mem}")
                     continue
                 old_memory_ids.append(memory_id)
-                new_memory_nodes.append(self._build_memory_node(memory_content, when_to_use, metadata))
+                new_memory_nodes.append(
+                    self._build_memory_node(
+                        memory_content,
+                        when_to_use=when_to_use,
+                        metadata=metadata,
+                    ),
+                )
 
         else:
             memory_id, memory_content, when_to_use, metadata = self._extract_memory_data(self.context)
@@ -134,7 +140,7 @@ class UpdateMemory(BaseMemoryTool):
                 self.output = "No memory ID or content provided for update."
                 return
             old_memory_ids.append(memory_id)
-            new_memory_nodes.append(self._build_memory_node(memory_content, when_to_use, metadata))
+            new_memory_nodes.append(self._build_memory_node(memory_content, when_to_use=when_to_use, metadata=metadata))
 
         if not old_memory_ids or not new_memory_nodes:
             self.output = "No valid memories provided for update."

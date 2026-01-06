@@ -51,8 +51,7 @@ class ReadMetaMemory(BaseMemoryTool):
 
         filtered_memories = []
         for m in all_memories:
-            memory_type = MemoryType(m.get("memory_type"))
-            if memory_type in (MemoryType.PERSONAL, MemoryType.PROCEDURAL):
+            if m.get("memory_type") in [MemoryType.PERSONAL.value, MemoryType.PROCEDURAL.value]:
                 filtered_memories.append(m)
 
         if self.enable_tool_memory:
@@ -102,8 +101,7 @@ class ReadMetaMemory(BaseMemoryTool):
         memories = self._load_meta_memories()
 
         if memories:
-            formatted = self._format_memory_metadata(memories)
-            self.output = formatted
+            self.output = self._format_memory_metadata(memories)
             logger.info(f"Retrieved {len(memories)} meta memory entries")
         else:
             self.output = "No memory metadata found."

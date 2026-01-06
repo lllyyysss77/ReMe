@@ -45,11 +45,11 @@ class DeleteMemory(BaseMemoryTool):
         if self.enable_multiple:
             memory_ids = self.context.get("memory_ids", [])
         else:
-            single_id = self.context.get("memory_id", "")
-            memory_ids = [single_id] if single_id else []
+            memory_id = self.context.get("memory_id", "")
+            memory_ids = [memory_id] if memory_id else []
 
         # Filter out empty IDs
-        memory_ids = [mid for mid in memory_ids if mid]
+        memory_ids = [m for m in memory_ids if m]
 
         if not memory_ids:
             self.output = "No valid memory IDs provided for deletion."

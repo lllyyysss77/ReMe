@@ -21,4 +21,4 @@ memory_target: |
   The target identifier for this memory category.
   Examples:
   - For personal memory: person's name (e.g., "John", "Alice")
-  - For procedural memory: process name (e.g., "deployment", "code_review")
+  - For procedural memory: domain or topic name (e.g., "deployment", "code_review")

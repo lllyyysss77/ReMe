@@ -22,12 +22,6 @@ class ReadIdentityMemory(BaseMemoryTool):
         }
 
     async def execute(self):
-        result = self.meta_memory.load("identity_memory")
-        identity_memory = result if result is not None else ""
-
-        if identity_memory:
-            self.output = f"Identity memory:\n{identity_memory}"
-            logger.info("Retrieved identity memory")
-        else:
-            self.output = "No identity memory found."
-            logger.info(self.output)
+        identity_memory = self.meta_memory.load("identity_memory") or ""
+        self.output = identity_memory or "No identity memory found."
+        logger.info(self.output)

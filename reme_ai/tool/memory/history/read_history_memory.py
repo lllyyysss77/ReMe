@@ -50,11 +50,7 @@ class ReadHistoryMemory(BaseMemoryTool):
             logger.warning(self.output)
             return
 
-        nodes = await self.vector_store.search(
-            query="",
-            top_k=len(memory_ids),
-            filter_dict={"vector_id": memory_ids},
-        )
+        nodes = await self.vector_store.get(vector_ids=memory_ids)
 
         if not nodes:
             self.output = "No history memories found with the provided IDs."
@@ -62,14 +58,5 @@ class ReadHistoryMemory(BaseMemoryTool):
             return
 
         memories: list[MemoryNode] = [MemoryNode.from_vector_node(n) for n in nodes]
-
-        output_lines = []
-        for memory in memories:
-            output_lines.append(f"Memory ID: {memory.vector_id}")
-            output_lines.append(f"Content:\n{memory.content}")
-            if memory.metadata:
-                output_lines.append(f"Metadata: {memory.metadata}")
-            output_lines.append("---")
-
-        self.output = "\n".join(output_lines)
+        self.output = "---\n".join([m.content for m in memories])
         logger.info(f"Successfully read {len(memories)} history memories.")

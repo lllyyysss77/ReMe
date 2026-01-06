@@ -16,11 +16,7 @@ class AddSummaryMemory(AddMemory):
     - No when_to_use field (add_when_to_use=False)
     """
 
-    def __init__(
-        self,
-        add_metadata: bool = True,
-        **kwargs,
-    ):
+    def __init__(self, add_metadata: bool = True, **kwargs):
         """Initialize AddSummaryMemory.
 
         Args:

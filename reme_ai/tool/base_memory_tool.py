@@ -32,27 +32,29 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
         return {}
 
     def _build_tool_call(self) -> ToolCall:
+        tool_call_params: dict = {
+            "description": self.get_prompt("tool" + ("_multiple" if self.enable_multiple else "")),
+        }
+
         if self.enable_multiple:
             parameters = self._build_multiple_parameters()
         else:
             parameters = self._build_parameters()
 
-        if self.enable_thinking_params and "thinking" not in parameters["properties"]:
-            parameters["properties"] = {
-                "thinking": {
-                    "type": "string",
-                    "description": "Your thinking and reasoning about how to fill in the parameters",
-                },
-                **parameters["properties"],
-            }
-            parameters["required"] = ["thinking", *parameters["required"]]
+        if parameters:
+            tool_call_params["parameters"] = parameters
 
-        return ToolCall(
-            **{
-                "description": self.get_prompt("tool" + ("_multiple" if self.enable_multiple else "")),
-                "parameters": parameters,
-            },
-        )
+            if self.enable_thinking_params and "thinking" not in parameters["properties"]:
+                parameters["properties"] = {
+                    "thinking": {
+                        "type": "string",
+                        "description": "Your thinking and reasoning about how to fill in the parameters",
+                    },
+                    **parameters["properties"],
+                }
+                parameters["required"] = ["thinking", *parameters["required"]]
+
+        return ToolCall(**tool_call_params)
 
     @property
     def meta_memory(self) -> CacheHandler:
@@ -84,19 +86,20 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
     def _build_memory_node(
         self,
         memory_content: str,
+        memory_type: MemoryType | None = None,
+        memory_target: str = "",
+        ref_memory_id: str = "",
         when_to_use: str = "",
+        author: str = "",
         metadata: dict | None = None,
     ) -> MemoryNode:
-        """Build MemoryNode from content, when_to_use, and metadata.
-
-        This is a shared utility method for subclasses that need to create MemoryNode instances.
-        """
+        """Build MemoryNode from content, when_to_use, and metadata."""
         return MemoryNode(
-            memory_type=self.memory_type,
-            memory_target=self.memory_target,
+            memory_type=memory_type or self.memory_type,
+            memory_target=memory_target or self.memory_target,
             when_to_use=when_to_use or "",
             content=memory_content,
-            ref_memory_id=self.ref_memory_id,
-            author=self.author,
+            ref_memory_id=ref_memory_id or self.ref_memory_id,
+            author=author or self.author,
             metadata=metadata or {},
         )

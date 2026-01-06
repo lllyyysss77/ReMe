@@ -114,9 +114,7 @@ class AddMemory(BaseMemoryTool):
                     logger.warning("Skipping memory with empty content")
                     continue
 
-                memory_nodes.append(
-                    self._build_memory_node(memory_content, when_to_use, metadata),
-                )
+                memory_nodes.append(self._build_memory_node(memory_content, when_to_use=when_to_use, metadata=metadata))
 
         else:
             memory_content, when_to_use, metadata = self._extract_memory_data(self.context)
@@ -124,9 +122,7 @@ class AddMemory(BaseMemoryTool):
                 self.output = "No memory content provided for addition."
                 return
 
-            memory_nodes.append(
-                self._build_memory_node(memory_content, when_to_use, metadata),
-            )
+            memory_nodes.append(self._build_memory_node(memory_content, when_to_use=when_to_use, metadata=metadata))
 
         if not memory_nodes:
             self.output = "No valid memories provided for addition."

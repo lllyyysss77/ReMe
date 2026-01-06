@@ -66,12 +66,22 @@ class AddMetaMemory(BaseMemoryTool):
 
     def _load_meta_memories(self) -> list[dict]:
         """Load existing meta memories from cache."""
-        result = self.meta_memory.load("meta_memories")
-        return result if result is not None else []
+        return self.meta_memory.load("meta_memories") or []
 
     def _save_meta_memories(self, memories: list[dict]) -> bool:
         """Save meta memories to cache."""
         return self.meta_memory.save("meta_memories", memories)
+
+    @staticmethod
+    def _filter_memory_type_target(memory_type: str, memory_target: str, existing_set: set) -> bool:
+        result = (
+            memory_type in [MemoryType.PERSONAL.value, MemoryType.PROCEDURAL.value]
+            and memory_target
+            and (memory_type, memory_target) not in existing_set
+        )
+        if result:
+            existing_set.add((memory_type, memory_target))
+        return result
 
     async def execute(self):
         """Execute addition: load existing, merge with new, and save.
@@ -88,24 +98,14 @@ class AddMetaMemory(BaseMemoryTool):
             for mem in meta_memories:
                 memory_type = mem.get("memory_type", "")
                 memory_target = mem.get("memory_target", "")
-                if memory_type and (memory_type, memory_target) not in existing_set:
-                    new_memories.append(
-                        {
-                            "memory_type": memory_type,
-                            "memory_target": memory_target,
-                        },
-                    )
-                    existing_set.add((memory_type, memory_target))
+                if self._filter_memory_type_target(memory_type, memory_target, existing_set):
+                    new_memories.append({"memory_type": memory_type, "memory_target": memory_target})
+
         else:
             memory_type = self.context.get("memory_type", "")
             memory_target = self.context.get("memory_target", "")
-            if memory_type and (memory_type, memory_target) not in existing_set:
-                new_memories.append(
-                    {
-                        "memory_type": memory_type,
-                        "memory_target": memory_target,
-                    },
-                )
+            if self._filter_memory_type_target(memory_type, memory_target, existing_set):
+                new_memories.append({"memory_type": memory_type, "memory_target": memory_target})
 
         if not new_memories:
             self.output = "No new meta memories to add (all entries already exist or invalid)."

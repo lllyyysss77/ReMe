@@ -724,18 +724,27 @@ if __name__ == "__main__":
 
 ### 🌍 [Appworld Experiment](docs/cookbook/appworld/quickstart.md)
 
-We tested ReMe on Appworld using qwen3-8b:
+We tested ReMe on Appworld using Qwen3-8B (non-thinking mode):
 
-| Method       | pass@1            | pass@2            | pass@4            |
-|--------------|-------------------|-------------------|-------------------|
-| without ReMe | 0.083             | 0.140             | 0.228             |
-| with ReMe    | 0.109 **(+2.6%)** | 0.175 **(+3.5%)** | 0.281 **(+5.3%)** |
+| Method       | Avg@4               | Pass@4              |
+|--------------|---------------------|---------------------|
+| without ReMe | 0.1497              | 0.3285              |
+| with ReMe    | 0.1706 **(+2.09%)** | 0.3631 **(+3.46%)** |
 
 Pass@K measures the probability that at least one of the K generated samples successfully completes the task (
 score=1).
 The current experiment uses an internal AppWorld environment, which may have slight differences.
 
 You can find more details on reproducing the experiment in [quickstart.md](docs/cookbook/appworld/quickstart.md).
+
+### 🔧 [BFCL-V3 Experiment](docs/cookbook/bfcl/quickstart.md)
+
+We tested ReMe on BFCL-V3 multi-turn-base (randomly split 50train/150val) using Qwen3-8B (thinking mode):
+
+| Method       | Avg@4               | Pass@4              |
+|--------------|---------------------|---------------------|
+| without ReMe | 0.4033              | 0.5955              |
+| with ReMe    | 0.4450 **(+4.17%)** | 0.6577 **(+6.22%)** |
 
 ### 🧊 [Frozenlake Experiment](docs/cookbook/frozenlake/quickstart.md)
 
@@ -751,15 +760,6 @@ We tested on 100 random frozenlake maps using qwen3-8b:
 | with ReMe    | 0.72 **(+6.0%)** |
 
 You can find more details on reproducing the experiment in [quickstart.md](docs/cookbook/frozenlake/quickstart.md).
-
-### 🔧 [BFCL-V3 Experiment](docs/cookbook/bfcl/quickstart.md)
-
-We tested ReMe on BFCL-V3 multi-turn-base (randomly split 50train/150val) using qwen3-8b:
-
-| Method       | pass@1              | pass@2              | pass@4              |
-|--------------|---------------------|---------------------|---------------------|
-| without ReMe | 0.2472              | 0.2733              | 0.2922              |
-| with ReMe    | 0.3061 **(+5.89%)** | 0.3500 **(+7.67%)** | 0.3888 **(+9.66%)** |
 
 ### 🛠️ [Tool Memory Benchmark](docs/tool_memory/tool_bench.md)
 

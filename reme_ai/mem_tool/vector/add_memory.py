@@ -3,8 +3,8 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ....core.context import C
-from ....core.schema import MemoryNode
+from ...core.context import C
+from ...core.schema import MemoryNode
 
 
 @C.register_op()

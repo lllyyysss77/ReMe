@@ -34,8 +34,8 @@ class MCPService(BaseService):
 
         self.mcp.add_tool(
             FunctionTool(
-                name=tool_call.name,
-                description=tool_call.description,
+                name=tool_call.name,  # noqa
+                description=tool_call.description,  # noqa
                 fn=execute_tool,
                 parameters=tool_call.parameters.simple_input_dump(),
             ),

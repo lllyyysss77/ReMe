@@ -8,7 +8,7 @@ from loguru import logger
 from ..core.enumeration import Role, MemoryType
 from ..core.op import BaseOp
 from ..core.schema import Message, ToolCall
-from ..tool.memory import BaseMemoryTool, ThinkTool
+from ..mem_tool import BaseMemoryTool, ThinkTool
 
 
 class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
@@ -141,35 +141,26 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
 
     async def react(self, messages: list[Message]):
         """Performs reasoning and acting steps until completion or max steps reached."""
-        success: bool = False
         for step in range(self.max_steps):
             assistant_message, should_act = await self._reasoning_step(messages, step)
 
             if not should_act:
-                success = True
                 break
 
             tool_result_messages = await self._acting_step(assistant_message, step)
             messages.extend(tool_result_messages)
 
-        return messages, success
+        return messages
 
     async def execute(self):
         messages = await self.build_messages()
         for i, message in enumerate(messages):
             logger.info(f"step0.{i} {message.role} {message.name or ''} {message.simple_dump()}")
 
-        messages, success = await self.react(messages)
-        if messages:
-            if success:
-                self.output = messages[-1].content
-            else:
-                self.output = f"react is not complete with content:\n{messages[-1].content}"
-        else:
-            self.output = "empty messages"
-
-        self.context.response.metadata["messages"] = messages
-        self.context.response.metadata["success"] = success
+        messages = await self.react(messages)
+        self.output = [
+            m.simple_dump(add_name=True, add_reasoning=True, add_time_created=True, add_metadata=True) for m in messages
+        ]
 
     @property
     def memory_target(self) -> str:

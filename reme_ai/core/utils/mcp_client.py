@@ -8,7 +8,7 @@ from typing import Any
 from mcp import ClientSession, StdioServerParameters, Tool
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 from mcp.types import CallToolResult, TextContent
 
 from ..schema import ToolCall
@@ -64,7 +64,7 @@ class MCPClient:
                 async with sse_client(**cfg) as transport:
                     yield transport
             elif t_type == "streamable-http":
-                async with streamablehttp_client(**cfg) as transport:
+                async with streamable_http_client(**cfg) as transport:
                     yield transport
             else:
                 raise NotImplementedError(f"Unsupported transport: {t_type}")

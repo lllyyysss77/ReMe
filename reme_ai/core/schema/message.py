@@ -2,7 +2,6 @@
 
 import datetime
 import json
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -44,14 +43,14 @@ class ContentBlock(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def init_block(cls, data: dict[str, Any]) -> dict[str, Any]:
+    def init_block(cls, data: dict) -> dict:
         """Dynamically maps the type-specific key to the content field."""
         content_type = data.get("type", "")
         if content_type and content_type in data:
             data["content"] = data[content_type]
         return data
 
-    def simple_dump(self) -> dict[str, Any]:
+    def simple_dump(self) -> dict:
         """Serializes the block into an API-compatible dictionary format."""
         return {
             "type": self.type,
@@ -69,27 +68,44 @@ class Message(BaseModel):
     reasoning_content: str = Field(default="")
     tool_calls: list[ToolCall] = Field(default_factory=list)
     tool_call_id: str = Field(default="")
-    time_created: str = Field(
-        default_factory=lambda: datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    )
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    time_created: str = Field(default_factory=lambda: datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    metadata: dict = Field(default_factory=dict)
 
-    def dump_content(self) -> str | list[dict[str, Any]]:
+    def dump_content(self) -> str | list[dict]:
         """Returns content as a raw string or a list of serialized blocks."""
         if isinstance(self.content, str):
             return self.content
         return [block.simple_dump() for block in self.content]
 
-    def simple_dump(self, add_reasoning: bool = True) -> dict[str, Any]:
+    def simple_dump(
+        self,
+        add_name: bool = False,
+        add_reasoning: bool = True,
+        add_time_created: bool = False,
+        add_metadata: bool = False,
+    ) -> dict:
         """Transforms the message into a simplified dictionary for standard APIs."""
-        result = {"role": self.role.value, "content": self.dump_content()}
+        result = {}
+        if add_name and self.name:
+            result["name"] = self.name
+
+        result["role"] = self.role.value
+        result["content"] = self.dump_content()
 
         if add_reasoning and self.reasoning_content:
             result["reasoning_content"] = self.reasoning_content
+
         if self.tool_calls:
             result["tool_calls"] = [tc.simple_output_dump() for tc in self.tool_calls]
+
         if self.tool_call_id:
             result["tool_call_id"] = self.tool_call_id
+
+        if add_time_created:
+            result["time_created"] = self.time_created
+
+        if add_metadata:
+            result["metadata"] = self.metadata
 
         return result
 
@@ -133,4 +149,4 @@ class Trajectory(BaseModel):
     task_id: str = Field(default="")
     messages: list[Message] = Field(default_factory=list)
     score: float = Field(default=0.0)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict = Field(default_factory=dict)

@@ -57,7 +57,7 @@ class BaseRayOp(BaseOp, metaclass=ABCMeta):
             for k, v in kwargs.items()
         }
 
-        # Submit sliced chunks to reduce inter-node data transfer
+        # Submit sliced chunks to reduce internode data transfer
         remote_task_loop = ray.remote(self._ray_task_loop)
         for i in range(max_workers):
             chunk = parallel_list[i::max_workers]

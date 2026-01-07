@@ -1,4 +1,4 @@
-"""Simple chat agent for non-streaming conversations."""
+"""Simple chat for test."""
 
 from loguru import logger
 

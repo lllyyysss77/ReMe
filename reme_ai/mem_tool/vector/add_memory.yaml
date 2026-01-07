@@ -26,12 +26,5 @@ memory_content: |
   Should be a clear, concise statement that captures the information to remember.
   Keep it focused on a single piece of information for better retrieval accuracy.
 
-metadata: |
-  Optional metadata for the memory, providing additional context. Can include:
-  - time: The timestamp or date associated with the memory (e.g., "2025-01-06 10:30:00")
-  - source: Where this information came from (e.g., "user_input", "documentation", "observation")
-  - tags: List of tags for categorization (e.g., ["authentication", "security"])
-  - Any other custom key-value pairs relevant to the memory
-
 memories: |
   A list of memory objects to store.

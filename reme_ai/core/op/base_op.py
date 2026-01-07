@@ -4,7 +4,7 @@ import asyncio
 import copy
 import inspect
 from pathlib import Path
-from typing import Callable, Any, Optional
+from typing import Callable, Optional
 
 from loguru import logger
 from tqdm import tqdm
@@ -136,7 +136,7 @@ class BaseOp:
         return {k: self.context[k] for k in parameters.properties.keys() if (k in required_keys or k in self.context)}
 
     @property
-    def output(self) -> Any:
+    def output(self):
         """Get the single output value from context."""
         output_properties = self.tool_call.output.properties
         if not output_properties:
@@ -149,7 +149,7 @@ class BaseOp:
             return None
 
     @output.setter
-    def output(self, value: Any):
+    def output(self, value):
         """Set the single output value into context."""
         output_properties = self.tool_call.output.properties
         if not output_properties:
@@ -322,15 +322,21 @@ class BaseOp:
             for name, op in sub_ops.items():
                 assert self.async_mode == op.async_mode, "Async mode mismatch!"
                 op.name = name
+                if self.language:
+                    op.language = self.language
                 self.sub_ops.append(op)
 
         elif isinstance(sub_ops, list):
             for op in sub_ops:
                 assert self.async_mode == op.async_mode, "Async mode mismatch!"
+                if self.language:
+                    op.language = self.language
                 self.sub_ops.append(op)
 
         else:
             assert self.async_mode == sub_ops.async_mode, "Async mode mismatch!"
+            if self.language:
+                sub_ops.language = self.language
             self.sub_ops.append(sub_ops)
 
     def add_sub_op(self, sub_op: "BaseOp"):

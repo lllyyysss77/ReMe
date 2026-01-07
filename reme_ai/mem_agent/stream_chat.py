@@ -1,4 +1,4 @@
-"""Streaming chat agent for real-time conversation streaming."""
+"""Streaming chat for test."""
 
 from loguru import logger
 

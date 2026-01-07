@@ -29,3 +29,4 @@ query: |
 
 query_items: |
   A list of query items for vector similarity search.
+  Each item can include metadata_filters to narrow down search results.

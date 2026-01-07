@@ -12,24 +12,25 @@ class UpdateMemory(BaseMemoryTool):
     """Update memories by deleting old ones and inserting new ones.
 
     Supports single/multiple update modes via `enable_multiple` parameter.
+    Metadata fields can be customized via `metadata_desc` parameter.
     """
 
     def __init__(
         self,
         add_when_to_use: bool = False,
-        add_metadata: bool = True,
+        metadata_desc: dict[str, str] | None = None,
         **kwargs,
     ):
         """Initialize UpdateMemory.
 
         Args:
             add_when_to_use: Include when_to_use field for better retrieval.
-            add_metadata: Include metadata field for additional info.
+            metadata_desc: Dictionary defining metadata fields and their descriptions.
             **kwargs: Additional arguments for BaseMemoryTool.
         """
         super().__init__(**kwargs)
         self.add_when_to_use: bool = add_when_to_use
-        self.add_metadata: bool = add_metadata
+        self.metadata_desc: dict[str, str] = metadata_desc or {}
 
     def _build_item_schema(self) -> tuple[dict, list[str]]:
         """Build shared schema properties and required fields for memory items.
@@ -57,10 +58,19 @@ class UpdateMemory(BaseMemoryTool):
         }
         required.append("memory_content")
 
-        if self.add_metadata:
+        # Add metadata field if metadata_desc is provided and not empty
+        if self.metadata_desc:
+            metadata_properties = {
+                key: {"type": "string", "description": desc} for key, desc in self.metadata_desc.items()
+            }
+            # Generate dynamic description based on metadata_desc fields
+            field_descriptions = "\n".join([f"  - {key}: {desc}" for key, desc in self.metadata_desc.items()])
+            metadata_description = f"Optional metadata for the memory. Available fields:\n{field_descriptions}"
+
             properties["metadata"] = {
                 "type": "object",
-                "description": self.get_prompt("metadata"),
+                "description": metadata_description,
+                "properties": metadata_properties,
             }
 
         return properties, required
@@ -105,7 +115,12 @@ class UpdateMemory(BaseMemoryTool):
         memory_id = mem_dict.get("memory_id", "")
         memory_content = mem_dict.get("memory_content", "")
         when_to_use = mem_dict.get("when_to_use", "") if self.add_when_to_use else ""
-        metadata = mem_dict.get("metadata", {}) if self.add_metadata else {}
+        # Only extract metadata if metadata_desc is configured
+        # Convert all metadata values to strings
+        metadata = {}
+        if self.metadata_desc:
+            raw_metadata = mem_dict.get("metadata", {})
+            metadata = {key: str(value).strip() for key, value in raw_metadata.items() if value}
         return memory_id, memory_content, when_to_use, metadata
 
     async def execute(self):

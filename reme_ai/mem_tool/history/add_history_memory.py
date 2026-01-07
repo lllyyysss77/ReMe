@@ -38,7 +38,6 @@ class AddHistoryMemory(BaseMemoryTool):
             return
 
         messages = [Message(**m) if isinstance(m, dict) else m for m in messages]
-
         memory_content = format_messages(messages)
         memory_node = self._build_memory_node(memory_content=memory_content, memory_type=MemoryType.HISTORY)
 

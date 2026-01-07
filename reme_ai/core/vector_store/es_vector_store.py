@@ -341,7 +341,7 @@ class ESVectorStore(BaseVectorStore):
 
         actions = []
         for node in nodes_to_update:
-            doc = {
+            doc: dict = {
                 "vector_id": node.vector_id,
                 "content": node.content,
                 "metadata": node.metadata,

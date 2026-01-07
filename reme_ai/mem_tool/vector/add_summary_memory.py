@@ -14,19 +14,20 @@ class AddSummaryMemory(AddMemory):
     - Single memory mode only (enable_multiple=False)
     - Uses 'summary_memory' parameter instead of 'memory_content'
     - No when_to_use field (add_when_to_use=False)
+    - Metadata fields can be customized via `metadata_desc` parameter
     """
 
-    def __init__(self, add_metadata: bool = True, **kwargs):
+    def __init__(self, metadata_desc: dict[str, str] | None = None, **kwargs):
         """Initialize AddSummaryMemory.
 
         Args:
-            add_metadata: Include metadata field for additional info.
+            metadata_desc: Dictionary defining metadata fields and their descriptions.
             **kwargs: Additional arguments for AddMemory.
         """
         # Force single mode and disable when_to_use
         kwargs["enable_multiple"] = False
         kwargs["add_when_to_use"] = False
-        super().__init__(add_metadata=add_metadata, **kwargs)
+        super().__init__(metadata_desc=metadata_desc, **kwargs)
 
     def _build_parameters(self) -> dict:
         """Build input schema for summary memory addition."""
@@ -38,10 +39,19 @@ class AddSummaryMemory(AddMemory):
         }
         required = ["summary_memory"]
 
-        if self.add_metadata:
+        # Add metadata field if metadata_desc is provided and not empty
+        if self.metadata_desc:
+            metadata_properties = {
+                key: {"type": "string", "description": desc} for key, desc in self.metadata_desc.items()
+            }
+            # Generate dynamic description based on metadata_desc fields
+            field_descriptions = "\n".join([f"  - {key}: {desc}" for key, desc in self.metadata_desc.items()])
+            metadata_description = f"Optional metadata for the memory. Available fields:\n{field_descriptions}"
+
             properties["metadata"] = {
                 "type": "object",
-                "description": self.get_prompt("metadata"),
+                "description": metadata_description,
+                "properties": metadata_properties,
             }
 
         return {

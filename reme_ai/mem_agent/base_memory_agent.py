@@ -18,19 +18,25 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
 
     def __init__(
         self,
-        max_steps: int = 20,
-        tool_call_interval: float = 0,
+        tools: list[BaseMemoryTool],
         add_think_tool: bool = False,  # only for instruct model
-        tools: list[BaseMemoryTool] | None = None,
+        force_tool_language: bool = True,
+        tool_call_interval: float = 0,
+        max_steps: int = 20,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.max_steps: int = max_steps
+        self.tools: list[BaseMemoryTool] = tools or []
+        if add_think_tool:
+            self.tools.append(ThinkTool())
+        if force_tool_language and self.language:
+            for tool in self.tools:
+                tool.language = self.language
         self.tool_call_interval: float = tool_call_interval
-        self.add_think_tool: bool = add_think_tool
-        assert not self.sub_ops, "sub_ops must be empty, use `tools`~"
-        if tools:
-            self.sub_ops.extend([t.set_language(self.language) for t in tools])
+        self.max_steps: int = max_steps
+
+        self.messages: list[Message] = []
+        self.success: bool = True
 
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
@@ -65,19 +71,6 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 },
             },
         )
-
-    @property
-    def tools(self) -> list[BaseMemoryTool]:
-        """Returns the list of memory tools available to the agent."""
-        tools: list[BaseMemoryTool] = [o for o in self.sub_ops if isinstance(o, BaseMemoryTool)]
-        if self.add_think_tool:
-            tools.append(ThinkTool(language=self.language))
-        return tools
-
-    @tools.setter
-    def tools(self, tools: list[BaseMemoryTool] | BaseMemoryTool):
-        """Sets the memory tools for the agent."""
-        self.sub_ops = tools
 
     def get_messages(self) -> list[Message]:
         """Extracts and returns messages from the context query or messages."""
@@ -141,26 +134,29 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
 
     async def react(self, messages: list[Message]):
         """Performs reasoning and acting steps until completion or max steps reached."""
+        success: bool = False
         for step in range(self.max_steps):
             assistant_message, should_act = await self._reasoning_step(messages, step)
 
             if not should_act:
+                success = True
                 break
 
             tool_result_messages = await self._acting_step(assistant_message, step)
             messages.extend(tool_result_messages)
 
-        return messages
+        return messages, success
 
     async def execute(self):
         messages = await self.build_messages()
         for i, message in enumerate(messages):
             logger.info(f"step0.{i} {message.role} {message.name or ''} {message.simple_dump()}")
 
-        messages = await self.react(messages)
-        self.output = [
-            m.simple_dump(add_name=True, add_reasoning=True, add_time_created=True, add_metadata=True) for m in messages
-        ]
+        self.messages, self.success = await self.react(messages)
+        if self.success and self.messages:
+            self.output = self.messages[-1].content
+        else:
+            self.output = ""
 
     @property
     def memory_target(self) -> str:

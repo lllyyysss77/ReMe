@@ -33,7 +33,7 @@ classifiers = [
 keywords = ["llm", "memory", "experience", "memoryscope", "ai", "mcp", "http"]
 
 dependencies = [
-    "flowllm[reme]>=0.2.0.9",
+    "flowllm[reme]>=0.2.0.10",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +48,7 @@ dev = [
 ]
 
 token = [
-    "flowllm[token]>=0.2.0.9"
+    "flowllm[token]>=0.2.0.10"
 ]
 
 full = [

@@ -44,7 +44,7 @@ class DeleteMemoryOp(BaseAsyncOp):
         workspace_id: str = self.context.workspace_id
         freq_threshold: int = self.context.freq_threshold
         utility_threshold: float = self.context.utility_threshold
-        nodes: Iterable[VectorNode] = self.vector_store.iter_workspace_nodes(workspace_id=workspace_id)
+        nodes: Iterable[VectorNode] = await self.vector_store.async_list_workspace_nodes(workspace_id=workspace_id)
 
         deleted_memory_ids = []
         for node in nodes:

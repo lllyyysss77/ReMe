@@ -80,7 +80,7 @@ class VectorStoreActionOp(BaseAsyncOp):
             def node_to_memory(node: VectorNode) -> dict:
                 return vector_node_to_memory(node).model_dump()
 
-            result = await self.vector_store.async_iter_workspace_nodes(workspace_id=workspace_id)
+            result = await self.vector_store.async_list_workspace_nodes(workspace_id=workspace_id)
             result = [node_to_memory(node) for node in result]
 
         elif action == "load":

@@ -374,8 +374,6 @@ Examples:
     args = parser.parse_args()
 
     # Determine which LLMs to test
-    llms_to_test = []
-
     if args.all:
         llms_to_test = [
             (OpenAILLM, "OpenAILLM"),

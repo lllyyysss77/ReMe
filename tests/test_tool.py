@@ -8,7 +8,7 @@ search tools (Dashscope, Mock, Tavily) and execution tools (Code, Shell).
 
 import asyncio
 
-from reme_ai.core.reme import ReMe
+from reme_ai.reme import ReMe
 
 ReMe()
 
@@ -155,7 +155,7 @@ def test_simple_chat():
     Tests the SimpleChat agent with a basic query to verify
     it can process and respond to user input.
     """
-    from reme_ai.mem_agent import SimpleChat
+    from reme_ai.mem_agent.chat import SimpleChat
 
     op = SimpleChat()
     asyncio.run(op.call(query="你好"))
@@ -168,7 +168,7 @@ async def test_stream_chat():
     Tests the StreamChat agent with a query to verify it can
     process and stream responses in real-time using async operations.
     """
-    from reme_ai.mem_agent import StreamChat
+    from reme_ai.mem_agent.chat import StreamChat
     from reme_ai.core.utils import execute_stream_task
     from reme_ai.core.context import RuntimeContext
     from asyncio import Queue

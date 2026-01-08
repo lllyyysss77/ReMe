@@ -4,15 +4,25 @@ This module defines the MemoryNode class for storing and retrieving
 memories in the ReMe system.
 """
 
+import datetime
 import hashlib
 import json
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
+from .vector_node import VectorNode
 from ..enumeration import MemoryType
-from ..schema import VectorNode
-from ..utils import get_now_time
+
+
+def get_now_time() -> str:
+    """Get current timestamp in YYYY-MM-DD HH:MM:SS format.
+
+    Returns:
+        str: Current timestamp string in format 'YYYY-MM-DD HH:MM:SS'.
+    """
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 # Length of the memory ID (first N characters of SHA-256 hash)
 MEMORY_ID_LENGTH: int = 16

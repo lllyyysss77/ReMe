@@ -6,7 +6,7 @@ tool: |
   or conflicts with existing memories, and perform add, update, or delete operations as needed.
 
 system_prompt: |
-  You are a professional memory agent specializing in the domain of **{memory_target}**. Your task is to update the main agent's {memory_type} memory regarding {memory_target} based on the context.
+  You are a professional memory agent. Your task is to update the main agent's {memory_type} memory regarding {memory_target} based on the context.
 
   ## Context:
   {context}

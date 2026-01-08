@@ -25,53 +25,6 @@ class BaseLLM(ABC):
         self.kwargs: dict = kwargs
 
     @staticmethod
-    def _process_stream_chunk(
-        stream_chunk: StreamChunk,
-        state: dict,
-        enable_stream_print: bool = False,
-    ) -> None:
-        """Update the aggregation state by processing an individual stream chunk."""
-        if stream_chunk.chunk_type is ChunkEnum.USAGE:
-            if enable_stream_print:
-                print(f"\n<usage>{json.dumps(stream_chunk.chunk, ensure_ascii=False, indent=2)}</usage>", flush=True)
-
-        elif stream_chunk.chunk_type is ChunkEnum.THINK:
-            if enable_stream_print:
-                if not state["enter_think"]:
-                    state["enter_think"] = True
-                    print("<think>\n", end="", flush=True)
-                print(stream_chunk.chunk, end="", flush=True)
-            state["reasoning_content"] += stream_chunk.chunk
-
-        elif stream_chunk.chunk_type is ChunkEnum.ANSWER:
-            if enable_stream_print:
-                if not state["enter_answer"]:
-                    state["enter_answer"] = True
-                    if state["enter_think"]:
-                        print("\n</think>", flush=True)
-                print(stream_chunk.chunk, end="", flush=True)
-            state["answer_content"] += stream_chunk.chunk
-
-        elif stream_chunk.chunk_type is ChunkEnum.TOOL:
-            if enable_stream_print:
-                print(f"\n<tool>{json.dumps(stream_chunk.chunk, ensure_ascii=False, indent=2)}</tool>", flush=True)
-            state["tool_calls"].append(stream_chunk.chunk)
-
-        elif stream_chunk.chunk_type is ChunkEnum.ERROR:
-            if enable_stream_print:
-                print(f"\n<error>{stream_chunk.chunk}</error>", flush=True)
-
-    @staticmethod
-    def _create_message_from_state(state: dict) -> Message:
-        """Construct a Message object from the accumulated aggregation state."""
-        return Message(
-            role=Role.ASSISTANT,
-            reasoning_content=state["reasoning_content"],
-            content=state["answer_content"],
-            tool_calls=state["tool_calls"],
-        )
-
-    @staticmethod
     def _accumulate_tool_call_chunk(tool_call, ret_tools: list[ToolCall]):
         """Assemble incremental tool call fragments into complete ToolCall objects."""
         index = tool_call.index
@@ -137,14 +90,15 @@ class BaseLLM(ABC):
         """Internal synchronous generator for streaming raw response chunks."""
         raise NotImplementedError
 
-    async def _stream_with_retry(
+    async def stream_chat(
         self,
-        operation_name: str,
         messages: list[Message],
-        tools: list[ToolCall] | None,
-        stream_kwargs: dict,
+        tools: list[ToolCall] | None = None,
+        **kwargs,
     ) -> AsyncGenerator[StreamChunk, None]:
-        """Execute the async streaming operation with retry logic and error recovery."""
+        """Public async interface for streaming chat completions with retries."""
+        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
+
         for i in range(self.max_retries):
             try:
                 async for chunk in self._stream_chat(messages=messages, tools=tools, stream_kwargs=stream_kwargs):
@@ -152,7 +106,7 @@ class BaseLLM(ABC):
                 return
 
             except Exception as e:
-                logger.exception(f"{operation_name} with model={self.model_name} encounter error with e={e.args}")
+                logger.exception(f"stream chat with model={self.model_name} encounter error with e={e.args}")
 
                 if i == self.max_retries - 1:
                     if self.raise_exception:
@@ -163,21 +117,22 @@ class BaseLLM(ABC):
                 yield StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e))
                 await asyncio.sleep(i + 1)
 
-    def _stream_with_retry_sync(
+    def stream_chat_sync(
         self,
-        operation_name: str,
         messages: list[Message],
-        tools: list[ToolCall] | None,
-        stream_kwargs: dict,
+        tools: list[ToolCall] | None = None,
+        **kwargs,
     ) -> Generator[StreamChunk, None, None]:
-        """Execute the synchronous streaming operation with retry logic and error recovery."""
+        """Public synchronous interface for streaming chat completions with retries."""
+        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
+
         for i in range(self.max_retries):
             try:
                 yield from self._stream_chat_sync(messages=messages, tools=tools, stream_kwargs=stream_kwargs)
                 return
 
             except Exception as e:
-                logger.exception(f"{operation_name} with model={self.model_name} encounter error with e={e.args}")
+                logger.exception(f"stream chat sync with model={self.model_name} encounter error with e={e.args}")
 
                 if i == self.max_retries - 1:
                     if self.raise_exception:
@@ -187,27 +142,6 @@ class BaseLLM(ABC):
 
                 yield StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e))
                 time.sleep(i + 1)
-
-    async def stream_chat(
-        self,
-        messages: list[Message],
-        tools: list[ToolCall] | None = None,
-        **kwargs,
-    ) -> AsyncGenerator[StreamChunk, None]:
-        """Public async interface for streaming chat completions with retries."""
-        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
-        async for chunk in self._stream_with_retry("stream chat", messages, tools, stream_kwargs):
-            yield chunk
-
-    def stream_chat_sync(
-        self,
-        messages: list[Message],
-        tools: list[ToolCall] | None = None,
-        **kwargs,
-    ) -> Generator[StreamChunk, None, None]:
-        """Public synchronous interface for streaming chat completions with retries."""
-        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
-        yield from self._stream_with_retry_sync("stream chat sync", messages, tools, stream_kwargs)
 
     async def _chat(
         self,
@@ -227,9 +161,46 @@ class BaseLLM(ABC):
 
         stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
         async for stream_chunk in self._stream_chat(messages=messages, tools=tools, stream_kwargs=stream_kwargs):
-            self._process_stream_chunk(stream_chunk, state, enable_stream_print)
+            # Process stream chunk
+            if stream_chunk.chunk_type is ChunkEnum.USAGE:
+                if enable_stream_print:
+                    print(
+                        f"\n<usage>{json.dumps(stream_chunk.chunk, ensure_ascii=False, indent=2)}</usage>",
+                        flush=True,
+                    )
 
-        return self._create_message_from_state(state)
+            elif stream_chunk.chunk_type is ChunkEnum.THINK:
+                if enable_stream_print:
+                    if not state["enter_think"]:
+                        state["enter_think"] = True
+                        print("<think>\n", end="", flush=True)
+                    print(stream_chunk.chunk, end="", flush=True)
+                state["reasoning_content"] += stream_chunk.chunk
+
+            elif stream_chunk.chunk_type is ChunkEnum.ANSWER:
+                if enable_stream_print:
+                    if not state["enter_answer"]:
+                        state["enter_answer"] = True
+                        if state["enter_think"]:
+                            print("\n</think>", flush=True)
+                    print(stream_chunk.chunk, end="", flush=True)
+                state["answer_content"] += stream_chunk.chunk
+
+            elif stream_chunk.chunk_type is ChunkEnum.TOOL:
+                if enable_stream_print:
+                    print(f"\n<tool>{json.dumps(stream_chunk.chunk, ensure_ascii=False, indent=2)}</tool>", flush=True)
+                state["tool_calls"].append(stream_chunk.chunk)
+
+            elif stream_chunk.chunk_type is ChunkEnum.ERROR:
+                if enable_stream_print:
+                    print(f"\n<error>{stream_chunk.chunk}</error>", flush=True)
+
+        return Message(
+            role=Role.ASSISTANT,
+            reasoning_content=state["reasoning_content"],
+            content=state["answer_content"],
+            tool_calls=state["tool_calls"],
+        )
 
     def _chat_sync(
         self,
@@ -249,57 +220,46 @@ class BaseLLM(ABC):
 
         stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
         for stream_chunk in self._stream_chat_sync(messages=messages, tools=tools, stream_kwargs=stream_kwargs):
-            self._process_stream_chunk(stream_chunk, state, enable_stream_print)
+            # Process stream chunk
+            if stream_chunk.chunk_type is ChunkEnum.USAGE:
+                if enable_stream_print:
+                    print(
+                        f"\n<usage>{json.dumps(stream_chunk.chunk, ensure_ascii=False, indent=2)}</usage>",
+                        flush=True,
+                    )
 
-        return self._create_message_from_state(state)
+            elif stream_chunk.chunk_type is ChunkEnum.THINK:
+                if enable_stream_print:
+                    if not state["enter_think"]:
+                        state["enter_think"] = True
+                        print("<think>\n", end="", flush=True)
+                    print(stream_chunk.chunk, end="", flush=True)
+                state["reasoning_content"] += stream_chunk.chunk
 
-    async def _execute_with_retry(
-        self,
-        operation_name: str,
-        operation_fn: Callable[[], Any],
-        callback_fn: Callable[[Message], Any] | None = None,
-        default_value: Any = None,
-    ) -> Message | Any:
-        """Execute a generic async operation with error handling and retry logic."""
-        for i in range(self.max_retries):
-            try:
-                result = await operation_fn()
-                return callback_fn(result) if callback_fn else result
+            elif stream_chunk.chunk_type is ChunkEnum.ANSWER:
+                if enable_stream_print:
+                    if not state["enter_answer"]:
+                        state["enter_answer"] = True
+                        if state["enter_think"]:
+                            print("\n</think>", flush=True)
+                    print(stream_chunk.chunk, end="", flush=True)
+                state["answer_content"] += stream_chunk.chunk
 
-            except Exception as e:
-                logger.exception(f"{operation_name} with model={self.model_name} encounter error with e={e.args}")
+            elif stream_chunk.chunk_type is ChunkEnum.TOOL:
+                if enable_stream_print:
+                    print(f"\n<tool>{json.dumps(stream_chunk.chunk, ensure_ascii=False, indent=2)}</tool>", flush=True)
+                state["tool_calls"].append(stream_chunk.chunk)
 
-                if i == self.max_retries - 1:
-                    if self.raise_exception:
-                        raise e
-                    return default_value
+            elif stream_chunk.chunk_type is ChunkEnum.ERROR:
+                if enable_stream_print:
+                    print(f"\n<error>{stream_chunk.chunk}</error>", flush=True)
 
-                await asyncio.sleep(1 + i)
-        return default_value
-
-    def _execute_with_retry_sync(
-        self,
-        operation_name: str,
-        operation_fn: Callable[[], Message],
-        callback_fn: Callable[[Message], Any] | None = None,
-        default_value: Any = None,
-    ) -> Message | Any:
-        """Execute a generic synchronous operation with error handling and retry logic."""
-        for i in range(self.max_retries):
-            try:
-                result = operation_fn()
-                return callback_fn(result) if callback_fn else result
-
-            except Exception as e:
-                logger.exception(f"{operation_name} with model={self.model_name} encounter error with e={e.args}")
-
-                if i == self.max_retries - 1:
-                    if self.raise_exception:
-                        raise e
-                    return default_value
-
-                time.sleep(1 + i)
-        return default_value
+        return Message(
+            role=Role.ASSISTANT,
+            reasoning_content=state["reasoning_content"],
+            content=state["answer_content"],
+            tool_calls=state["tool_calls"],
+        )
 
     async def chat(
         self,
@@ -311,17 +271,26 @@ class BaseLLM(ABC):
         **kwargs,
     ) -> Message | Any:
         """Perform an async chat completion with integrated retries and error handling."""
-        return await self._execute_with_retry(
-            operation_name="chat",
-            operation_fn=lambda: self._chat(
-                messages=messages,
-                tools=tools,
-                enable_stream_print=enable_stream_print,
-                **kwargs,
-            ),
-            callback_fn=callback_fn,
-            default_value=default_value,
-        )
+        for i in range(self.max_retries):
+            try:
+                result = await self._chat(
+                    messages=messages,
+                    tools=tools,
+                    enable_stream_print=enable_stream_print,
+                    **kwargs,
+                )
+                return callback_fn(result) if callback_fn else result
+
+            except Exception as e:
+                logger.exception(f"chat with model={self.model_name} encounter error with e={e.args}")
+
+                if i == self.max_retries - 1:
+                    if self.raise_exception:
+                        raise e
+                    return default_value
+
+                await asyncio.sleep(1 + i)
+        return default_value
 
     def chat_sync(
         self,
@@ -333,17 +302,26 @@ class BaseLLM(ABC):
         **kwargs,
     ) -> Message | Any:
         """Perform a synchronous chat completion with integrated retries and error handling."""
-        return self._execute_with_retry_sync(
-            operation_name="chat sync",
-            operation_fn=lambda: self._chat_sync(
-                messages=messages,
-                tools=tools,
-                enable_stream_print=enable_stream_print,
-                **kwargs,
-            ),
-            callback_fn=callback_fn,
-            default_value=default_value,
-        )
+        for i in range(self.max_retries):
+            try:
+                result = self._chat_sync(
+                    messages=messages,
+                    tools=tools,
+                    enable_stream_print=enable_stream_print,
+                    **kwargs,
+                )
+                return callback_fn(result) if callback_fn else result
+
+            except Exception as e:
+                logger.exception(f"chat sync with model={self.model_name} encounter error with e={e.args}")
+
+                if i == self.max_retries - 1:
+                    if self.raise_exception:
+                        raise e
+                    return default_value
+
+                time.sleep(1 + i)
+        return default_value
 
     async def close(self):
         """Release any asynchronous resources or connections held by the client."""

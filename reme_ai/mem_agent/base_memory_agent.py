@@ -20,18 +20,16 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         self,
         tools: list[BaseMemoryTool],
         add_think_tool: bool = False,  # only for instruct model
-        force_tool_language: bool = True,
         tool_call_interval: float = 0,
         max_steps: int = 20,
         **kwargs,
     ):
-        super().__init__(**kwargs)
-        self.tools: list[BaseMemoryTool] = tools or []
+        tools = tools or []
         if add_think_tool:
-            self.tools.append(ThinkTool())
-        if force_tool_language and self.language:
-            for tool in self.tools:
-                tool.language = self.language
+            tools.append(ThinkTool())
+        kwargs["sub_ops"] = tools
+        super().__init__(**kwargs)
+        self.sub_ops: list[BaseMemoryTool] = [t for t in self.sub_ops if isinstance(t, BaseMemoryTool)]
         self.tool_call_interval: float = tool_call_interval
         self.max_steps: int = max_steps
 
@@ -72,6 +70,15 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
             },
         )
 
+    @property
+    def tools(self):
+        """Returns the list of memory tools available to this agent."""
+        return self.sub_ops
+
+    @tools.setter
+    def tools(self, tools: list[BaseMemoryTool]):
+        self.sub_ops = tools
+
     def get_messages(self) -> list[Message]:
         """Extracts and returns messages from the context query or messages."""
         if self.context.get("query"):
@@ -93,7 +100,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
             **kwargs,
         )
         messages.append(assistant_message)
-        logger.info(f"step{step + 1}.assistant={assistant_message.model_dump_json()}")
+        logger.info(f"step{step + 1}.assistant={assistant_message.simple_dump(enable_json_dump=True)}")
         should_act = bool(assistant_message.tool_calls)
         return assistant_message, should_act
 
@@ -110,7 +117,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 logger.warning(f"unknown tool_call.name={tool_call.name}")
                 continue
 
-            logger.info(f"step{step + 1}.{j} submit tool_calls={tool_call.name} argument={tool_call.argument_dict}")
+            logger.info(f"step{step + 1}.{j} submit tool_calls={tool_call.name} argument={tool_call.arguments}")
             tool_copy: BaseMemoryTool = tool_dict[tool_call.name].copy()
             tool_copy.tool_call.id = tool_call.id
             tool_list.append(tool_copy)
@@ -150,7 +157,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
     async def execute(self):
         messages = await self.build_messages()
         for i, message in enumerate(messages):
-            logger.info(f"step0.{i} {message.role} {message.name or ''} {message.simple_dump()}")
+            logger.info(f"step0.{i} {message.role} {message.name or ''} {message.simple_dump(enable_json_dump=True)}")
 
         self.messages, self.success = await self.react(messages)
         if self.success and self.messages:
@@ -162,6 +169,11 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
     def memory_target(self) -> str:
         """Returns the target memory identifier from context."""
         return self.context.get("memory_target", "")
+
+    @property
+    def description(self) -> str:
+        """Returns the description of the messages."""
+        return self.context.get("description", "")
 
     @property
     def ref_memory_id(self) -> str:

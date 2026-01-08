@@ -13,25 +13,32 @@ from ...core.utils import get_now_time, format_messages
 class ReMeRetriever(BaseMemoryAgent):
     """Memory agent that retrieves and builds messages with meta memory context."""
 
-    def __init__(self, enable_tool_memory: bool = True, **kwargs):
-        """Initialize retriever with tool memory option."""
+    def __init__(self, meta_memories: list[dict] = None, **kwargs):
         super().__init__(**kwargs)
-        self.enable_tool_memory = enable_tool_memory
+        self.meta_memories: list[dict] = meta_memories
 
-    async def _read_meta_memories(self) -> str:
+    @staticmethod
+    async def _read_meta_memories() -> str:
         """Read and return meta memories as string."""
         from ...mem_tool import ReadMetaMemory
 
-        op = ReadMetaMemory(enable_tool_memory=self.enable_tool_memory, enable_identity_memory=False)
+        op = ReadMetaMemory(enable_identity_memory=False)
         await op.call()
         return str(op.output)
 
     async def build_messages(self) -> List[Message]:
         """Build messages with system prompt and user message."""
+        from ...mem_tool import ReadMetaMemory
+
+        if self.meta_memories:
+            meta_memory_info = ReadMetaMemory().format_memory_metadata(self.meta_memories)
+        else:
+            meta_memory_info = await self._read_meta_memories()
+
         system_prompt = self.prompt_format(
             prompt_name="system_prompt",
             now_time=get_now_time(),
-            meta_memory_info=await self._read_meta_memories(),
+            meta_memory_info=meta_memory_info,
             context=format_messages(self.get_messages()),
         )
 

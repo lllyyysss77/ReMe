@@ -25,6 +25,7 @@ class BaseFlow(ABC):
     def __init__(
         self,
         name: str = "",
+        flow_op: BaseOp | None = None,
         stream: bool = False,
         raise_exception: bool = True,
         enable_cache: bool = False,
@@ -43,7 +44,7 @@ class BaseFlow(ABC):
         self.cache_expire_hours: float = cache_expire_hours
         self.flow_params: dict = kwargs
 
-        self._flow_op: BaseOp | None = None
+        self._flow_op: BaseOp | None = flow_op
         self._cache: CacheHandler | None = None
         self._flow_printed: bool = False
         self._tool_call: ToolCall | None = None
@@ -128,6 +129,12 @@ class BaseFlow(ABC):
         if self._flow_op is None:
             self._flow_op = self._build_flow()
         return self._flow_op
+
+    @flow_op.setter
+    def flow_op(self, op: BaseOp):
+        """Set the root operation of the flow."""
+        self._flow_op = op
+        self._flow_printed = False
 
     @property
     def async_mode(self) -> bool:

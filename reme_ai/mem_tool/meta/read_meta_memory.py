@@ -17,20 +17,17 @@ class ReadMetaMemory(BaseMemoryTool):
 
     def __init__(
         self,
-        enable_tool_memory: bool = False,
         enable_identity_memory: bool = False,
         **kwargs,
     ):
         """Initialize ReadMetaMemory.
 
         Args:
-            enable_tool_memory: Include TOOL type meta memory. Defaults to False.
             enable_identity_memory: Include IDENTITY type meta memory. Defaults to False.
             **kwargs: Additional arguments for BaseMemoryTool.
         """
         kwargs["enable_multiple"] = False
         super().__init__(**kwargs)
-        self.enable_tool_memory = enable_tool_memory
         self.enable_identity_memory = enable_identity_memory
 
     def _build_parameters(self) -> dict:
@@ -54,14 +51,6 @@ class ReadMetaMemory(BaseMemoryTool):
             if m.get("memory_type") in [MemoryType.PERSONAL.value, MemoryType.PROCEDURAL.value]:
                 filtered_memories.append(m)
 
-        if self.enable_tool_memory:
-            filtered_memories.append(
-                {
-                    "memory_type": MemoryType.TOOL.value,
-                    "memory_target": "tool_guidelines",
-                },
-            )
-
         if self.enable_identity_memory:
             filtered_memories.append(
                 {
@@ -72,7 +61,7 @@ class ReadMetaMemory(BaseMemoryTool):
 
         return filtered_memories
 
-    def _format_memory_metadata(self, memories: list[dict[str, str]]) -> str:
+    def format_memory_metadata(self, memories: list[dict[str, str]]) -> str:
         """Format memory metadata into a readable string.
 
         Args:
@@ -101,7 +90,7 @@ class ReadMetaMemory(BaseMemoryTool):
         memories = self._load_meta_memories()
 
         if memories:
-            self.output = self._format_memory_metadata(memories)
+            self.output = self.format_memory_metadata(memories)
             logger.info(f"Retrieved {len(memories)} meta memory entries")
         else:
             self.output = "No memory metadata found."

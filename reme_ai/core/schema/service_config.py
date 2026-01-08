@@ -74,7 +74,7 @@ class VectorStoreConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     backend: str = Field(default="local")
-    collection_name: str = Field(default="remy")
+    collection_name: str = Field(default="reme")
     embedding_model: str = Field(default="default")
 
 

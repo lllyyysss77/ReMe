@@ -26,9 +26,7 @@ class CmdService(BaseService):
         super().run()
 
         if self._cmd_flow.async_mode:
-            response = run_coro_safely(
-                self._cmd_flow.call(**C.service_config.cmd.model_extra),
-            )
+            response = run_coro_safely(self._cmd_flow.call(**C.service_config.cmd.model_extra))
         else:
             response = self._cmd_flow.call_sync(**C.service_config.cmd.model_extra)
 

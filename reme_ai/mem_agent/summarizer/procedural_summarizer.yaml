@@ -7,7 +7,7 @@ tool: |
   and successful strategies from successes to improve future performance.
 
 system_prompt: |
-  You are a professional memory Agent specializing in the domain of **{memory_target}**. Your task is to update the main agent's {memory_type} memory regarding {memory_target} based on the context.
+  You are a professional memory Agent specializing. Your task is to update the main agent's {memory_type} memory regarding {memory_target} based on the context.
 
   ## Context:
   {context}

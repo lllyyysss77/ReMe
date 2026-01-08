@@ -377,5 +377,6 @@ class BaseOp:
         copy_op = self.__class__(*self._init_args, **{**self._init_kwargs, **kwargs})
         if self.sub_ops:
             copy_op.sub_ops.clear()
-            copy_op.add_sub_ops(self.sub_ops)
+            for op in self.sub_ops:
+                copy_op.add_sub_op(op.copy())
         return copy_op

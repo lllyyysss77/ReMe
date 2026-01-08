@@ -1,6 +1,7 @@
 """Memory tool operations."""
 
 from .base_memory_tool import BaseMemoryTool
+from .hands_off_tool import HandsOffTool
 from .history.add_history_memory import AddHistoryMemory
 from .history.read_history_memory import ReadHistoryMemory
 from .identity.read_identity_memory import ReadIdentityMemory
@@ -16,6 +17,7 @@ from .vector.vector_retrieve_memory import VectorRetrieveMemory
 
 __all__ = [
     "BaseMemoryTool",
+    "HandsOffTool",
     "AddHistoryMemory",
     "ReadHistoryMemory",
     "ReadIdentityMemory",

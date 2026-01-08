@@ -18,7 +18,7 @@ class PersonalSummarizer(BaseMemoryAgent):
         system_prompt = self.prompt_format(
             prompt_name="system_prompt",
             now_time=get_now_time(),
-            context=format_messages(self.get_messages()),
+            context=self.description + "\n" + format_messages(self.get_messages()),
             memory_type=self.memory_type.value,
             memory_target=self.memory_target,
         )
@@ -37,5 +37,6 @@ class PersonalSummarizer(BaseMemoryAgent):
             memory_target=self.memory_target,
             memory_type=self.memory_type.value,
             author=self.author,
+            ref_memory_id=self.ref_memory_id,
             **kwargs,
         )

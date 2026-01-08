@@ -17,17 +17,17 @@ if TYPE_CHECKING:
 class HandsOffTool(BaseMemoryTool):
     """Distribute memory tasks to appropriate agents based on memory_type."""
 
-    def __init__(self, memory_agents: list["BaseMemoryAgent"], force_agent_language: bool = True, **kwargs):
+    def __init__(self, memory_agents: list["BaseMemoryAgent"], **kwargs):
+        kwargs["sub_ops"] = memory_agents or []
         super().__init__(**kwargs)
-        self.memory_agent_dict: dict[MemoryType, "BaseMemoryAgent"] = {}
-        if memory_agents:
-            for agent in memory_agents:
-                if agent.memory_type is None:
-                    continue
+        from ..mem_agent import BaseMemoryAgent
 
-                self.memory_agent_dict[agent.memory_type] = agent
-                if force_agent_language and self.language:
-                    agent.language = self.language
+        self.sub_ops: list[BaseMemoryAgent] = [a for a in self.sub_ops if isinstance(a, BaseMemoryAgent)]
+
+    @property
+    def memory_agent_dict(self) -> dict[MemoryType, "BaseMemoryAgent"]:
+        """Returns a dictionary mapping memory types to their corresponding agents."""
+        return {a.memory_type: a for a in self.sub_ops}
 
     def _build_item_schema(self) -> tuple[dict, list[str]]:
         """Build shared schema properties and required fields for memory tasks."""
@@ -117,11 +117,13 @@ class HandsOffTool(BaseMemoryTool):
                 continue
 
             agent_copy = self.memory_agent_dict[memory_type].copy()
-            agent_list.append({
-                "agent": agent_copy,
-                "memory_type": memory_type,
-                "memory_target": memory_target,
-            })
+            agent_list.append(
+                {
+                    "agent": agent_copy,
+                    "memory_type": memory_type,
+                    "memory_target": memory_target,
+                },
+            )
 
             logger.info(f"Task {i}: Submitting {memory_type.value} agent for target={memory_target}")
             self.submit_async_task(
@@ -138,12 +140,14 @@ class HandsOffTool(BaseMemoryTool):
         results = []
         for i, (agent, memory_type, memory_target) in enumerate(agent_list):
             result_str = str(agent.output)
-            results.append({
-                "memory_type": memory_type.value,
-                "memory_target": memory_target,
-                "result": result_str[:200] + ("..." if len(result_str) > 200 else ""),
-            })
+            results.append(
+                {
+                    "memory_type": memory_type.value,
+                    "memory_target": memory_target,
+                    "result": result_str[:200] + ("..." if len(result_str) > 200 else ""),
+                },
+            )
             logger.info(f"Task {i}: Completed {memory_type.value} agent for target={memory_target}")
 
         results_str = json.dumps(results, ensure_ascii=False, indent=2)
-        self.set_output(f"Successfully executed {len(results)} memory tasks:\n{results_str}")
+        self.output = f"Successfully executed {len(results)} memory tasks:\n{results_str}"

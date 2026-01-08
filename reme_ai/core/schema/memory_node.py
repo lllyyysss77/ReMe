@@ -153,7 +153,7 @@ class MemoryNode(BaseModel):
             str: Formatted string with when_to_use, content, and ref_memory_id.
         """
         parts: list[str] = [
-            f"memory_id={self.memory_id}" f"modified_time={self.time_modified}",
+            f"memory_id={self.memory_id} modified_time={self.time_modified}",
         ]
 
         if self.when_to_use:
@@ -166,7 +166,7 @@ class MemoryNode(BaseModel):
             parts.append(f"metadata={json.dumps(self.metadata, ensure_ascii=False)}")
 
         if self.ref_memory_id:
-            parts.append(f"history_memory.ref_memory_id={self.ref_memory_id}")
+            parts.append(f"ref_memory_id={self.ref_memory_id}")
 
         return " ".join(parts)
 

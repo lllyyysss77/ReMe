@@ -33,13 +33,15 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
         """Create and return an internal AsyncOpenAI client instance."""
         return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
-    async def _get_embeddings(self, input_text: list[str]) -> list[list[float]]:
+    async def _get_embeddings(self, input_text: list[str], **kwargs) -> list[list[float]]:
         """Fetch embeddings from the API for a batch of strings."""
         completion = await self._client.embeddings.create(
             model=self.model_name,
             input=input_text,
             dimensions=self.dimensions,
             encoding_format=self.encoding_format,
+            **self.kwargs,
+            **kwargs,
         )
 
         result_emb = [[] for _ in range(len(input_text))]

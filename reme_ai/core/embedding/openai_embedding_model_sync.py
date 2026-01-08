@@ -14,13 +14,15 @@ class OpenAIEmbeddingModelSync(OpenAIEmbeddingModel):
         """Create and return an internal synchronous OpenAI client instance."""
         return OpenAI(api_key=self.api_key, base_url=self.base_url)
 
-    def _get_embeddings_sync(self, input_text: list[str]) -> list[list[float]]:
+    def _get_embeddings_sync(self, input_text: list[str], **kwargs) -> list[list[float]]:
         """Fetch embeddings synchronously from the API for a batch of strings."""
         completion = self._client.embeddings.create(
             model=self.model_name,
             input=input_text,
             dimensions=self.dimensions,
             encoding_format=self.encoding_format,
+            **self.kwargs,
+            **kwargs,
         )
 
         result_emb = [[] for _ in range(len(input_text))]

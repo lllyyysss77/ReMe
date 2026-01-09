@@ -124,12 +124,12 @@ class Message(BaseModel):
         """Generates a human-readable string representation of the message."""
         prefix = f"round{index} " if index is not None else ""
         time_str = f"[{self.time_created}] " if add_time else ""
-        header = f"{self.name or self.role.value if use_name else self.role.value}:\n"
+        header = f"{self.name or self.role.value if use_name else self.role.value}:"
 
         lines = [f"{prefix}{time_str}{header}"]
 
         if add_reasoning and self.reasoning_content:
-            lines.append(f"{self.reasoning_content}\n")
+            lines.append(self.reasoning_content)
 
         if isinstance(self.content, str):
             lines.append(self.content)
@@ -144,7 +144,7 @@ class Message(BaseModel):
             for tc in self.tool_calls:
                 lines.append(f" - tool_call={tc.name} params={tc.arguments}")
 
-        return "\n".join(lines).strip()
+        return " ".join(lines).strip()
 
 
 class Trajectory(BaseModel):

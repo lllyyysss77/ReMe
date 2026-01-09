@@ -324,7 +324,7 @@ class PGVectorStore(BaseVectorStore):
             if isinstance(metadata, str):
                 metadata = json.loads(metadata)
 
-            metadata["_score"] = 1 - distance
+            metadata["score"] = 1 - distance
             metadata["_distance"] = distance
 
             node = VectorNode(

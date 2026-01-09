@@ -15,48 +15,49 @@ class ReadHistoryMemory(BaseMemoryTool):
         return {
             "type": "object",
             "properties": {
-                "memory_id": {
+                "ref_memory_id": {
                     "type": "string",
-                    "description": self.get_prompt("memory_id"),
+                    "description": self.get_prompt("ref_memory_id"),
                 },
             },
-            "required": ["memory_id"],
+            "required": ["ref_memory_id"],
         }
 
     def _build_multiple_parameters(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "memory_ids": {
+                "ref_memory_ids": {
                     "type": "array",
-                    "description": self.get_prompt("memory_ids"),
+                    "description": self.get_prompt("ref_memory_ids"),
                     "items": {"type": "string"},
                 },
             },
-            "required": ["memory_ids"],
+            "required": ["ref_memory_ids"],
         }
 
     async def execute(self):
         if self.enable_multiple:
-            memory_ids: list[str] = self.context.get("memory_ids", [])
+            ref_memory_ids: list[str] = self.context.get("ref_memory_ids", [])
         else:
-            memory_id = self.context.get("memory_id", "")
-            memory_ids: list[str] = [memory_id] if memory_id else []
+            ref_memory_id = self.context.get("ref_memory_id", "")
+            ref_memory_ids: list[str] = [ref_memory_id] if ref_memory_id else []
 
-        memory_ids = [mid for mid in memory_ids if mid]
+        ref_memory_ids = [mid for mid in ref_memory_ids if mid]
 
-        if not memory_ids:
-            self.output = "No valid history memory IDs provided for reading."
+        if not ref_memory_ids:
+            self.output = "No valid reference memory IDs provided for reading."
             logger.warning(self.output)
             return
 
-        nodes = await self.vector_store.get(vector_ids=memory_ids)
+        # Query original history dialogues by ref_memory_id
+        nodes = await self.vector_store.get(vector_ids=ref_memory_ids)
 
         if not nodes:
-            self.output = "No history memories found with the provided IDs."
+            self.output = "No history memories found with the provided reference IDs."
             logger.warning(self.output)
             return
 
         memories: list[MemoryNode] = [MemoryNode.from_vector_node(n) for n in nodes]
         self.output = "---\n".join([m.content for m in memories])
-        logger.info(f"Successfully read {len(memories)} history memories.")
+        logger.info(f"Successfully read {len(memories)} history memories by reference IDs.")

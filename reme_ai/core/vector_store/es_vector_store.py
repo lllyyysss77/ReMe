@@ -279,7 +279,7 @@ class ESVectorStore(BaseVectorStore):
                 vector=source.get("vector"),
                 metadata=source.get("metadata", {}),
             )
-            node.metadata["_score"] = hit["_score"]
+            node.metadata["score"] = hit["_score"]
             results.append(node)
 
         return results
@@ -451,6 +451,12 @@ class ESVectorStore(BaseVectorStore):
             results.append(node)
 
         return results
+
+    def set_collection_name(self, collection_name: str):
+        """Set the collection name and ensure it's lowercase for Elasticsearch compatibility."""
+        collection_name = collection_name.lower()
+        super().set_collection_name(collection_name)
+        logger.info(f"Collection name set to {collection_name} (converted to lowercase)")
 
     async def close(self):
         """Terminate the Elasticsearch client session and release resources."""

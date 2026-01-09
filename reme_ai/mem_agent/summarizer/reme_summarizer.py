@@ -8,7 +8,7 @@ from loguru import logger
 from ..base_memory_agent import BaseMemoryAgent
 from ...core.context import C
 from ...core.enumeration import Role
-from ...core.schema import Message, MemoryNode
+from ...core.schema import Message, MemoryNode, ToolCall
 from ...core.utils import get_now_time, format_messages
 
 
@@ -16,11 +16,41 @@ from ...core.utils import get_now_time, format_messages
 class ReMeSummarizer(BaseMemoryAgent):
     """Coordinates memory updates by delegating to specialized memory agents."""
 
-    def __init__(self, enable_tool_memory: bool = True, enable_identity_memory: bool = True, **kwargs):
-        """Initialize with flags to enable/disable tool and identity memory processing."""
+    def __init__(self, meta_memories: list[dict] | None = None, enable_identity_memory: bool = False, **kwargs):
+        """Initialize with flags to enable/disable identity memory processing."""
         super().__init__(**kwargs)
-        self.enable_tool_memory = enable_tool_memory
         self.enable_identity_memory = enable_identity_memory
+        self.meta_memories: list[dict] = meta_memories or []
+
+    def _build_tool_call(self) -> ToolCall:
+        return ToolCall(
+            **{
+                "description": self.get_prompt("tool"),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {
+                                        "type": "string",
+                                        "description": "role",
+                                    },
+                                    "content": {
+                                        "type": "string",
+                                        "description": "content",
+                                    },
+                                },
+                                "required": ["role", "content"],
+                            },
+                        },
+                    },
+                    "required": ["messages"],
+                },
+            },
+        )
 
     async def _add_history_memory(self) -> MemoryNode:
         """Store conversation history and return the memory node."""
@@ -28,7 +58,7 @@ class ReMeSummarizer(BaseMemoryAgent):
 
         op = AddHistoryMemory()
         await op.call(messages=self.get_messages())
-        return op.output
+        return op.memory_nodes[0]
 
     @staticmethod
     async def _read_identity_memory() -> str:
@@ -43,27 +73,28 @@ class ReMeSummarizer(BaseMemoryAgent):
         """Fetch all meta-memory entries that define specialized memory agents."""
         from ...mem_tool import ReadMetaMemory
 
-        op = ReadMetaMemory(
-            enable_tool_memory=self.enable_tool_memory,
-            enable_identity_memory=self.enable_identity_memory,
-        )
-        await op.call()
-        return str(op.output)
+        op = ReadMetaMemory(enable_identity_memory=self.enable_identity_memory)
+        if self.meta_memories:
+            return op.format_memory_metadata(self.meta_memories)
+        else:
+            await op.call()
+            return str(op.output)
 
     async def build_messages(self) -> List[Message]:
         """Construct initial messages with context, identity, and meta-memory information."""
         memory_node: MemoryNode = await self._add_history_memory()
         self.context["ref_memory_id"] = memory_node.memory_id
+
         now_time = get_now_time()
         identity_memory = await self._read_identity_memory()
         meta_memory_info = await self._read_meta_memories()
-        context = format_messages(self.get_messages())
+        context = self.description + "\n" + format_messages(self.get_messages())
         logger.info(
             f"now_time={now_time} "
-            f"memory_node={memory_node} "
+            f"memory_node={memory_node.content[:100]}... "
             f"identity_memory={identity_memory} "
             f"meta_memory_info={meta_memory_info} "
-            f"context={context}",
+            f"context={context[:100]}",
         )
 
         system_prompt = self.prompt_format(
@@ -84,13 +115,21 @@ class ReMeSummarizer(BaseMemoryAgent):
 
     async def _reasoning_step(self, messages: list[Message], step: int, **kwargs) -> tuple[Message, bool]:
         """Refresh meta-memory info in system prompt before each reasoning step."""
-        meta_memory_info = await self._read_meta_memories()
         system_messages = [message for message in messages if message.role is Role.SYSTEM]
+
         if system_messages:
             system_message = system_messages[0]
-            pattern = r'("- <memory_type>\(<memory_target>\): <description>"\n)(.*?)(\n\n)'
-            replacement = rf"\g<1>{meta_memory_info}\g<3>"
-            system_message.content = re.sub(pattern, replacement, system_message.content, flags=re.DOTALL)
+            now_time = get_now_time()
+            identity_memory = await self._read_identity_memory()
+            meta_memory_info = await self._read_meta_memories()
+            context = self.description + "\n" + format_messages(self.get_messages())
+            system_message.content = self.prompt_format(
+                prompt_name="system_prompt",
+                now_time=now_time,
+                identity_memory=identity_memory,
+                meta_memory_info=meta_memory_info,
+                context=context,
+            )
 
         return await super()._reasoning_step(messages, step, **kwargs)
 
@@ -99,6 +138,8 @@ class ReMeSummarizer(BaseMemoryAgent):
         return await super()._acting_step(
             assistant_message,
             step,
+            messages=self.context.get("messages", []),
+            description=self.context.get("description"),
             ref_memory_id=self.context["ref_memory_id"],
             author=self.author,
             **kwargs,

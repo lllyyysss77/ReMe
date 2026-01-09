@@ -4,6 +4,8 @@ from loguru import logger
 
 from .add_memory import AddMemory
 from ...core.context import C
+from ...core.enumeration import MemoryType
+from ...core.schema import MemoryNode
 
 
 @C.register_op()
@@ -53,12 +55,37 @@ class AddSummaryMemory(AddMemory):
                 "description": metadata_description,
                 "properties": metadata_properties,
             }
+            required.append("metadata")
 
         return {
             "type": "object",
             "properties": properties,
             "required": required,
         }
+
+    def _build_memory_node(
+            self,
+            memory_content: str,
+            memory_type: MemoryType | None = None,
+            memory_target: str = "",
+            ref_memory_id: str = "",
+            when_to_use: str = "",
+            author: str = "",
+            metadata: dict | None = None,
+    ) -> MemoryNode:
+        """Build MemoryNode from content, when_to_use, and metadata."""
+        node = MemoryNode(
+            memory_type=MemoryType.SUMMARY,
+            memory_target="",
+            when_to_use="",
+            content=memory_content,
+            ref_memory_id=self.ref_memory_id,
+            author=self.author,
+            metadata=metadata or {},
+        )
+        logger.info(f"Adding summary memory: {node.model_dump_json(indent=2, exclude_none=True)}")
+
+        return node
 
     async def execute(self):
         """Execute addition: map summary_memory to memory_content and call parent."""

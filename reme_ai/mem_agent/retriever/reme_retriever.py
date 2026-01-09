@@ -13,33 +13,36 @@ from ...core.utils import get_now_time, format_messages
 class ReMeRetriever(BaseMemoryAgent):
     """Memory agent that retrieves and builds messages with meta memory context."""
 
-    def __init__(self, meta_memories: list[dict] = None, **kwargs):
+    def __init__(self, meta_memories: list[dict] | None = None, **kwargs):
         super().__init__(**kwargs)
-        self.meta_memories: list[dict] = meta_memories
+        self.meta_memories: list[dict] = meta_memories or []
 
-    @staticmethod
-    async def _read_meta_memories() -> str:
-        """Read and return meta memories as string."""
+    async def _read_meta_memories(self) -> str:
+        """Fetch all meta-memory entries that define specialized memory agents."""
         from ...mem_tool import ReadMetaMemory
 
         op = ReadMetaMemory(enable_identity_memory=False)
-        await op.call()
-        return str(op.output)
+        if self.meta_memories:
+            return op.format_memory_metadata(self.meta_memories)
+        else:
+            await op.call()
+            return str(op.output)
 
     async def build_messages(self) -> List[Message]:
         """Build messages with system prompt and user message."""
-        from ...mem_tool import ReadMetaMemory
-
-        if self.meta_memories:
-            meta_memory_info = ReadMetaMemory().format_memory_metadata(self.meta_memories)
+        meta_memory_info = await self._read_meta_memories()
+        if self.context.get("query"):
+            context = self.context.query
+        elif self.context.get("messages"):
+            messages = [Message(**m) if isinstance(m, dict) else m for m in self.context.messages]
+            context = self.description + format_messages(messages)
         else:
-            meta_memory_info = await self._read_meta_memories()
-
+            raise ValueError("input must have either `query` or `messages`")
         system_prompt = self.prompt_format(
             prompt_name="system_prompt",
             now_time=get_now_time(),
             meta_memory_info=meta_memory_info,
-            context=format_messages(self.get_messages()),
+            context=context,
         )
 
         messages = [

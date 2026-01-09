@@ -3,6 +3,8 @@
 from abc import ABCMeta
 from pathlib import Path
 
+from loguru import logger
+
 from ..core.enumeration import MemoryType
 from ..core.op import BaseOp
 from ..core.schema import ToolCall, MemoryNode
@@ -23,7 +25,7 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
         self.enable_multiple: bool = enable_multiple
         self.enable_thinking_params: bool = enable_thinking_params
         self.meta_memory_path: str = meta_memory_path
-        self._meta_memory: CacheHandler | None = None
+        self.memory_nodes: list[MemoryNode | str] = []
 
     def _build_parameters(self) -> dict:
         return {}
@@ -58,10 +60,8 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
 
     @property
     def meta_memory(self) -> CacheHandler:
-        """Get or create the meta memory cache handler."""
-        if self._meta_memory is None:
-            self._meta_memory = CacheHandler(Path(self.meta_memory_path) / self.vector_store.collection_name)
-        return self._meta_memory
+        """Create the meta memory cache handler."""
+        return CacheHandler(Path(self.meta_memory_path) / self.vector_store.collection_name)
 
     @property
     def memory_type(self) -> MemoryType:
@@ -94,7 +94,7 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
         metadata: dict | None = None,
     ) -> MemoryNode:
         """Build MemoryNode from content, when_to_use, and metadata."""
-        return MemoryNode(
+        node = MemoryNode(
             memory_type=memory_type or self.memory_type,
             memory_target=memory_target or self.memory_target,
             when_to_use=when_to_use or "",
@@ -103,3 +103,6 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
             author=author or self.author,
             metadata=metadata or {},
         )
+
+        logger.opt(depth=1).info(f"[{self.__class__.__name__}] build node={node.model_dump_json(indent=2, exclude_none=True)}")
+        return node

@@ -35,12 +35,7 @@ class HandsOffTool(BaseMemoryTool):
             "memory_type": {
                 "type": "string",
                 "description": self.get_prompt("memory_type"),
-                "enum": [
-                    MemoryType.IDENTITY.value,
-                    MemoryType.PERSONAL.value,
-                    MemoryType.PROCEDURAL.value,
-                    MemoryType.TOOL.value,
-                ],
+                "enum": [k.value for k in self.memory_agent_dict],
             },
             "memory_target": {
                 "type": "string",
@@ -82,10 +77,7 @@ class HandsOffTool(BaseMemoryTool):
     def _parse_memory_type_target(task: dict):
         memory_type = task.get("memory_type", "")
         memory_target = task.get("memory_target", "")
-        return {
-            "memory_type": MemoryType(memory_type),
-            "memory_target": memory_target,
-        }
+        return {"memory_type": MemoryType(memory_type), "memory_target": memory_target}
 
     def _collect_tasks(self) -> list[dict]:
         """Collect memory tasks from context based on enable_multiple flag."""
@@ -116,21 +108,17 @@ class HandsOffTool(BaseMemoryTool):
                 logger.warning(f"No agent found for memory_type={memory_type}")
                 continue
 
-            agent_copy = self.memory_agent_dict[memory_type].copy()
-            agent_list.append(
-                {
-                    "agent": agent_copy,
-                    "memory_type": memory_type,
-                    "memory_target": memory_target,
-                },
-            )
+            agent = self.memory_agent_dict[memory_type].copy()
+            agent_list.append([agent, memory_type, memory_target])
 
             logger.info(f"Task {i}: Submitting {memory_type.value} agent for target={memory_target}")
             self.submit_async_task(
-                agent_copy.call,
+                agent.call,
                 query=self.context.get("query", ""),
                 messages=self.context.get("messages", []),
+                memory_type=memory_type,
                 memory_target=memory_target,
+                description=self.context.get("description"),
                 ref_memory_id=self.context.get("ref_memory_id", ""),
             )
 
@@ -140,6 +128,9 @@ class HandsOffTool(BaseMemoryTool):
         results = []
         for i, (agent, memory_type, memory_target) in enumerate(agent_list):
             result_str = str(agent.output)
+            if agent.memory_nodes:
+                self.memory_nodes.extend(agent.memory_nodes)
+
             results.append(
                 {
                     "memory_type": memory_type.value,

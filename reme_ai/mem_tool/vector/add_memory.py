@@ -71,6 +71,7 @@ class AddMemory(BaseMemoryTool):
                 "description": metadata_description,
                 "properties": metadata_properties,
             }
+            required.append("metadata")
 
         return properties, required
 
@@ -158,6 +159,7 @@ class AddMemory(BaseMemoryTool):
         # Delete existing IDs (upsert behavior), then insert
         await self.vector_store.delete(vector_ids=vector_ids)
         await self.vector_store.insert(nodes=vector_nodes)
+        self.memory_nodes = memory_nodes
 
         self.output = f"Successfully added {len(memory_nodes)} memories to vector_store."
         logger.info(self.output)

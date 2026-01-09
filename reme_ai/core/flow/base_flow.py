@@ -62,7 +62,7 @@ class BaseFlow(ABC):
             payload = json.dumps(params, sort_keys=True, ensure_ascii=False, default=str)
             return hashlib.sha256(payload.encode("utf-8")).hexdigest()
         except Exception as e:
-            logger.exception(f"{self.name} cache key serialization failed: {e}")
+            logger.exception(f"[{self.__class__.__name__}] {self.name} cache key serialization failed: {e}")
             return None
 
     def _maybe_load_cached(self, params: dict) -> Response | None:
@@ -72,7 +72,7 @@ class BaseFlow(ABC):
 
         if key := self._compute_cache_key(params):
             if cached := self.cache.load(key):
-                logger.info(f"Loaded {self.name} response from cache.")
+                logger.info(f"[{self.__class__.__name__}] Loaded {self.name} response from cache.")
                 return Response(**cached)
         return None
 
@@ -92,7 +92,7 @@ class BaseFlow(ABC):
         """Recursively log the hierarchy of the flow's operation tree."""
         prefix = "  " * indent
         op_type = "sequential" if isinstance(op, SequentialOp) else "parallel" if isinstance(op, ParallelOp) else name
-        logger.info(f"{prefix}{op_type} execution")
+        logger.info(f"[{self.__class__.__name__}] {prefix}{op_type} execution")
 
         for sub_op in op.sub_ops or []:
             self._print_operation_tree(sub_op.name, sub_op, indent + 2)
@@ -160,15 +160,15 @@ class BaseFlow(ABC):
     def print_flow(self):
         """Log the visual structure of the flow once."""
         if not self._flow_printed:
-            logger.info(f"---------- [Flow Structure] {self.name} ----------")
+            logger.info(f"[{self.__class__.__name__}] ---------- [Flow Structure] {self.name} ----------")
             self._print_operation_tree(self.name, self.flow_op, 0)
-            logger.info("-" * 50)
+            logger.info(f"[{self.__class__.__name__}] " + "-" * 50)
             self._flow_printed = True
 
     async def call(self, **kwargs) -> Response | asyncio.Queue:
         """Execute the flow asynchronously with parameter caching."""
         kwargs["stream"] = self.stream
-        logger.info(f"{self.name} incoming params: {kwargs}")
+        logger.info(f"[{self.__class__.__name__}] {self.name} incoming params: {kwargs}")
         if cached := self._maybe_load_cached(kwargs):
             return cached
 
@@ -187,7 +187,7 @@ class BaseFlow(ABC):
             self._maybe_save_cache(kwargs, result)
             return result
         except Exception as e:
-            logger.exception(f"{self.name} async call failed: {e}")
+            logger.exception(f"[{self.__class__.__name__}] {self.name} async call failed: {e}")
             if self.raise_exception:
                 raise e
             if self.stream:
@@ -199,7 +199,7 @@ class BaseFlow(ABC):
 
     def call_sync(self, **kwargs) -> Response:
         """Execute the flow synchronously with parameter caching."""
-        logger.info(f"{self.name} incoming sync params: {kwargs}")
+        logger.info(f"[{self.__class__.__name__}] {self.name} incoming sync params: {kwargs}")
         assert not self.stream, "Synchronous call cannot be used in stream mode."
         if cached := self._maybe_load_cached(kwargs):
             return cached
@@ -214,7 +214,7 @@ class BaseFlow(ABC):
             self._maybe_save_cache(kwargs, context.response)
             return context.response
         except Exception as e:
-            logger.exception(f"{self.name} sync call failed: {e}")
+            logger.exception(f"[{self.__class__.__name__}] {self.name} sync call failed: {e}")
             if self.raise_exception:
                 raise e
             context.add_response_error(e)

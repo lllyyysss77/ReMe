@@ -1,11 +1,11 @@
 tool: |
-  Read history memory by ID.
+  Read original history dialogue by reference memory ID.
 
 tool_multiple: |
-  Read multiple history memories by IDs.
+  Read multiple original history dialogues by reference memory IDs.
 
-memory_id: |
-  Unique identifier of the history memory.
+ref_memory_id: |
+  Reference memory ID to query the original history dialogue.
 
-memory_ids: |
-  List of unique identifiers of history memories.
+ref_memory_ids: |
+  List of reference memory IDs to query the original history dialogues.

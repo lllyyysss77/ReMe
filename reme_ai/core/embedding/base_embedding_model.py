@@ -26,6 +26,7 @@ class BaseEmbeddingModel(ABC):
         max_batch_size: int = 10,
         max_retries: int = 3,
         raise_exception: bool = True,
+        max_input_length: int = 8192,
         **kwargs,
     ):
         """Initialize model configuration and parameters."""
@@ -34,7 +35,21 @@ class BaseEmbeddingModel(ABC):
         self.max_batch_size = max_batch_size
         self.max_retries = max_retries
         self.raise_exception = raise_exception
+        self.max_input_length = max_input_length
         self.kwargs = kwargs
+
+    def _truncate_text(self, text: str) -> str:
+        """Truncate text to max_input_length if it exceeds the limit."""
+        if len(text) > self.max_input_length:
+            logger.warning(
+                f"Text length {len(text)} exceeds max_input_length {self.max_input_length}, truncating"
+            )
+            return text[: self.max_input_length]
+        return text
+
+    def _truncate_texts(self, texts: list[str]) -> list[str]:
+        """Truncate a list of texts to max_input_length."""
+        return [self._truncate_text(text) for text in texts]
 
     async def _get_embeddings(self, input_text: list[str], **kwargs) -> list[list[float]]:
         """Internal async implementation for calling the embedding API with batch input."""
@@ -44,9 +59,10 @@ class BaseEmbeddingModel(ABC):
 
     async def get_embedding(self, input_text: str, **kwargs) -> list[float]:
         """Async get embedding for a single text with exponential backoff retries."""
+        truncated_text = self._truncate_text(input_text)
         for i in range(self.max_retries):
             try:
-                result = await self._get_embeddings([input_text], **kwargs)
+                result = await self._get_embeddings([truncated_text], **kwargs)
                 return result[0]
             except Exception as e:
                 logger.error(f"Model {self.model_name} failed: {e}")
@@ -59,10 +75,13 @@ class BaseEmbeddingModel(ABC):
 
     async def get_embeddings(self, input_text: list[str], **kwargs) -> list[list[float]]:
         """Async get embeddings with automatic batching and exponential backoff retries."""
+        # Truncate all input texts first
+        truncated_texts = self._truncate_texts(input_text)
+        
         # Split into batches and process sequentially to respect rate limits
         results = []
-        for i in range(0, len(input_text), self.max_batch_size):
-            batch = input_text[i : i + self.max_batch_size]
+        for i in range(0, len(truncated_texts), self.max_batch_size):
+            batch = truncated_texts[i : i + self.max_batch_size]
             # Process each batch with retry logic
             for retry in range(self.max_retries):
                 try:
@@ -81,9 +100,10 @@ class BaseEmbeddingModel(ABC):
 
     def get_embedding_sync(self, input_text: str, **kwargs) -> list[float]:
         """Synchronous get embedding for a single text with retry logic."""
+        truncated_text = self._truncate_text(input_text)
         for i in range(self.max_retries):
             try:
-                result = self._get_embeddings_sync([input_text], **kwargs)
+                result = self._get_embeddings_sync([truncated_text], **kwargs)
                 return result[0]
             except Exception as exc:
                 logger.error(f"Model {self.model_name} failed: {exc}")
@@ -96,9 +116,12 @@ class BaseEmbeddingModel(ABC):
 
     def get_embeddings_sync(self, input_text: list[str], **kwargs) -> list[list[float]]:
         """Synchronous get embeddings with automatic batching and retry logic."""
+        # Truncate all input texts first
+        truncated_texts = self._truncate_texts(input_text)
+        
         results = []
-        for i in range(0, len(input_text), self.max_batch_size):
-            batch = input_text[i : i + self.max_batch_size]
+        for i in range(0, len(truncated_texts), self.max_batch_size):
+            batch = truncated_texts[i : i + self.max_batch_size]
             # Process each batch with retry logic
             for retry in range(self.max_retries):
                 try:

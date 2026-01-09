@@ -169,6 +169,7 @@ class UpdateMemory(BaseMemoryTool):
         all_ids_to_delete = list(set(old_memory_ids + new_vector_ids))
         await self.vector_store.delete(vector_ids=all_ids_to_delete)
         await self.vector_store.insert(nodes=vector_nodes)
+        self.memory_nodes = new_memory_nodes
 
         self.output = f"Update: deleted {len(old_memory_ids)} old memories, added {len(new_memory_nodes)} new memories."
         logger.info(self.output)

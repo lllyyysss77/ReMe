@@ -202,7 +202,7 @@ class LocalVectorStore(BaseVectorStore):
         scored_nodes = scored_nodes[:limit]
         results = []
         for node, score in scored_nodes:
-            node.metadata["_score"] = score
+            node.metadata["score"] = score
             results.append(node)
 
         return results
@@ -275,6 +275,12 @@ class LocalVectorStore(BaseVectorStore):
             filtered_nodes = filtered_nodes[:limit]
 
         return filtered_nodes
+
+    def set_collection_name(self, collection_name: str):
+        """Set the collection name and reinitialize the collection path."""
+        super().set_collection_name(collection_name)
+        self.collection_path = self.root_path / collection_name
+        logger.info(f"Collection name set to {collection_name}, path updated to {self.collection_path}")
 
     async def close(self):
         """Close the vector store (no-op for local file system)."""

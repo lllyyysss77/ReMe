@@ -304,7 +304,7 @@ class QdrantVectorStore(BaseVectorStore):
                 vector=point.vector if hasattr(point, "vector") else None,
                 metadata=payload.get("metadata", {}),
             )
-            node.metadata["_score"] = point.score
+            node.metadata["score"] = point.score
             nodes.append(node)
 
         return nodes

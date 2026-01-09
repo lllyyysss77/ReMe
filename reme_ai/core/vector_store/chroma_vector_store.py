@@ -103,7 +103,7 @@ class ChromaVectorStore(BaseVectorStore):
             metadata = metadatas[i] if i < len(metadatas) and metadatas[i] else {}
 
             if include_score and distances and i < len(distances):
-                metadata["_score"] = 1.0 - distances[i]
+                metadata["score"] = 1.0 - distances[i]
 
             node = VectorNode(
                 vector_id=vector_id,
@@ -300,7 +300,7 @@ class ChromaVectorStore(BaseVectorStore):
 
         score_threshold = kwargs.get("score_threshold")
         if score_threshold is not None:
-            nodes = [n for n in nodes if n.metadata.get("_score", 0) >= score_threshold]
+            nodes = [n for n in nodes if n.metadata.get("score", 0) >= score_threshold]
         return nodes
 
     async def delete(self, vector_ids: str | list[str], **kwargs):
@@ -391,6 +391,15 @@ class ChromaVectorStore(BaseVectorStore):
 
         await self._run_sync_in_executor(_recreate)
         logger.info(f"Collection {self.collection_name} has been reset")
+
+    def set_collection_name(self, collection_name: str):
+        """Set the collection name and reinitialize the collection object."""
+        super().set_collection_name(collection_name)
+        self.collection = self.client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
+        logger.info(f"Collection name set to {collection_name}, collection object reinitialized")
 
     async def close(self):
         """Close the vector store and log the shutdown process."""

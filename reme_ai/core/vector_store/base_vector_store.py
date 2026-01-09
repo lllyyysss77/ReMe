@@ -48,6 +48,10 @@ class BaseVectorStore(ABC):
         """Convert multiple text queries into vector embeddings using the configured model."""
         return await self.embedding_model.get_embeddings(queries)
 
+    def set_collection_name(self, collection_name: str):
+        """Change the name of the current collection."""
+        self.collection_name = collection_name
+
     @abstractmethod
     async def list_collections(self) -> list[str]:
         """Retrieve a list of all existing collection names in the store."""

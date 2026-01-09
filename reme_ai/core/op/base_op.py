@@ -100,7 +100,7 @@ class BaseOp:
 
     def _handle_failure(self, e: Exception, attempt: int):
         """Log failures and handle final retry logic."""
-        message = f"{self.name} failed (attempt {attempt + 1}): {e}"
+        message = f"[{self.__class__.__name__}] {self.name} failed (attempt {attempt + 1}): {e}"
         if attempt == self.max_retries - 1:
             logger.exception(message)
             if self.raise_exception:
@@ -305,7 +305,7 @@ class BaseOp:
             results = []
             for res in raw_results:
                 if isinstance(res, Exception):
-                    logger.error(f"Async task failed: {res}")
+                    logger.error(f"[{self.__class__.__name__}] Async task failed: {res}")
                     continue
                 if res:
                     results.extend(res if isinstance(res, list) else [res])

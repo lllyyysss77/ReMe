@@ -40,10 +40,11 @@ class AddHistoryMemory(BaseMemoryTool):
         messages = [Message(**m) if isinstance(m, dict) else m for m in messages]
         memory_content = format_messages(messages)
         memory_node = self._build_memory_node(memory_content=memory_content, memory_type=MemoryType.HISTORY)
-
         vector_node = memory_node.to_vector_node()
+
         await self.vector_store.delete(vector_ids=[vector_node.vector_id])
         await self.vector_store.insert(nodes=[vector_node])
+        self.memory_nodes.append(memory_node)
 
         self.output = "Successfully added history memory to vector_store."
         logger.info(self.output)

@@ -56,5 +56,6 @@ class DeleteMemory(BaseMemoryTool):
             return
 
         await self.vector_store.delete(vector_ids=memory_ids)
+        self.memory_nodes = memory_ids
         self.output = f"Successfully deleted {len(memory_ids)} memories from vector_store."
         logger.info(self.output)

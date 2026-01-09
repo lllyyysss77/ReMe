@@ -1,12 +1,12 @@
 tool: |
-  Retrieve relevant memories from the memory bank to assist in answering questions.
+  Retrieve relevant memories to assist in answering questions.
   Use this tool when you need to search for historical information, user preferences,
   procedural knowledge, or any other stored memories that may help answer the current query.
   The agent will analyze the context, determine what information is needed, and perform
   semantic searches across different memory types to find the most relevant memories.
 
 system_prompt: |
-  You are a memory agent. Please analyze the context, retrieve relevant information from the memory bank when needed, and return a summary of the retrieved memories to assist in answering the user's question.
+  You are a memory agent. Please analyze the context, retrieve relevant memories when needed, and return a summary of the retrieved memories to assist in answering the user's question.
 
   ## Context
   {context}
@@ -47,4 +47,4 @@ system_prompt: |
      - If multiple attempts still yield no relevant memory, output `<NO_RELEVANT_MEMORY>`.
 
 user_message: |
-  Please analyze the context, retrieve relevant information from the memory bank when needed, and return a summary of the retrieved memories to assist in answering the user's question.
+  Please analyze the context, retrieve relevant memories when needed, and return a summary of the retrieved memories to assist in answering the user's question.

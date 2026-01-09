@@ -1,13 +1,14 @@
 """Base memory agent for handling memory operations with tool-based reasoning."""
 
 import asyncio
+import json
 from abc import ABCMeta
 
 from loguru import logger
 
 from ..core.enumeration import Role, MemoryType
 from ..core.op import BaseOp
-from ..core.schema import Message, ToolCall
+from ..core.schema import Message, ToolCall, MemoryNode
 from ..mem_tool import BaseMemoryTool, ThinkTool
 
 
@@ -35,6 +36,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
 
         self.messages: list[Message] = []
         self.success: bool = True
+        self.memory_nodes: list[MemoryNode | str] = []
 
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
@@ -71,7 +73,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         )
 
     @property
-    def tools(self):
+    def tools(self) -> list[BaseMemoryTool]:
         """Returns the list of memory tools available to this agent."""
         return self.sub_ops
 
@@ -79,7 +81,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
     def tools(self, tools: list[BaseMemoryTool]):
         self.sub_ops = tools
 
-    def get_messages(self) -> list[Message]:
+    def get_messages(self) -> list[Message] | str:
         """Extracts and returns messages from the context query or messages."""
         if self.context.get("query"):
             messages = [Message(role=Role.USER, content=self.context.query)]
@@ -100,7 +102,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
             **kwargs,
         )
         messages.append(assistant_message)
-        logger.info(f"step{step + 1}.assistant={assistant_message.simple_dump(enable_json_dump=True)}")
+        logger.info(f"[{self.__class__.__name__}] step{step + 1}.assistant={assistant_message.simple_dump(enable_json_dump=True)}")
         should_act = bool(assistant_message.tool_calls)
         return assistant_message, should_act
 
@@ -114,10 +116,10 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
 
         for j, tool_call in enumerate(assistant_message.tool_calls):
             if tool_call.name not in tool_dict:
-                logger.warning(f"unknown tool_call.name={tool_call.name}")
+                logger.warning(f"[{self.__class__.__name__}] unknown tool_call.name={tool_call.name}")
                 continue
 
-            logger.info(f"step{step + 1}.{j} submit tool_calls={tool_call.name} argument={tool_call.arguments}")
+            logger.info(f"[{self.__class__.__name__}] step{step + 1}.{j} submit tool_calls={tool_call.name} argument={tool_call.arguments}")
             tool_copy: BaseMemoryTool = tool_dict[tool_call.name].copy()
             tool_copy.tool_call.id = tool_call.id
             tool_list.append(tool_copy)
@@ -129,6 +131,9 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         await self.join_async_tasks()
 
         for j, op in enumerate(tool_list):
+            if op.memory_nodes:
+                self.memory_nodes.extend(op.memory_nodes)
+
             tool_result = str(op.output)
             tool_message = Message(
                 role=Role.TOOL,
@@ -136,7 +141,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 tool_call_id=op.tool_call.id,
             )
             tool_result_messages.append(tool_message)
-            logger.info(f"step{step + 1}.{j} join tool_result={tool_result[:200]}...\n\n")
+            logger.info(f"[{self.__class__.__name__}] step{step + 1}.{j} join tool_result={tool_result[:500]}...\n\n")
         return tool_result_messages
 
     async def react(self, messages: list[Message]):
@@ -157,13 +162,16 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
     async def execute(self):
         messages = await self.build_messages()
         for i, message in enumerate(messages):
-            logger.info(f"step0.{i} {message.role} {message.name or ''} {message.simple_dump(enable_json_dump=True)}")
+            logger.info(f"[{self.__class__.__name__}] step0.{i} {message.role} {message.name or ''} "
+                        f"{message.simple_dump(enable_json_dump=True)}")
+        for i, tool in enumerate(self.tools):
+            logger.info(f"[{self.__class__.__name__}] step0.{i} tool_call={json.dumps(tool.tool_call.simple_input_dump(), ensure_ascii=False)}")
 
         self.messages, self.success = await self.react(messages)
         if self.success and self.messages:
             self.output = self.messages[-1].content
         else:
-            self.output = ""
+            self.output = "No relevant memories found."
 
     @property
     def memory_target(self) -> str:

@@ -23,7 +23,7 @@ class VectorRetrieveMemory(BaseMemoryTool):
         enable_summary_memory: bool = False,
         add_memory_type_target: bool = False,
         metadata_desc: dict[str, str] | None = None,
-        top_k: int = 10,
+        top_k: int = 20,
         **kwargs,
     ):
         """Initialize VectorRetrieveMemory.
@@ -169,11 +169,7 @@ class VectorRetrieveMemory(BaseMemoryTool):
                     value = str(value).strip()
                     filter_dict[key] = [value] if not isinstance(value, list) else value
 
-        nodes: list[VectorNode] = await self.vector_store.search(
-            query=query,
-            top_k=self.top_k,
-            filter_dict=filter_dict,
-        )
+        nodes: list[VectorNode] = await self.vector_store.search(query=query, limit=self.top_k, filters=filter_dict)
 
         memory_nodes: list[MemoryNode] = [MemoryNode.from_vector_node(n) for n in nodes]
 
@@ -220,8 +216,8 @@ class VectorRetrieveMemory(BaseMemoryTool):
             self.output = "No valid query texts provided for retrieval."
             return
 
-        # Retrieve memories for all queries
-        memories: list[MemoryNode] = []
+        # Retrieve memory_nodes for all queries
+        memory_nodes: list[MemoryNode] = []
         for item in query_items:
             memory_type = item.get("memory_type") or default_memory_type
             memory_target = item.get("memory_target") or default_memory_target
@@ -237,14 +233,15 @@ class VectorRetrieveMemory(BaseMemoryTool):
                 query=item["query"],
                 metadata_filters=metadata_filters,
             )
-            memories.extend(retrieved)
+            memory_nodes.extend(retrieved)
 
         # Deduplicate and format output
-        memories = deduplicate_memories(memories)
+        memory_nodes = deduplicate_memories(memory_nodes)
+        self.memory_nodes = memory_nodes
 
-        if not memories:
-            self.output = "No memories found matching the query."
+        if not memory_nodes:
+            self.output = "No memory_nodes found matching the query."
         else:
-            self.output = "\n".join([m.format_memory() for m in memories])
+            self.output = "\n".join([m.format_memory() for m in memory_nodes])
 
-        logger.info(f"Retrieved {len(memories)} memories")
+        logger.info(f"Retrieved {len(memory_nodes)} memory_nodes")

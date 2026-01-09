@@ -61,7 +61,7 @@ reme \
   http.port=8002 \
   llm.default.model_name=qwen-max-latest \
   embedding_model.default.model_name=text-embedding-v4 \
-  vector_store.default.backend=local
+  vector_store.default.backend=elasticsearch
 ```
 
 add memories for appworld:
@@ -102,9 +102,14 @@ python run_appworld.py
 - Results are automatically saved to `./exp_result/` directory
 
 **Configuration options in `run_appworld.py`:**
-- `max_workers`: Number of parallel workers (default: 6)
-- `num_runs`: Number of times each task is repeated (default: 4)
+- `max_workers`: Number of parallel workers (default: 8)
+- `num_runs`: Number of times each task is repeated (default: 1)
+- `batch_size`: Number of concurrent tasks per batch (default: 8)
+- `num_trials`: Maximum number of self-reflections, failure-aware reflection mechanism is triggered when num_trials>1 (default: 1)
+- `model_name`: Task execution model
 - `use_memory`: Whether to use ReMe memory library
+- `use_memory_addition`: Whether to enable selective addition
+- `use_memory_deletion`: Whether to enable utility-based deletion
 
 ### 2. View Experiment Results
 
@@ -116,27 +121,18 @@ python run_exp_statistic.py
 
 **What this script does:**
 - Processes all result files in `./exp_result/`
-- Calculates best@k metrics for different k values
+- Calculates best@k, pass@k metrics for different k values
 - Generates a summary table showing performance comparisons
 - Saves results to `experiment_summary.csv`
 
 **Metrics explained:**
 - `best@k`: Takes groups of k runs per task, finds the maximum score in each group, then averages these maximums
+- `pass@k`: Takes groups of k runs per task, measures the probability that at least one out of k independent task runs is successful.
 - Higher k values show potential performance, lower k values show consistency
+- In our AppWorld experiments, we report Task Goal Completion (TGC) metric, which measures percentage of tasks for which the agent passes all evaluation tests. 
 
 **Output Files**
 
 - `./exp_result/*.jsonl`: Raw experiment results for each configuration
 - `./exp_result/experiment_summary.csv`: Statistical summary table
 - Console output: Real-time progress and summary statistics
-
-## Understanding Results
-
-The experiment compares:
-1. **Baseline**: Agent without memory library
-2. **With Memory**: Agent enhanced with ReMe memory library
-
-Key metrics to look for:
-- **best@1**: Average performance across all single runs
-- **best@k**: Performance when taking the best of k attempts
-- Improvement percentage when using memory vs baseline

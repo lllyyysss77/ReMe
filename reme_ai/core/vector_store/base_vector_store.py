@@ -94,7 +94,7 @@ class BaseVectorStore(ABC):
         filters: dict | None = None,
         limit: int | None = None,
         sort_key: str | None = None,
-        reverse: bool = False,
+        reverse: bool = True,
     ) -> list[VectorNode]:
         """Retrieve vectors from the collection that match the given filters.
 

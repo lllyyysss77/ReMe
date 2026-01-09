@@ -1,0 +1,5 @@
+tool: |
+  Retrieve the most recent memories from the memory store based on modification time.
+  Use this tool to find memories that were created or updated most recently.
+  The results are sorted by time_modified in descending order (newest first).
+  The memory_type and memory_target are taken from the current context.

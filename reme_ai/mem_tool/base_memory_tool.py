@@ -104,5 +104,7 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
             metadata=metadata or {},
         )
 
-        logger.opt(depth=1).info(f"[{self.__class__.__name__}] build node={node.model_dump_json(indent=2, exclude_none=True)}")
+        logger.opt(depth=1).info(
+            f"[{self.__class__.__name__}] build node={node.model_dump_json(indent=2, exclude_none=True)}",
+        )
         return node

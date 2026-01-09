@@ -64,14 +64,14 @@ class AddSummaryMemory(AddMemory):
         }
 
     def _build_memory_node(
-            self,
-            memory_content: str,
-            memory_type: MemoryType | None = None,
-            memory_target: str = "",
-            ref_memory_id: str = "",
-            when_to_use: str = "",
-            author: str = "",
-            metadata: dict | None = None,
+        self,
+        memory_content: str,
+        memory_type: MemoryType | None = None,
+        memory_target: str = "",
+        ref_memory_id: str = "",
+        when_to_use: str = "",
+        author: str = "",
+        metadata: dict | None = None,
     ) -> MemoryNode:
         """Build MemoryNode from content, when_to_use, and metadata."""
         node = MemoryNode(

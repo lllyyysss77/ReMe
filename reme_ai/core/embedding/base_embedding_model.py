@@ -42,7 +42,7 @@ class BaseEmbeddingModel(ABC):
         """Truncate text to max_input_length if it exceeds the limit."""
         if len(text) > self.max_input_length:
             logger.warning(
-                f"Text length {len(text)} exceeds max_input_length {self.max_input_length}, truncating"
+                f"Text length {len(text)} exceeds max_input_length {self.max_input_length}, truncating",
             )
             return text[: self.max_input_length]
         return text
@@ -77,7 +77,7 @@ class BaseEmbeddingModel(ABC):
         """Async get embeddings with automatic batching and exponential backoff retries."""
         # Truncate all input texts first
         truncated_texts = self._truncate_texts(input_text)
-        
+
         # Split into batches and process sequentially to respect rate limits
         results = []
         for i in range(0, len(truncated_texts), self.max_batch_size):
@@ -118,7 +118,7 @@ class BaseEmbeddingModel(ABC):
         """Synchronous get embeddings with automatic batching and retry logic."""
         # Truncate all input texts first
         truncated_texts = self._truncate_texts(input_text)
-        
+
         results = []
         for i in range(0, len(truncated_texts), self.max_batch_size):
             batch = truncated_texts[i : i + self.max_batch_size]

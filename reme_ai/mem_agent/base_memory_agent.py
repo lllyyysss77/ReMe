@@ -102,7 +102,10 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
             **kwargs,
         )
         messages.append(assistant_message)
-        logger.info(f"[{self.__class__.__name__}] step{step + 1}.assistant={assistant_message.simple_dump(enable_json_dump=True)}")
+        logger.info(
+            f"[{self.__class__.__name__}] "
+            f"step{step + 1}.assistant={assistant_message.simple_dump(enable_json_dump=True)}",
+        )
         should_act = bool(assistant_message.tool_calls)
         return assistant_message, should_act
 
@@ -119,7 +122,10 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 logger.warning(f"[{self.__class__.__name__}] unknown tool_call.name={tool_call.name}")
                 continue
 
-            logger.info(f"[{self.__class__.__name__}] step{step + 1}.{j} submit tool_calls={tool_call.name} argument={tool_call.arguments}")
+            logger.info(
+                f"[{self.__class__.__name__}] step{step + 1}.{j} "
+                f"submit tool_calls={tool_call.name} argument={tool_call.arguments}",
+            )
             tool_copy: BaseMemoryTool = tool_dict[tool_call.name].copy()
             tool_copy.tool_call.id = tool_call.id
             tool_list.append(tool_copy)
@@ -162,10 +168,15 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
     async def execute(self):
         messages = await self.build_messages()
         for i, message in enumerate(messages):
-            logger.info(f"[{self.__class__.__name__}] step0.{i} {message.role} {message.name or ''} "
-                        f"{message.simple_dump(enable_json_dump=True)}")
+            logger.info(
+                f"[{self.__class__.__name__}] step0.{i} {message.role} {message.name or ''} "
+                f"{message.simple_dump(enable_json_dump=True)}",
+            )
         for i, tool in enumerate(self.tools):
-            logger.info(f"[{self.__class__.__name__}] step0.{i} tool_call={json.dumps(tool.tool_call.simple_input_dump(), ensure_ascii=False)}")
+            logger.info(
+                f"[{self.__class__.__name__}] step0.{i} "
+                f"tool_call={json.dumps(tool.tool_call.simple_input_dump(), ensure_ascii=False)}",
+            )
 
         self.messages, self.success = await self.react(messages)
         if self.success and self.messages:

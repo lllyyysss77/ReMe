@@ -411,12 +411,16 @@ class ESVectorStore(BaseVectorStore):
         self,
         filters: dict | None = None,
         limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
         """Retrieve a list of nodes filtered by metadata or limit.
 
         Args:
             filters: Optional metadata filtering criteria.
             limit: Maximum number of nodes to return.
+            sort_key: Key to sort the results by (e.g., field name in metadata). None for no sorting
+            reverse: If True, sort in descending order; if False, sort in ascending order
 
         Returns:
             A list of matching VectorNode objects.
@@ -431,6 +435,16 @@ class ESVectorStore(BaseVectorStore):
                 else:
                     filter_conditions.append({"term": {f"metadata.{key}": value}})
             query["query"] = {"bool": {"must": filter_conditions}}
+
+        # Add sorting to the Elasticsearch query if sort_key is provided
+        if sort_key:
+            query["sort"] = [
+                {
+                    f"metadata.{sort_key}": {
+                        "order": "desc" if reverse else "asc",
+                    },
+                },
+            ]
 
         if limit:
             query["size"] = limit

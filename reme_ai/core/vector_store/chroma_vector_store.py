@@ -360,19 +360,49 @@ class ChromaVectorStore(BaseVectorStore):
         self,
         filters: dict | None = None,
         limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
-        """List vector nodes matching optional metadata filters."""
+        """List vector nodes matching optional metadata filters.
+
+        Args:
+            filters: Dictionary of filter conditions to match vectors
+            limit: Maximum number of vectors to return
+            sort_key: Key to sort the results by (e.g., field name in metadata). None for no sorting
+            reverse: If True, sort in descending order; if False, sort in ascending order
+        """
         where_clause = self._generate_where_clause(filters)
+
+        # If sorting is needed, fetch all records first, then apply limit after sorting
+        fetch_limit = None if sort_key else limit
 
         def _list():
             return self.collection.get(
                 where=where_clause,
-                limit=limit,
+                limit=fetch_limit,
                 include=["documents", "metadatas", "embeddings"],
             )
 
         results = await self._run_sync_in_executor(_list)
-        return self._parse_results(results)
+        nodes = self._parse_results(results)
+
+        # Apply sorting if sort_key is provided
+        if sort_key:
+            # Sort with proper handling of None and missing values
+            def sort_key_func(node):
+                value = node.metadata.get(sort_key)
+                if value is None:
+                    # Return appropriate default based on reverse flag
+                    return float("-inf") if not reverse else float("inf")
+                return value
+
+            nodes.sort(key=sort_key_func, reverse=reverse)
+
+            # Apply limit after sorting
+            if limit is not None:
+                nodes = nodes[:limit]
+
+        return nodes
 
     async def count(self) -> int:
         """Return the total number of vectors in the current collection."""

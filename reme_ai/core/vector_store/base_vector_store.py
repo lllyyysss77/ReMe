@@ -89,8 +89,21 @@ class BaseVectorStore(ABC):
         """Fetch specific vector nodes from the collection by their IDs."""
 
     @abstractmethod
-    async def list(self, filters: dict | None = None, limit: int | None = None) -> list[VectorNode]:
-        """Retrieve vectors from the collection that match the given filters."""
+    async def list(
+        self,
+        filters: dict | None = None,
+        limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
+    ) -> list[VectorNode]:
+        """Retrieve vectors from the collection that match the given filters.
+
+        Args:
+            filters: Dictionary of filter conditions to match vectors
+            limit: Maximum number of vectors to return
+            sort_key: Key to sort the results by (e.g., field name in metadata). None for no sorting
+            reverse: If True, sort in descending order; if False, sort in ascending order
+        """
 
     async def close(self) -> None:
         """Release resources and close active connections to the vector store."""

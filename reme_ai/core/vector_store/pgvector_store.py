@@ -455,12 +455,27 @@ class PGVectorStore(BaseVectorStore):
         self,
         filters: dict | None = None,
         limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
-        """Return a list of vector nodes matching the provided filters and limit."""
+        """Return a list of vector nodes matching the provided filters and limit.
+
+        Args:
+            filters: Dictionary of filter conditions to match vectors
+            limit: Maximum number of vectors to return
+            sort_key: Key to sort the results by (e.g., field name in metadata). None for no sorting
+            reverse: If True, sort in descending order; if False, sort in ascending order
+        """
         await self._ensure_collection_exists()
 
         pool = await self._get_pool()
         filter_clause, filter_params = self._build_filter_clause(filters)
+
+        # Add ORDER BY clause if sort_key is provided
+        order_clause = ""
+        if sort_key:
+            order_direction = "DESC" if reverse else "ASC"
+            order_clause = f"ORDER BY metadata->>'{sort_key}' {order_direction}"
 
         limit_clause = ""
         if limit:
@@ -472,6 +487,7 @@ class PGVectorStore(BaseVectorStore):
                 SELECT id, content, vector, metadata
                 FROM {self.collection_name}
                 {filter_clause}
+                {order_clause}
                 {limit_clause}
             """
             rows = await conn.fetch(sql, *filter_params)

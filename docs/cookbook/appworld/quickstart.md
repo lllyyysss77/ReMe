@@ -129,7 +129,7 @@ python run_exp_statistic.py
 - `best@k`: Takes groups of k runs per task, finds the maximum score in each group, then averages these maximums
 - `pass@k`: Takes groups of k runs per task, measures the probability that at least one out of k independent task runs is successful.
 - Higher k values show potential performance, lower k values show consistency
-- In our AppWorld experiments, we report Task Goal Completion (TGC) metric, which measures percentage of tasks for which the agent passes all evaluation tests. 
+- In our AppWorld experiments, we report Task Goal Completion (TGC) metric, which measures percentage of tasks for which the agent passes all evaluation tests.
 
 **Output Files**
 

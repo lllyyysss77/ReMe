@@ -1185,6 +1185,141 @@ async def test_filter_combinations(store: BaseVectorStore, _store_name: str):
     logger.info("✓ Filter combinations test passed")
 
 
+async def test_list_with_sorting(store: BaseVectorStore, _store_name: str):
+    """Test list operation with sorting by timestamp to get most recent top 10 items."""
+    logger.info("=" * 20 + " LIST WITH SORTING TEST " + "=" * 20)
+
+    # Clean up any existing test data first
+    try:
+        existing_nodes = await store.list(filters={"test_type": "timestamp_test"})
+        if existing_nodes:
+            await store.delete([node.vector_id for node in existing_nodes])
+            logger.info(f"Cleaned up {len(existing_nodes)} existing test nodes")
+    except Exception as e:
+        logger.warning(f"Failed to clean up existing nodes: {e}")
+
+    # Create test nodes with timestamps
+    import time
+
+    test_nodes = []
+    base_timestamp = int(time.time())
+
+    for i in range(15):
+        node = VectorNode(
+            vector_id=f"timestamp_node_{i}",
+            content=f"Test content for node {i} with timestamp",
+            metadata={
+                "test_type": "timestamp_test",
+                "timestamp": base_timestamp - (14 - i) * 3600,  # Each node is 1 hour newer
+                "index": i,
+                "created_at": base_timestamp - (14 - i) * 3600,
+            },
+        )
+        test_nodes.append(node)
+
+    # Insert test nodes
+    await store.insert(test_nodes)
+    logger.info(f"Inserted {len(test_nodes)} test nodes with timestamps")
+
+    # Test 1: Get all items sorted by timestamp (ascending)
+    results_asc = await store.list(
+        filters={"test_type": "timestamp_test"},
+        sort_key="timestamp",
+        reverse=False,
+    )
+    logger.info(f"Test 1 - Ascending order: {len(results_asc)} results")
+
+    # Verify ascending order
+    for i in range(len(results_asc) - 1):
+        ts1 = results_asc[i].metadata.get("timestamp", 0)
+        ts2 = results_asc[i + 1].metadata.get("timestamp", 0)
+        assert ts1 <= ts2, f"Results not in ascending order: {ts1} > {ts2}"
+
+    logger.info(
+        f"First item timestamp: {results_asc[0].metadata.get('timestamp')}, "
+        f"index: {results_asc[0].metadata.get('index')}",
+    )
+    logger.info(
+        f"Last item timestamp: {results_asc[-1].metadata.get('timestamp')}, "
+        f"index: {results_asc[-1].metadata.get('index')}",
+    )
+
+    # Test 2: Get top 10 most recent items (descending order)
+    results_desc = await store.list(
+        filters={"test_type": "timestamp_test"},
+        limit=10,
+        sort_key="timestamp",
+        reverse=True,
+    )
+    logger.info(f"Test 2 - Top 10 most recent (descending order): {len(results_desc)} results")
+
+    # Verify we got exactly 10 results
+    assert len(results_desc) == 10, f"Expected 10 results, got {len(results_desc)}"
+
+    # Log the actual results for debugging
+    logger.info("Top 10 results (should be index 14 to 5):")
+    for i, node in enumerate(results_desc):
+        logger.info(f"  {i}: index={node.metadata.get('index')}, timestamp={node.metadata.get('timestamp')}")
+
+    # Verify descending order
+    for i in range(len(results_desc) - 1):
+        ts1 = results_desc[i].metadata.get("timestamp", 0)
+        ts2 = results_desc[i + 1].metadata.get("timestamp", 0)
+        assert ts1 >= ts2, f"Results not in descending order: {ts1} < {ts2}"
+
+    # Verify we got the most recent items (index 5-14)
+    for node in results_desc:
+        index = node.metadata.get("index", -1)
+        assert index >= 5, f"Top 10 should have index >= 5, got index {index}"
+
+    logger.info(
+        f"Most recent item - timestamp: {results_desc[0].metadata.get('timestamp')}, "
+        f"index: {results_desc[0].metadata.get('index')}",
+    )
+    logger.info(
+        f"10th most recent item - timestamp: {results_desc[-1].metadata.get('timestamp')}, "
+        f"index: {results_desc[-1].metadata.get('index')}",
+    )
+
+    # Test 3: Get top 5 most recent with additional filter
+    results_limited = await store.list(
+        filters={"test_type": "timestamp_test"},
+        limit=5,
+        sort_key="timestamp",
+        reverse=True,
+    )
+    logger.info(f"Test 3 - Top 5 most recent: {len(results_limited)} results")
+    assert len(results_limited) == 5, f"Expected 5 results, got {len(results_limited)}"
+
+    # Verify these are the 5 most recent
+    for i, node in enumerate(results_limited):
+        expected_index = 14 - i  # Should be 14, 13, 12, 11, 10
+        actual_index = node.metadata.get("index", -1)
+        assert actual_index == expected_index, f"Expected index {expected_index}, got {actual_index}"
+
+    # Test 4: Sort by different key (created_at)
+    results_created = await store.list(
+        filters={"test_type": "timestamp_test"},
+        limit=3,
+        sort_key="created_at",
+        reverse=True,
+    )
+    logger.info(f"Test 4 - Top 3 by created_at: {len(results_created)} results")
+    assert len(results_created) == 3, f"Expected 3 results, got {len(results_created)}"
+
+    # Verify sorting by created_at
+    for i in range(len(results_created) - 1):
+        ts1 = results_created[i].metadata.get("created_at", 0)
+        ts2 = results_created[i + 1].metadata.get("created_at", 0)
+        assert ts1 >= ts2, f"Results not sorted by created_at: {ts1} < {ts2}"
+
+    # Clean up test data
+    await store.delete([node.vector_id for node in test_nodes])
+    logger.info("Cleaned up test nodes")
+
+    logger.info("✓ List with sorting test passed")
+
+
 # ==================== Test Runner ====================
 
 
@@ -1239,6 +1374,7 @@ async def run_all_tests_for_store(store_type: str, store_name: str):
         await test_metadata_statistics(store, store_name)
         await test_update_metadata_only(store, store_name)
         await test_filter_combinations(store, store_name)
+        await test_list_with_sorting(store, store_name)
 
         # ========== Collection Management Tests ==========
         logger.info(f"\n{'#' * 60}")

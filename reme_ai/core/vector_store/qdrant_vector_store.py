@@ -412,15 +412,26 @@ class QdrantVectorStore(BaseVectorStore):
         self,
         filters: dict | None = None,
         limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
-        """List all vector nodes in the collection matching the filter criteria."""
+        """List all vector nodes in the collection matching the filter criteria.
+
+        Args:
+            filters: Dictionary of filter conditions to match vectors
+            limit: Maximum number of vectors to return
+            sort_key: Key to sort the results by (e.g., field name in metadata). None for no sorting
+            reverse: If True, sort in descending order; if False, sort in ascending order
+        """
         scroll_filter = self._create_filter(filters) if filters else None
 
-        limit = limit or 10000
+        # If sorting is needed, fetch more records than the limit to ensure correct sorting
+        fetch_limit = 10000 if sort_key else (limit or 10000)
+
         records, _ = await self.client.scroll(
             collection_name=self.collection_name,
             scroll_filter=scroll_filter,
-            limit=limit,
+            limit=fetch_limit,
             with_payload=True,
             with_vectors=True,
         )
@@ -435,6 +446,22 @@ class QdrantVectorStore(BaseVectorStore):
                 metadata=payload.get("metadata", {}),
             )
             results.append(node)
+
+        # Apply sorting if sort_key is provided
+        if sort_key:
+            # Sort with proper handling of None and missing values
+            def sort_key_func(node):
+                value = node.metadata.get(sort_key)
+                if value is None:
+                    # Return appropriate default based on reverse flag
+                    return float("-inf") if not reverse else float("inf")
+                return value
+
+            results.sort(key=sort_key_func, reverse=reverse)
+
+        # Apply limit after sorting
+        if limit is not None:
+            results = results[:limit]
 
         return results
 

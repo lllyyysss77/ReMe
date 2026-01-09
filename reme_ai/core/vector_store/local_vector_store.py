@@ -266,10 +266,31 @@ class LocalVectorStore(BaseVectorStore):
         self,
         filters: dict | None = None,
         limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
-        """List vector nodes in the collection with optional filtering and limits."""
+        """List vector nodes in the collection with optional filtering and limits.
+
+        Args:
+            filters: Dictionary of filter conditions to match vectors
+            limit: Maximum number of vectors to return
+            sort_key: Key to sort the results by (e.g., field name in metadata). None for no sorting
+            reverse: If True, sort in descending order; if False, sort in ascending order
+        """
         all_nodes = self._load_all_nodes()
         filtered_nodes = [node for node in all_nodes if self._match_filters(node, filters)]
+
+        # Apply sorting if sort_key is provided
+        if sort_key:
+            # Sort with proper handling of None and missing values
+            def sort_key_func(node):
+                value = node.metadata.get(sort_key)
+                if value is None:
+                    # Return appropriate default based on reverse flag
+                    return float("-inf") if not reverse else float("inf")
+                return value
+
+            filtered_nodes.sort(key=sort_key_func, reverse=reverse)
 
         if limit is not None:
             filtered_nodes = filtered_nodes[:limit]

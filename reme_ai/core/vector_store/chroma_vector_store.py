@@ -66,7 +66,7 @@ class ChromaVectorStore(BaseVectorStore):
             self.client = chromadb.HttpClient(host=host, port=port)
         else:
             if path is None:
-                path = "./chroma_db"
+                path = "./chroma_vector_store"
             logger.info(f"Initializing local ChromaDB at {path}")
             self.client = chromadb.PersistentClient(
                 path=path,

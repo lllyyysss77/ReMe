@@ -79,6 +79,16 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
         return self.context.get("ref_memory_id", "")
 
     @property
+    def messages_formated(self) -> str:
+        """Get the formated messages from context."""
+        return self.context.get("messages_formated", "")
+
+    @property
+    def retrieved_nodes(self) -> list[MemoryNode]:
+        """Get the retrieved nodes from context."""
+        return self.context.get("retrieved_nodes")
+
+    @property
     def author(self) -> str:
         """Get the author from context."""
         return self.context.get("author", "")

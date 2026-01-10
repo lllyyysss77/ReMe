@@ -43,7 +43,9 @@ class ReadHistoryMemory(BaseMemoryTool):
             ref_memory_id = self.context.get("ref_memory_id", "")
             ref_memory_ids: list[str] = [ref_memory_id] if ref_memory_id else []
 
+        # Remove empty IDs and duplicates
         ref_memory_ids = [mid for mid in ref_memory_ids if mid]
+        ref_memory_ids = list(dict.fromkeys(ref_memory_ids))  # Remove duplicates while preserving order
 
         if not ref_memory_ids:
             self.output = "No valid reference memory IDs provided for reading."

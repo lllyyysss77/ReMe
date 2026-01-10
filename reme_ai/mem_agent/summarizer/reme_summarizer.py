@@ -1,12 +1,10 @@
 """Orchestrator for complete memory summarization workflow across all memory types."""
 
-from typing import List
-
 from loguru import logger
 
 from ..base_memory_agent import BaseMemoryAgent
 from ...core.context import C
-from ...core.enumeration import Role
+from ...core.enumeration import Role, MemoryType
 from ...core.schema import Message, MemoryNode, ToolCall
 from ...core.utils import get_now_time, format_messages
 
@@ -51,22 +49,16 @@ class ReMeSummarizer(BaseMemoryAgent):
             },
         )
 
-    async def _add_history_memory(self) -> MemoryNode:
-        """Store conversation history and return the memory node."""
-        from ...mem_tool import AddHistoryMemory
-
-        op = AddHistoryMemory()
-        await op.call(messages=self.get_messages())
-        return op.memory_nodes[0]
-
-    @staticmethod
-    async def _read_identity_memory() -> str:
+    async def _read_identity_memory(self) -> str:
         """Retrieve agent's self-perception memory."""
-        from ...mem_tool import ReadIdentityMemory
+        if self.enable_identity_memory:
+            from ...mem_tool import ReadIdentityMemory
 
-        op = ReadIdentityMemory()
-        await op.call()
-        return op.output
+            op = ReadIdentityMemory()
+            await op.call()
+            return op.output
+        else:
+            return ""
 
     async def _read_meta_memories(self) -> str:
         """Fetch all meta-memory entries that define specialized memory agents."""
@@ -79,29 +71,26 @@ class ReMeSummarizer(BaseMemoryAgent):
             await op.call()
             return str(op.output)
 
-    async def build_messages(self) -> List[Message]:
+    async def build_messages(self) -> list[Message]:
         """Construct initial messages with context, identity, and meta-memory information."""
-        memory_node: MemoryNode = await self._add_history_memory()
-        self.context["ref_memory_id"] = memory_node.memory_id
+        messages = [Message(**m) if isinstance(m, dict) else m for m in self.context.messages]
+        self.context["messages_formated"] = self.description + "\n" + format_messages(messages)
+        self.context["ref_memory_id"] = MemoryNode(
+            memory_type=MemoryType.HISTORY,
+            content=self.context["messages_formated"],
+        ).memory_id
 
         now_time = get_now_time()
         identity_memory = await self._read_identity_memory()
         meta_memory_info = await self._read_meta_memories()
-        context = self.description + "\n" + format_messages(self.get_messages())
-        logger.info(
-            f"now_time={now_time} "
-            f"memory_node={memory_node.content[:100]}... "
-            f"identity_memory={identity_memory} "
-            f"meta_memory_info={meta_memory_info} "
-            f"context={context[:100]}",
-        )
+        logger.info(f"now_time={now_time} identity_memory={identity_memory} meta_memory_info={meta_memory_info}")
 
         system_prompt = self.prompt_format(
             prompt_name="system_prompt",
             now_time=now_time,
             identity_memory=identity_memory,
             meta_memory_info=meta_memory_info,
-            context=context,
+            context=self.context["messages_formated"],
         )
 
         user_message = self.get_prompt("user_message")
@@ -118,16 +107,12 @@ class ReMeSummarizer(BaseMemoryAgent):
 
         if system_messages:
             system_message = system_messages[0]
-            now_time = get_now_time()
-            identity_memory = await self._read_identity_memory()
-            meta_memory_info = await self._read_meta_memories()
-            context = self.description + "\n" + format_messages(self.get_messages())
             system_message.content = self.prompt_format(
                 prompt_name="system_prompt",
-                now_time=now_time,
-                identity_memory=identity_memory,
-                meta_memory_info=meta_memory_info,
-                context=context,
+                now_time=get_now_time(),
+                identity_memory=await self._read_identity_memory(),
+                meta_memory_info=await self._read_meta_memories(),
+                context=self.context["messages_formated"],
             )
 
         return await super()._reasoning_step(messages, step, **kwargs)
@@ -140,6 +125,7 @@ class ReMeSummarizer(BaseMemoryAgent):
             messages=self.context.get("messages", []),
             description=self.context.get("description"),
             ref_memory_id=self.context["ref_memory_id"],
+            messages_formated=self.context["messages_formated"],
             author=self.author,
             **kwargs,
         )

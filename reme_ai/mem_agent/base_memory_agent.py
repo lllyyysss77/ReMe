@@ -36,6 +36,8 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
 
         self.messages: list[Message] = []
         self.success: bool = True
+
+        self.retrieved_nodes: list[MemoryNode] = []
         self.memory_nodes: list[MemoryNode | str] = []
 
     def _build_tool_call(self) -> ToolCall:
@@ -130,7 +132,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
             tool_copy.tool_call.id = tool_call.id
             tool_list.append(tool_copy)
             kwargs.update(tool_call.argument_dict)
-            self.submit_async_task(tool_copy.call, **kwargs)
+            self.submit_async_task(tool_copy.call, retrieved_nodes=self.retrieved_nodes, **kwargs)
             if self.tool_call_interval > 0:
                 await asyncio.sleep(self.tool_call_interval)
 

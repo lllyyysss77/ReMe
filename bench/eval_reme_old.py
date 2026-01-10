@@ -158,10 +158,11 @@ async def process_user_async(
     tmp_file = os.path.join(tmp_dir, f"{user_data['uuid']}.json")
 
     # Clear existing memories for this user
-    await reme.vector_store.delete_collection(f"reme_eval_{user_name}")
+    collection_name = f"reme_eval_{user_name}".replace(" ", "_").lower()
+    await reme.vector_store.delete_collection(collection_name)
 
     # Update collection name for this user
-    reme.vector_store.set_collection_name(f"reme_eval_{user_name}")
+    reme.vector_store.set_collection_name(collection_name)
 
     new_user_data = {
         "uuid": user_data["uuid"],
@@ -177,35 +178,40 @@ async def process_user_async(
 
         # Add messages to ReMe
         dialogue = session["dialogue"]
-        # Parse timestamp and format as "YYYY-MM-DD HH:MM:SS"
-        date_format = "%b %d, %Y, %H:%M:%S"
-        # dt = datetime.strptime(session["start_time"], date_format).replace(tzinfo=timezone.utc)
-        # time_created = dt.strftime("%Y-%m-%d %H:%M:%S")
-
         formatted_dialogue = [
             {
                 "role": turn["role"],
                 "content": turn["content"],
-                "time_created": datetime.strptime(turn["timestamp"], date_format)
+                "time_created": datetime.strptime(turn["timestamp"], "%b %d, %Y, %H:%M:%S")
                 .replace(tzinfo=timezone.utc)
                 .strftime("%Y-%m-%d %H:%M:%S"),
             }
             for turn in dialogue
         ]
 
-        # Add memory
-        result, duration_ms = await add_memory_async(
-            reme=reme,
-            user_id=user_name,
-            messages=formatted_dialogue,
-        )
-        memories = []
-        for memory_modes in result:
-            for memory_mode in memory_modes:
-                if not isinstance(memory_mode, MemoryNode):
-                    continue
+        # Add memory - process every 2 messages
+        result = []
+        total_duration_ms = 0
+        batch_size = 4
 
-                memories.append(memory_mode.content)
+        for i in range(0, len(formatted_dialogue), batch_size):
+            batch = formatted_dialogue[i : i + batch_size]
+            batch_result, duration_ms = await add_memory_async(
+                reme=reme,
+                user_id=user_name,
+                messages=batch,
+            )
+            result.extend(batch_result)
+            total_duration_ms += duration_ms
+
+        duration_ms = total_duration_ms
+
+        memories = []
+        for memory_mode in result:
+            if not isinstance(memory_mode, MemoryNode):
+                continue
+
+            memories.append(memory_mode.content)
 
         print(memories)
 

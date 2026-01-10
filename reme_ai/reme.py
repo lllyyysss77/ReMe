@@ -92,7 +92,7 @@ class ReMe(Application):
                 "year": "The `year` information associated with the memory(Optional)",
                 "month": "The `month` information associated with the memory(Optional)",
                 "day": "The `day` information associated with the memory(Optional)",
-                "hour": "The `hour` information associated with the memory(Optional)",
+                # "hour": "The `hour` information associated with the memory(Optional)",
                 # "year": "The year when the memory content occurred(Optional)",
                 # "month": "The month when the memory content occurred(Optional)",
                 # "day": "The day when the memory content occurred(Optional)",
@@ -110,7 +110,6 @@ class ReMe(Application):
             personal_summarizer = PersonalSummarizer(
                 tools=[
                     VectorRetrieveMemory(
-                        enable_summary_memory=False,
                         add_memory_type_target=False,
                         metadata_desc=None,
                         top_k=15,
@@ -144,6 +143,7 @@ class ReMe(Application):
         description: str = "",
         user_id: str = "",
         assistant_id: str = "",
+        top_k: int = 20,
         **kwargs,
     ):
         """Retrieves relevant memories based on the query and specified memory mode."""
@@ -155,7 +155,7 @@ class ReMe(Application):
                 "year": "The year to filter memories(Optional)",
                 "month": "The month to filter memories(Optional)",
                 "day": "The day to filter memories(Optional)",
-                "hour": "The hour to filter memories(Optional)",
+                # "hour": "The hour to filter memories(Optional)",
             }
             meta_memories = [
                 {
@@ -168,17 +168,15 @@ class ReMe(Application):
                 meta_memories=meta_memories,
                 tools=[
                     VectorRetrieveMemory(
-                        enable_summary_memory=True,
                         add_memory_type_target=True,
                         metadata_desc=metadata_retrieve,
-                        top_k=20,
+                        top_k=top_k,
                     ),
                     ReadHistoryMemory(),
                 ],
             )
 
             await reme_retriever.call(query=query, messages=messages, description=description, **kwargs)
-
             return reme_retriever.output
 
         else:

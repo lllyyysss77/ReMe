@@ -16,17 +16,14 @@ class RetrieveRecentMemory(BaseMemoryTool):
     Uses memory_type and memory_target from context (self.memory_type, self.memory_target).
     """
 
-    def __init__(
-        self,
-        top_k: int = 20,
-        **kwargs,
-    ):
+    def __init__(self, top_k: int = 20, **kwargs):
         """Initialize RetrieveRecentMemory.
 
         Args:
             top_k: Max memories to retrieve.
             **kwargs: Additional args for BaseMemoryTool.
         """
+        kwargs["enable_multiple"] = False
         super().__init__(**kwargs)
         self.top_k: int = top_k
 
@@ -60,19 +57,29 @@ class RetrieveRecentMemory(BaseMemoryTool):
         Outputs formatted results or error message.
         """
         if not self.memory_type or not self.memory_target:
-            self.output = "memory_type and memory_target are required for retrieval."
-            return
+            raise RuntimeError("memory_type and memory_target are required for retrieval.")
 
         # Retrieve recent memories
         memory_nodes: list[MemoryNode] = await self._retrieve_recent()
 
         # Deduplicate and format output
         memory_nodes = deduplicate_memories(memory_nodes)
-        self.memory_nodes = memory_nodes
 
-        if not memory_nodes:
-            self.output = "No memory_nodes found."
+        # Build set of historical memory_ids for fast lookup
+        retrieved_memory_ids = {node.memory_id for node in self.retrieved_nodes if node.memory_id}
+
+        # Filter out already retrieved memories by memory_id
+        new_memory_nodes = [node for node in memory_nodes if node.memory_id not in retrieved_memory_ids]
+
+        # Update retrieved_nodes in context with new memories
+        self.retrieved_nodes.extend(new_memory_nodes)
+
+        # Set output to new memories only (after deduplication)
+        self.memory_nodes = new_memory_nodes
+
+        if not new_memory_nodes:
+            self.output = "No new memory_nodes found (duplicates removed)."
         else:
-            self.output = "\n".join([m.format_memory() for m in memory_nodes])
+            self.output = "\n".join([m.format_memory() for m in new_memory_nodes])
 
-        logger.info(f"Retrieved {len(memory_nodes)} recent memory_nodes")
+        logger.info(f"Retrieved {len(memory_nodes)} memory_nodes, {len(new_memory_nodes)} new after deduplication")

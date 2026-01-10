@@ -75,11 +75,11 @@ class AddSummaryMemory(AddMemory):
     ) -> MemoryNode:
         """Build MemoryNode from content, when_to_use, and metadata."""
         node = MemoryNode(
-            memory_type=MemoryType.SUMMARY,
+            memory_type=MemoryType.HISTORY,
             memory_target="",
-            when_to_use="",
-            content=memory_content,
-            ref_memory_id=self.ref_memory_id,
+            when_to_use=memory_content,
+            content=self.messages_formated,
+            ref_memory_id="",
             author=self.author,
             metadata=metadata or {},
         )

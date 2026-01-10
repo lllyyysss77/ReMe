@@ -8,4 +8,4 @@ ref_memory_id: |
   Reference memory ID to query the original history dialogue.
 
 ref_memory_ids: |
-  List of reference memory IDs to query the original history dialogues.
+  List of reference memory IDs to query the original history dialogues. Please provide unique IDs without duplicates.

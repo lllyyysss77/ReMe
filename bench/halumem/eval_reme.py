@@ -3,13 +3,13 @@ Complete evaluation script for ReMe on HaluMem benchmark.
 
 This script performs the full evaluation pipeline:
 1. Load HaluMem data
-2. Process each user's sessions with ReMe (summary + retrieve)
-3. Evaluate memory integrity, accuracy, updates, and question answering
+2. Process each user's sessions with ReMe (summary + retrieve) - Stage 1 (Parallel)
+3. Evaluate memory integrity, accuracy, updates, and question answering - Stage 2 (Sequential)
 4. Generate metrics and statistics
 
 Usage:
     python bench/halumem/eval_reme.py --data_path /Users/yuli/workspace/HaluMem/data/HaluMem-Long.jsonl --version v1 \
-        --top_k 20 --user_num 1
+        --top_k 20 --user_num 10 --max_concurrency 5
 """
 
 import asyncio
@@ -643,6 +643,7 @@ async def main_async(
     version: str = "default",
     top_k: int = 20,
     user_num: int = 1,
+    max_concurrency: int = 2,
 ):
     """Main evaluation pipeline."""
     frame = "reme"
@@ -653,10 +654,12 @@ async def main_async(
     output_file_stage2 = os.path.join(save_path, f"{frame}_eval_stat_result.json")
 
     start_time = time.time()
+    await reme.vector_store.delete_all()
 
     # ==================== Stage 1: Data Processing ====================
     print("\n" + "=" * 80)
     print("STAGE 1: PROCESSING DATA WITH ReMe")
+    print(f"Max Concurrency: {max_concurrency}")
     print("=" * 80)
 
     tmp_dir = os.path.join(save_path, "tmp")
@@ -667,12 +670,35 @@ async def main_async(
     total_users = min(len(user_data_list), user_num)
     user_data_list = user_data_list[:total_users]
 
-    print(f"Processing {total_users} users sequentially...")
+    print(f"Processing {total_users} users with max concurrency {max_concurrency}...")
+    
+    # Create semaphore to limit concurrency for Stage 1
+    semaphore_stage1 = asyncio.Semaphore(max_concurrency)
 
-    # Process users sequentially
-    for idx, user_data in enumerate(user_data_list, 1):
-        result = await process_user_stage1(user_data, top_k, save_path, version)
-        print(f"[{idx}/{total_users}] ✅ Finished {user_data['uuid']} ({result['status']})")
+    async def process_single_user_stage1(idx: int, user_data: dict):
+        """Process a single user in Stage 1 with semaphore control and staggered delay."""
+        # Add staggered delay: 0s for first, 30s for second, 60s for third, etc.
+        delay = (idx - 1) * 30
+        if delay > 0:
+            print(f"⏳ User {idx} will start in {delay} seconds...")
+            await asyncio.sleep(delay)
+        
+        async with semaphore_stage1:
+            uuid = user_data['uuid']
+            tmp_file = os.path.join(tmp_dir, f"{uuid}.json")
+            
+            if os.path.exists(tmp_file):
+                print(f"⚡ Skipping user {uuid} ({idx}/{total_users}) — cached result found.")
+                return {"uuid": uuid, "status": "cached", "path": tmp_file}
+            
+            print(f"[{idx}/{total_users}] Processing user {uuid}...")
+            result = await process_user_stage1(user_data, top_k, save_path, version)
+            print(f"[{idx}/{total_users}] ✅ Finished {uuid} ({result['status']})")
+            return result
+
+    # Process users in parallel with controlled concurrency and staggered start
+    tasks = [process_single_user_stage1(idx, user_data) for idx, user_data in enumerate(user_data_list, 1)]
+    await asyncio.gather(*tasks)
 
     # Combine all results into final output
     with open(output_file_stage1, "w", encoding="utf-8") as f_out:
@@ -689,7 +715,7 @@ async def main_async(
 
     # ==================== Stage 2: Evaluation ====================
     print("\n" + "=" * 80)
-    print("STAGE 2: EVALUATING MEMORY PERFORMANCE")
+    print("STAGE 2: EVALUATING MEMORY PERFORMANCE (Sequential)")
     print("=" * 80)
 
     tmp_dir2 = os.path.join(save_path, "tmp2")
@@ -697,21 +723,25 @@ async def main_async(
 
     start_stage2 = time.time()
 
-    for idx, user_data in enumerate(iter_jsonl(output_file_stage1), 1):
+    # Load all users and process sequentially
+    user_data_list = list(enumerate(iter_jsonl(output_file_stage1), 1))
+    
+    for idx, user_data in user_data_list:
         uuid = user_data["uuid"]
         tmp_file = os.path.join(tmp_dir2, f"{uuid}.json")
 
         if os.path.exists(tmp_file):
-            print(f"⚡ Skipping user {uuid} ({idx}) — cached result found.")
-        else:
-            print(f"Processing user {uuid} ({idx})...")
-            user_result = await process_user_stage2(idx, user_data)
+            print(f"⚡ Skipping user {uuid} ({idx}/{len(user_data_list)}) — cached result found.")
+            continue
 
-            with open(tmp_file, "w", encoding="utf-8") as f:
-                json.dump(user_result, f, ensure_ascii=False, indent=4)
+        print(f"[{idx}/{len(user_data_list)}] Processing user {uuid}...")
+        t_user_result = await process_user_stage2(idx, user_data)
 
-            elapsed = time.time() - start_stage2
-            print(f"✅ Finished user {uuid} ({idx}), elapsed {elapsed:.2f}s.")
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(t_user_result, f, ensure_ascii=False, indent=4)
+
+        elapsed = time.time() - start_stage2
+        print(f"[{idx}/{len(user_data_list)}] ✅ Finished user {uuid}, elapsed {elapsed:.2f}s.")
 
     # Calculate time consuming
     add_dialogue_duration_time = 0
@@ -844,9 +874,10 @@ def main(
     version: str = "default",
     top_k: int = 20,
     user_num: int = 1,
+    max_concurrency: int = 2,
 ):
     """Synchronous entry point."""
-    asyncio.run(main_async(data_path, version, top_k, user_num))
+    asyncio.run(main_async(data_path, version, top_k, user_num, max_concurrency))
 
 
 if __name__ == "__main__":
@@ -877,6 +908,12 @@ if __name__ == "__main__":
         default=1,
         help="Number of users to evaluate (default: 1)",
     )
+    parser.add_argument(
+        "--max_concurrency",
+        type=int,
+        default=2,
+        help="Maximum concurrency for stage 1 processing (default: 2)",
+    )
     args = parser.parse_args()
 
     main(
@@ -884,4 +921,5 @@ if __name__ == "__main__":
         version=args.version,
         top_k=args.top_k,
         user_num=args.user_num,
+        max_concurrency=args.max_concurrency,
     )

@@ -357,6 +357,16 @@ class PGVectorStore(BaseVectorStore):
 
         logger.info(f"Deleted {len(vector_ids)} documents from {self.collection_name}")
 
+    async def delete_all(self, **kwargs):
+        """Remove all vectors from the collection."""
+        await self._ensure_collection_exists()
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            result = await conn.execute(f"DELETE FROM {self.collection_name}")
+
+        logger.info(f"Deleted all documents from {self.collection_name}")
+
     async def update(self, nodes: VectorNode | list[VectorNode], **kwargs):
         """Update existing vector nodes with new content, embeddings, or metadata."""
         await self._ensure_collection_exists()

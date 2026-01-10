@@ -331,6 +331,21 @@ class QdrantVectorStore(BaseVectorStore):
 
         logger.info(f"Deleted {len(point_ids)} documents from {self.collection_name}")
 
+    async def delete_all(self, **kwargs: Any):
+        """Remove all vectors from the collection."""
+        wait = kwargs.get("wait", True)
+
+        # Delete all points by using an empty filter (matches all)
+        from qdrant_client.models import FilterSelector
+
+        await self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=FilterSelector(filter=Filter(must=[])),
+            wait=wait,
+        )
+
+        logger.info(f"Deleted all documents from {self.collection_name}")
+
     async def update(self, nodes: VectorNode | list[VectorNode], **kwargs: Any):
         """Update existing vector nodes with new content or metadata."""
         if isinstance(nodes, VectorNode):

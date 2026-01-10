@@ -320,6 +320,24 @@ class ESVectorStore(BaseVectorStore):
         if refresh:
             await self.client.indices.refresh(index=self.collection_name)
 
+    async def delete_all(self, **kwargs):
+        """Remove all vectors from the collection.
+
+        Args:
+            **kwargs: Additional deletion parameters.
+        """
+        response = await self.client.delete_by_query(
+            index=self.collection_name,
+            body={"query": {"match_all": {}}},
+        )
+
+        deleted_count = response.get("deleted", 0)
+        logger.info(f"Deleted all {deleted_count} documents from {self.collection_name}")
+
+        refresh = kwargs.get("refresh", True)
+        if refresh:
+            await self.client.indices.refresh(index=self.collection_name)
+
     async def update(self, nodes: VectorNode | list[VectorNode], refresh: bool = True, **kwargs):
         """Update existing documents with new content or metadata.
 

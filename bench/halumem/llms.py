@@ -5,9 +5,9 @@ import re
 
 from tenacity import retry, stop_after_attempt, wait_random_exponential, before_sleep_log
 
-from reme_ai.core.llm import OpenAILLM
 from reme_ai.core.schema import Message
 from reme_ai.core.utils import load_env
+from reme_ai.reme import ReMe
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,8 @@ WAIT_TIME_LOWER = 1
 WAIT_TIME_UPPER = 60
 RETRY_TIMES = 5
 
+# Use ReMe singleton's LLM instead of creating a separate instance
+reme = ReMe()
 
 @retry(
     wait=wait_random_exponential(min=WAIT_TIME_LOWER, max=WAIT_TIME_UPPER),
@@ -24,9 +26,18 @@ RETRY_TIMES = 5
     reraise=True,
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-async def llm_request(prompt, **kwargs) -> str:
-    llm = OpenAILLM(model_name="qwen3-max")
-    assistant_message = await llm.chat(
+async def llm_request(prompt, model_name: str = "qwen3-max", **kwargs) -> str:
+    """Make an LLM request using ReMe's LLM with optional model override.
+    
+    Args:
+        prompt: The prompt to send to the LLM
+        model_name: Optional model name to override the default model (default: "qwen3-max")
+        **kwargs: Additional arguments to pass to the chat method
+    
+    Returns:
+        The assistant's response content
+    """
+    assistant_message = await reme.llm.chat(
         messages=[
             Message(
                 **{
@@ -35,6 +46,7 @@ async def llm_request(prompt, **kwargs) -> str:
                 },
             ),
         ],
+        model_name=model_name,
         **kwargs,
     )
     return assistant_message.content
@@ -46,8 +58,21 @@ async def llm_request(prompt, **kwargs) -> str:
     reraise=True,
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-async def llm_request_for_json(prompt, **kwargs):
-    content = await llm_request(prompt, **kwargs)
+async def llm_request_for_json(prompt, model_name: str = "qwen3-max", **kwargs):
+    """Make an LLM request expecting JSON response using ReMe's LLM.
+    
+    Args:
+        prompt: The prompt to send to the LLM
+        model_name: Optional model name to override the default model (default: "qwen3-max")
+        **kwargs: Additional arguments to pass to the chat method
+    
+    Returns:
+        Parsed JSON object from the LLM response
+        
+    Raises:
+        ValueError: If no JSON block is found in the model output
+    """
+    content = await llm_request(prompt, model_name=model_name, **kwargs)
 
     match = re.search(r"```json\s*(\{.*?\})\s*```", content, re.DOTALL)
     if not match:

@@ -7,6 +7,7 @@ from .core.embedding import BaseEmbeddingModel
 from .core.enumeration import Role
 from .core.llm import BaseLLM
 from .core.schema import Message
+from .core.utils import singleton
 from .core.vector_store import BaseVectorStore
 from .mem_agent.retriever import ReMeRetriever
 from .mem_agent.summarizer import ReMeSummarizer, PersonalSummarizer
@@ -22,6 +23,7 @@ from .mem_tool import (
 )
 
 
+@singleton
 class ReMe(Application):
     """Simplified ReMe application that auto-initializes the service context."""
 
@@ -61,6 +63,10 @@ class ReMe(Application):
         self.llm: BaseLLM = C.get_llm("default")
         self.vector_store: BaseVectorStore = C.get_vector_store("default")
         self.embedding_model: BaseEmbeddingModel = C.get_embedding_model("default")
+
+    @staticmethod
+    def get_llm(name: str) -> BaseLLM:
+        return C.get_llm(name)
 
     @staticmethod
     def _prepare_messages(messages: list[dict | Message], user_id: str, assistant_id: str):

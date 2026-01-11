@@ -16,11 +16,15 @@ llm:
   default:
     backend: openai
     model_name: qwen3-30b-a3b-instruct-2507
+    max_rps: 6
+    rps_window: 10
 
   qwen3_max_instruct:
     backend: openai
     model_name: qwen3-max
-    temperature: 0.6
+#    temperature: 0.6
+    max_rps: 9
+    rps_window: 10
 
 embedding_model:
   default:
@@ -31,6 +35,7 @@ embedding_model:
 vector_store:
   default:
     backend: chroma
+#    backend: local
     embedding_model: default
     collection_name: reme
 

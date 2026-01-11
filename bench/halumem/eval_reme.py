@@ -9,7 +9,9 @@ This script performs the full evaluation pipeline:
 
 Usage:
     python bench/halumem/eval_reme.py --data_path /Users/yuli/workspace/HaluMem/data/HaluMem-Long.jsonl --version v1 \
-        --top_k 20 --user_num 10 --max_concurrency 5
+        --top_k 20 --user_num 100 --max_concurrency 20
+    python bench/halumem/eval_reme.py --data_path ./HaluMem-Long.jsonl --version v1 \
+        --top_k 20 --user_num 100 --max_concurrency 20
 """
 
 import asyncio
@@ -40,6 +42,8 @@ TEMPLATE_MEMOS = _PROMPTS["TEMPLATE_MEMOS"]
 # Prompt for question answering (using optimized PROMPT_MEMOS)
 PROMPT_MEMOS = _PROMPTS["PROMPT_MEMOS"]
 
+# Initialize ReMe with rate limiting configuration
+# The default LLM can be overridden at call time using model_name parameter
 reme: ReMe = ReMe()
 
 
@@ -235,12 +239,15 @@ async def process_user_stage1(
 
             if extract_memories_str.strip() == "":
                 new_memory["memory_integrity_score"] = 0
+                new_memory["memory_integrity_reasoning"] = "No memories extracted"
                 session_eval_results["memory_integrity_records"].append(new_memory)
                 continue
 
             result = await evaluation_for_memory_integrity(extract_memories_str, memory["memory_content"])
             score = int(result.get("score"))
+            reasoning = result.get("reasoning", "")
             new_memory["memory_integrity_score"] = score
+            new_memory["memory_integrity_reasoning"] = reasoning
             session_eval_results["memory_integrity_records"].append(new_memory)
 
         # Evaluate Memory Accuracy
@@ -266,8 +273,10 @@ async def process_user_stage1(
             result = await evaluation_for_memory_accuracy(dialogue_str, golden_memories_str, memory)
             score = int(result.get("accuracy_score"))
             is_included_in_golden_memories = result.get("is_included_in_golden_memories", "false")
+            reason = result.get("reason", "")
             new_memory["memory_accuracy_score"] = score
             new_memory["is_included_in_golden_memories"] = is_included_in_golden_memories
+            new_memory["memory_accuracy_reason"] = reason
             session_eval_results["memory_accuracy_records"].append(new_memory)
 
         # Evaluate Memory Update
@@ -289,7 +298,9 @@ async def process_user_stage1(
                 "\n".join(update_memory["original_memories"]),
             )
             update_type = result.get("evaluation_result")
+            reason = result.get("reason", "")
             update_memory["memory_update_type"] = update_type
+            update_memory["memory_update_reason"] = reason
             session_eval_results["memory_update_records"].append(update_memory)
 
         # Evaluate Question Answering
@@ -307,7 +318,9 @@ async def process_user_stage1(
                     qa["system_response"],
                 )
                 result_type = result.get("evaluation_result")
+                reasoning = result.get("reasoning", "")
                 new_qa["result_type"] = result_type
+                new_qa["question_answering_reasoning"] = reasoning
                 session_eval_results["question_answering_records"].append(new_qa)
 
         # Store evaluation results in session
@@ -676,13 +689,7 @@ async def main_async(
     semaphore_stage1 = asyncio.Semaphore(max_concurrency)
 
     async def process_single_user_stage1(idx: int, user_data: dict):
-        """Process a single user in Stage 1 with semaphore control and staggered delay."""
-        # Add staggered delay: 0s for first, 30s for second, 60s for third, etc.
-        delay = (idx - 1) * 30
-        if delay > 0:
-            print(f"⏳ User {idx} will start in {delay} seconds...")
-            await asyncio.sleep(delay)
-        
+        """Process a single user in Stage 1 with semaphore control."""
         async with semaphore_stage1:
             uuid = user_data['uuid']
             tmp_file = os.path.join(tmp_dir, f"{uuid}.json")
@@ -696,7 +703,7 @@ async def main_async(
             print(f"[{idx}/{total_users}] ✅ Finished {uuid} ({result['status']})")
             return result
 
-    # Process users in parallel with controlled concurrency and staggered start
+    # Process users in parallel with controlled concurrency
     tasks = [process_single_user_stage1(idx, user_data) for idx, user_data in enumerate(user_data_list, 1)]
     await asyncio.gather(*tasks)
 

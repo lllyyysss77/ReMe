@@ -36,12 +36,24 @@ class LiteLLM(BaseLLM):
         messages: list[Message],
         tools: list[ToolCall] | None = None,
         log_params: bool = True,
+        model_name: str | None = None,
         **kwargs,
     ) -> dict:
-        """Construct and log the parameters dictionary for LiteLLM API calls."""
+        """Construct and log the parameters dictionary for LiteLLM API calls.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            log_params: Whether to log parameters
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
+        # Use the provided model_name or fall back to self.model_name
+        effective_model = model_name if model_name is not None else self.model_name
+        
         # Construct the API parameters by merging multiple sources
         llm_kwargs = {
-            "model": self.model_name,
+            "model": effective_model,
             "messages": [x.simple_dump() for x in messages],
             "tools": [x.simple_input_dump() for x in tools] if tools else None,
             "stream": True,

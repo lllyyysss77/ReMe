@@ -18,11 +18,23 @@ class ReMeSummarizer(BaseMemoryAgent):
         super().__init__(**kwargs)
         self.enable_identity_memory = enable_identity_memory
         self.meta_memories: list[dict] = meta_memories or []
+        
+        # Check if AddMetaMemory is in tools
+        self.enable_add_meta_memory = self._check_add_meta_memory_in_tools()
 
+    def _check_add_meta_memory_in_tools(self) -> bool:
+        """Check if AddMetaMemory tool is present in the tools list."""
+        from ...mem_tool import AddMetaMemory
+        
+        for tool in self.tools:
+            if isinstance(tool, AddMetaMemory):
+                return True
+        return False
+    
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": self.get_prompt("tool"),
+                "description": self.prompt_format("tool", enable_add_meta_memory=self.enable_add_meta_memory),
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -91,6 +103,7 @@ class ReMeSummarizer(BaseMemoryAgent):
             identity_memory=identity_memory,
             meta_memory_info=meta_memory_info,
             context=self.context["messages_formated"],
+            enable_add_meta_memory=self.enable_add_meta_memory,
         )
 
         user_message = self.get_prompt("user_message")
@@ -113,6 +126,7 @@ class ReMeSummarizer(BaseMemoryAgent):
                 identity_memory=await self._read_identity_memory(),
                 meta_memory_info=await self._read_meta_memories(),
                 context=self.context["messages_formated"],
+                enable_add_meta_memory=self.enable_add_meta_memory,
             )
 
         return await super()._reasoning_step(messages, step, **kwargs)

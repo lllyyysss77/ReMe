@@ -69,8 +69,6 @@ class Application:
         self._update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
         self._update_env("REME_EMBEDDING_BASE_URL", embedding_api_base)
 
-        init_logger()
-
         # Use default parser if not provided
         parser_class = parser if parser is not None else PydanticConfigParser
         self.parser = parser_class(ServiceConfig)
@@ -86,6 +84,9 @@ class Application:
             service_config = self.parser.parse_args(*input_args)
 
         C.service_config = service_config
+
+        if C.service_config.init_logger:
+            init_logger()
 
         if llm:
             C.update_section_config("llm", **llm)

@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import re
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -120,6 +121,7 @@ class Message(BaseModel):
         use_name: bool = False,
         add_reasoning: bool = True,
         add_tools: bool = True,
+        strip_markdown_headers: bool = True,
     ) -> str:
         """Generates a human-readable string representation of the message."""
         prefix = f"round{index} " if index is not None else ""
@@ -129,16 +131,25 @@ class Message(BaseModel):
         lines = [f"{prefix}{time_str}{header}"]
 
         if add_reasoning and self.reasoning_content:
-            lines.append(self.reasoning_content)
+            content = self.reasoning_content
+            if strip_markdown_headers:
+                content = re.sub(r'\n##+ +', '\n', content)
+            lines.append(content)
 
         if isinstance(self.content, str):
-            lines.append(self.content)
+            content = self.content
+            if strip_markdown_headers:
+                content = re.sub(r'\n##+ +', '\n', content)
+            lines.append(content)
         elif isinstance(self.content, list):
             for block in self.content:
                 text = (
                     block.content if isinstance(block.content, str) else json.dumps(block.content, ensure_ascii=False)
                 )
-                lines.append(str(text))
+                text = str(text)
+                if strip_markdown_headers and isinstance(block.content, str):
+                    text = re.sub(r'\n##+ +', '\n', text)
+                lines.append(text)
 
         if add_tools and self.tool_calls:
             for tc in self.tool_calls:

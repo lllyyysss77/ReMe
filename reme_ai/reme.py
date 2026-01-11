@@ -130,7 +130,7 @@ class ReMe(Application):
                 meta_memories=meta_memories,
                 enable_identity_memory=False,
                 tools=[
-                    AddMetaMemory(),
+                    # AddMetaMemory(),
                     AddSummaryMemory(metadata_desc=metadata_summary),
                     HandsOffTool(memory_agents=[personal_summarizer]),
                 ],

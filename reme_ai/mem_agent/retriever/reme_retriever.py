@@ -14,8 +14,8 @@ class ReMeRetriever(BaseMemoryAgent):
     """Memory agent that retrieves and builds messages with meta memory context."""
 
     def __init__(self, meta_memories: list[dict] | None = None, **kwargs):
-        super().__init__(prompt_name="", **kwargs)
-        # super().__init__(prompt_name="reme_retriever2", **kwargs)
+        # super().__init__(prompt_name="", **kwargs)
+        super().__init__(prompt_name="reme_retriever2", **kwargs)
         self.meta_memories: list[dict] = meta_memories or []
 
     async def _read_meta_memories(self) -> str:
@@ -29,7 +29,7 @@ class ReMeRetriever(BaseMemoryAgent):
             await op.call()
             return str(op.output)
 
-    async def build_messages(self) -> List[Message]:
+    async def build_messages1(self) -> List[Message]:
         """Build messages with system prompt and user message."""
         meta_memory_info = await self._read_meta_memories()
         system_prompt = self.prompt_format(
@@ -48,7 +48,7 @@ class ReMeRetriever(BaseMemoryAgent):
 
         return messages
 
-    async def build_messages2(self) -> List[Message]:
+    async def build_messages(self) -> List[Message]:
         """Build messages with system prompt and user message."""
         if self.context.get("query"):
             context = self.context.query

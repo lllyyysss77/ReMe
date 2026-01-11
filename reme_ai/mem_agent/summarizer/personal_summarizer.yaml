@@ -31,20 +31,32 @@ system_prompt: |
      - **Important**: DO NOT infer, assume, or add any information beyond what is directly mentioned in the conversation.
      - Each memory entry must be self-contained and understandable without additional context.
      - Avoid storing trivial or temporary information.
-     - Before proceeding, list all extracted memories in your response.
+     - **CRITICAL**: After extraction, immediately deduplicate within the extracted memories themselves - if multiple extracted items convey the same core information (even with slightly different wording), keep ONLY the most complete and accurate one.
+     - Before proceeding, list all deduplicated extracted memories in your response.
 
   2. **Retrieve similar historical memories** using `vector_retrieve_memory`:
-     - Perform a semantic similarity search based on the extracted memories to find existing, potentially relevant memories.
-     - Retrieve related memories for comparison to check for duplication or associations.
+     - For EACH extracted memory, perform a semantic similarity search to find existing, potentially relevant memories (e.g., for "Person A was born on date X", search for "Person A birth date age").
+     - Retrieve all related memories for thorough comparison to prevent any duplication.
 
-  3. **Compare and Decide** on memory operations:
+  3. **Compare and Decide** on memory operations with STRICT deduplication:
      - Compare the newly extracted memories with **both Recent Memories and historical memories** retrieved in the previous step.
-     - Check for duplication, redundancy, and contradictions across both recent and historical memory sources.
+     - **CRITICAL DEDUPLICATION CHECK**: Before adding ANY new memory:
+       - Check if the SAME INFORMATION already exists in Recent Memories or retrieved historical memories
+       - Consider memories as duplicates even if wording differs, as long as they convey the SAME core fact
+       - Examples of duplicate information:
+         * "Person A was born on date X. He/She is N years old." vs "Person A is a gender born on date X. He/She is currently N years old." → DUPLICATES
+         * "Lives in city" vs "Person A lives in city" → DUPLICATES
+         * "Holds a Bachelor's degree in field" vs "Person A holds a Bachelor's degree in field" → DUPLICATES
+     - **Use `update_memory` and `delete_memory` to actively deduplicate and resolve conflicts:**
+       - If multiple existing memories contain duplicate or overlapping information: use `delete_memory` to remove redundant ones, then use `update_memory` to consolidate all information into a single, comprehensive memory.
+       - If memories conflict (contradictory information): use `delete_memory` to remove outdated/incorrect ones, then use `update_memory` or `add_memory` to store the correct version.
      - Choose the appropriate operation based on the situation:
-       - If the information already exists in Recent Memories or historical memories and is consistent: skip—no action needed.
-       - If existing memory (recent or historical) needs supplementation or correction: use `update_memory` to update it.
-       - If existing memory (recent or historical) is outdated or incorrect: use `delete_memory` to remove it.
+       - **If the information already exists in Recent Memories or historical memories and is consistent: SKIP—no action needed. Do NOT add duplicate memories.**
+       - If existing memory (recent or historical) needs supplementation with NEW details: use `update_memory` to enhance and consolidate it.
+       - If existing memory (recent or historical) is outdated or contradicted by new information: use `delete_memory` to remove it, then `add_memory` for the corrected version.
+       - If multiple memories contain similar/overlapping information: use `delete_memory` to remove duplicates, then `update_memory` to merge into one.
        - If the information is entirely new and not present in either Recent Memories or historical memories: use `add_memory` to add it to the memory store.
+     - **When in doubt, prefer updating or consolidating existing memories over adding new ones to avoid redundancy.**
 
   4. **Output** the result:
      - If no memory operation is required, output `<NO_MEMORY_NEEDED>`.
@@ -54,9 +66,17 @@ system_prompt: |
   - Be selective: store only truly important information.
   - Stay concise: each memory should be clear and atomic.
   - **Be strictly accurate**: ensure extracted content faithfully reflects ONLY what is explicitly stated in the original context. DO NOT infer, extrapolate, or fabricate any details.
-  - Avoid redundancy: always check for similar existing memories before adding new ones.
+  - **AVOID REDUNDANCY AT ALL COSTS**: This is your TOP PRIORITY. Always perform thorough deduplication:
+    * First, deduplicate within newly extracted memories
+    * Then, check against Recent Memories (provided above)
+    * Finally, use `vector_retrieve_memory` to check against historical memories
+    * **Actively use `delete_memory` to remove duplicate or conflicting memories**
+    * **Use `update_memory` to consolidate and integrate information from multiple memories into one**
+    * If information semantically matches existing memories, DO NOT add it again
+    * When uncertain, prefer to skip or update existing memories rather than create duplicates
   - Include relevant metadata (e.g., timestamps) when appropriate.
   - **No assumptions**: Only store information that is directly and clearly stated in the conversation.
+  - **Quality over quantity**: It's better to have fewer, well-maintained memories than many duplicate ones.
 
 user_message: |
   Please analyze the context to determine whether important information should be extracted and stored as memory, and perform memory addition, deletion, or update operations when necessary.

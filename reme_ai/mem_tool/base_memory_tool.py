@@ -33,9 +33,13 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
     def _build_multiple_parameters(self) -> dict:
         return {}
 
+    def _build_tool_description(self) -> str:
+        """Build tool description."""
+        return self.get_prompt("tool" + ("_multiple" if self.enable_multiple else ""))
+
     def _build_tool_call(self) -> ToolCall:
         tool_call_params: dict = {
-            "description": self.get_prompt("tool" + ("_multiple" if self.enable_multiple else "")),
+            "description": self._build_tool_description(),
         }
 
         if self.enable_multiple:
@@ -50,7 +54,7 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
                 parameters["properties"] = {
                     "thinking": {
                         "type": "string",
-                        "description": "Your thinking and reasoning about how to fill in the parameters",
+                        "description": "Your complete and detailed thinking process about how to fill in each parameter",
                     },
                     **parameters["properties"],
                 }

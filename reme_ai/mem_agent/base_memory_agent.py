@@ -168,16 +168,17 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         return messages, success
 
     async def execute(self):
+        for i, tool in enumerate(self.tools):
+            logger.info(
+                f"[{self.__class__.__name__}] step0.{i} "
+                f"tool_call={json.dumps(tool.tool_call.simple_input_dump(), ensure_ascii=False)}",
+            )
+
         messages = await self.build_messages()
         for i, message in enumerate(messages):
             logger.info(
                 f"[{self.__class__.__name__}] step0.{i} {message.role} {message.name or ''} "
                 f"{message.simple_dump(enable_json_dump=True)}",
-            )
-        for i, tool in enumerate(self.tools):
-            logger.info(
-                f"[{self.__class__.__name__}] step0.{i} "
-                f"tool_call={json.dumps(tool.tool_call.simple_input_dump(), ensure_ascii=False)}",
             )
 
         self.messages, self.success = await self.react(messages)

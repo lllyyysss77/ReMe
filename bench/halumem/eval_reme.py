@@ -82,7 +82,7 @@ def compute_f1(precision: float, recall: float) -> float:
 async def add_memory_async(user_id: str, messages: list[dict]) -> tuple[list[MemoryNode], float]:
     """Add memory to ReMe system asynchronously."""
     start = time.time()
-    result = await reme.summary(messages=messages, user_id=user_id)
+    result = await reme.summary_v2(messages=messages, user_id=user_id)
     duration_ms = (time.time() - start) * 1000
     return result, duration_ms
 
@@ -90,7 +90,7 @@ async def add_memory_async(user_id: str, messages: list[dict]) -> tuple[list[Mem
 async def search_memory_async(query: str, user_id: str, top_k: int = 20):
     """Search memory from ReMe system asynchronously."""
     start = time.time()
-    memories = await reme.retrieve(query=query, user_id=user_id, top_k=top_k)
+    memories = await reme.retrieve_v2(query=query, user_id=user_id, top_k=top_k)
 
     # Format the context
     context = TEMPLATE_MEMOS.format(user_id=user_id, memories=memories)

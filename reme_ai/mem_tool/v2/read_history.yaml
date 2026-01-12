@@ -1,0 +1,5 @@
+tool: |
+  Read original history dialogue by reference memory ID.
+
+ref_memory_id: |
+  Reference memory ID to query the original history dialogue.

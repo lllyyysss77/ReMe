@@ -23,6 +23,7 @@ def format_messages(messages: list[Message | dict], enable_system: bool = False)
                 use_name=True,
                 add_reasoning=True,
                 add_tools=True,
+                strip_markdown_headers=True,
             ),
         )
     return "\n".join(formatted_lines)

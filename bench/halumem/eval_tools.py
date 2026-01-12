@@ -102,3 +102,32 @@ async def evaluation_for_question(
     result = await llm_request_for_json(prompt)
 
     return result
+
+
+async def evaluation_for_question2(
+    question: str,
+    reference_answer: str,
+    key_memory_points: str,
+    response: str,
+    dialogue: str,
+):
+    """
+    Question-Answering Evaluation with Dialogue Context (Version 2)
+    question: The question string to be evaluated.
+    reference_answer: The reference (gold-standard) answer.
+    key_memory_points: The memory points used to derive the reference answer.
+    response: The answer produced by the memory system.
+    dialogue: The formatted dialogue history (role, content, time_created).
+    """
+
+    prompt = _PROMPTS["EVALUATION_PROMPT_FOR_QUESTION2"].format(
+        question=question,
+        reference_answer=reference_answer,
+        key_memory_points=key_memory_points,
+        response=response,
+        dialogue=dialogue,
+    )
+
+    result = await llm_request_for_json(prompt)
+
+    return result

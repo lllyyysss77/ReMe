@@ -424,7 +424,7 @@ EVALUATION_PROMPT_FOR_QUESTION: |
 EVALUATION_PROMPT_FOR_QUESTION2: |
   You are an **evaluation expert for AI memory system question answering**.
 
-  * **Dialogue:**
+  **Dialogue:**
     {dialogue}
 
   Based **only** on the provided **“Question”**, **“Reference Answer”**, and **“Key Memory Points”** (the essential facts needed to derive the reference answer), strictly evaluate the **accuracy** of the **“Memory System Response.”** Classify it as one of **“Correct”**, **“Hallucination”**, or **“Omission.”** Do **not** use any external knowledge or subjective inference. Finally, output your judgment **strictly** in the specified JSON format.

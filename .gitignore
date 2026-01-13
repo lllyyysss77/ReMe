@@ -34,5 +34,6 @@ test_compact_storage/*
 test_working_memory/*
 *.code-workspace
 local_vector_store/*
+chroma_vector_store/*
 bench_results/*
 meta_memory/*

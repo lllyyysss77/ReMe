@@ -36,6 +36,8 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
 
         self.messages: list[Message] = []
         self.success: bool = True
+
+        self.retrieved_nodes: list[MemoryNode] = []
         self.memory_nodes: list[MemoryNode | str] = []
 
     def _build_tool_call(self) -> ToolCall:
@@ -130,7 +132,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
             tool_copy.tool_call.id = tool_call.id
             tool_list.append(tool_copy)
             kwargs.update(tool_call.argument_dict)
-            self.submit_async_task(tool_copy.call, **kwargs)
+            self.submit_async_task(tool_copy.call, retrieved_nodes=self.retrieved_nodes, **kwargs)
             if self.tool_call_interval > 0:
                 await asyncio.sleep(self.tool_call_interval)
 
@@ -166,16 +168,17 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         return messages, success
 
     async def execute(self):
+        for i, tool in enumerate(self.tools):
+            logger.info(
+                f"[{self.__class__.__name__}] step0.{i} "
+                f"tool_call={json.dumps(tool.tool_call.simple_input_dump(), ensure_ascii=False)}",
+            )
+
         messages = await self.build_messages()
         for i, message in enumerate(messages):
             logger.info(
                 f"[{self.__class__.__name__}] step0.{i} {message.role} {message.name or ''} "
                 f"{message.simple_dump(enable_json_dump=True)}",
-            )
-        for i, tool in enumerate(self.tools):
-            logger.info(
-                f"[{self.__class__.__name__}] step0.{i} "
-                f"tool_call={json.dumps(tool.tool_call.simple_input_dump(), ensure_ascii=False)}",
             )
 
         self.messages, self.success = await self.react(messages)

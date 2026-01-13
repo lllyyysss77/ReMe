@@ -13,7 +13,7 @@ reme = ReMe(
 async def test_reme():
     """Tests ReMe memory system with personal information storage and retrieval."""
     # 构建一段包含个人信息的对话
-    await reme.vector_store.delete_collection("reme")
+    await reme.vector_store.delete_all()
 
     messages = [
         {
@@ -55,7 +55,8 @@ async def test_reme():
     print("=" * 60)
 
     # 对对话进行总结，生成记忆
-    await reme.summary(
+    # await reme.summary(
+    await reme.summary_v2(
         messages=messages,
         user_id="zhangwei",
         description="用户自我介绍和技术兴趣分享",
@@ -81,25 +82,25 @@ async def test_reme():
     # 测试问题1: 检索用户姓名
     query1 = "用户叫什么名字？"
     print(f"\n问题1: {query1}")
-    result1 = await reme.retrieve(query=query1, user_id="zhangwei")
+    result1 = await reme.retrieve_v2(query=query1, user_id="zhangwei")
     print(f"检索结果:\n{result1}")
 
     # 测试问题2: 检索技术背景
     query2 = "用户擅长什么编程语言和技术方向？"
     print(f"\n问题2: {query2}")
-    result2 = await reme.retrieve(query=query2, user_id="zhangwei")
+    result2 = await reme.retrieve_v2(query=query2, user_id="zhangwei")
     print(f"检索结果:\n{result2}")
 
     # 测试问题3: 检索个人信息
     query3 = "用户的工作地点和联系方式是什么？"
     print(f"\n问题3: {query3}")
-    result3 = await reme.retrieve(query=query3, user_id="zhangwei")
+    result3 = await reme.retrieve_v2(query=query3, user_id="zhangwei")
     print(f"检索结果:\n{result3}")
 
     # 测试问题4: 检索兴趣爱好
     query4 = "用户平时有什么爱好或活动？"
     print(f"\n问题4: {query4}")
-    result4 = await reme.retrieve(query=query4, user_id="zhangwei")
+    result4 = await reme.retrieve_v2(query=query4, user_id="zhangwei")
     print(f"检索结果:\n{result4}")
 
     print("\n" + "=" * 60)

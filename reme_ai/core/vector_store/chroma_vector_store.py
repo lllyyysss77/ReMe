@@ -66,7 +66,7 @@ class ChromaVectorStore(BaseVectorStore):
             self.client = chromadb.HttpClient(host=host, port=port)
         else:
             if path is None:
-                path = "./chroma_db"
+                path = "./chroma_vector_store"
             logger.info(f"Initializing local ChromaDB at {path}")
             self.client = chromadb.PersistentClient(
                 path=path,
@@ -315,6 +315,22 @@ class ChromaVectorStore(BaseVectorStore):
 
         await self._run_sync_in_executor(_delete)
         logger.info(f"Deleted {len(vector_ids)} nodes from {self.collection_name}")
+
+    async def delete_all(self, **kwargs):
+        """Remove all vectors from the collection."""
+
+        def _delete_all():
+            # Get all IDs in the collection
+            result = self.collection.get()
+            if result and result.get("ids"):
+                ids = result["ids"]
+                if ids:
+                    self.collection.delete(ids=ids)
+                    return len(ids)
+            return 0
+
+        count = await self._run_sync_in_executor(_delete_all)
+        logger.info(f"Deleted all {count} nodes from {self.collection_name}")
 
     async def update(self, nodes: VectorNode | list[VectorNode], **kwargs):
         """Update existing vector nodes with new content or metadata."""

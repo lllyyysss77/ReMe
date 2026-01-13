@@ -237,11 +237,22 @@ class VectorRetrieveMemory(BaseMemoryTool):
 
         # Deduplicate and format output
         memory_nodes = deduplicate_memories(memory_nodes)
-        self.memory_nodes = memory_nodes
 
-        if not memory_nodes:
-            self.output = "No memory_nodes found matching the query."
+        # Build set of historical memory_ids for fast lookup
+        retrieved_memory_ids = {node.memory_id for node in self.retrieved_nodes if node.memory_id}
+
+        # Filter out already retrieved memories by memory_id
+        new_memory_nodes = [node for node in memory_nodes if node.memory_id not in retrieved_memory_ids]
+
+        # Update retrieved_nodes in context with new memories
+        self.retrieved_nodes.extend(new_memory_nodes)
+
+        # Set output to new memories only (after deduplication)
+        self.memory_nodes = new_memory_nodes
+
+        if not new_memory_nodes:
+            self.output = "No new memory_nodes found matching the query (duplicates removed)."
         else:
-            self.output = "\n".join([m.format_memory() for m in memory_nodes])
+            self.output = "\n".join([m.format_memory() for m in new_memory_nodes])
 
-        logger.info(f"Retrieved {len(memory_nodes)} memory_nodes")
+        logger.info(f"Retrieved {len(memory_nodes)} memory_nodes, {len(new_memory_nodes)} new after deduplication")

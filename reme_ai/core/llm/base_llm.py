@@ -4,6 +4,7 @@ import asyncio
 import json
 import time
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Callable, Generator, AsyncGenerator, Any
 
 from loguru import logger
@@ -17,12 +18,90 @@ from ..schema import ToolCall
 class BaseLLM(ABC):
     """Abstract base class defining the standard interface for LLM interactions."""
 
-    def __init__(self, model_name: str, max_retries: int = 3, raise_exception: bool = False, **kwargs):
-        """Initialize the LLM client with model configurations and retry policies."""
+    def __init__(self, model_name: str, max_retries: int = 10, raise_exception: bool = False, max_rps: int | None = None, rps_window: float = 1.0, **kwargs):
+        """Initialize the LLM client with model configurations and retry policies.
+        
+        Args:
+            model_name: The name of the model to use
+            max_retries: Maximum number of retry attempts on failure
+            raise_exception: Whether to raise exceptions or return default values
+            max_rps: Maximum requests allowed within the time window. If None, no rate limiting is applied.
+            rps_window: Time window in seconds for rate limiting (default: 1.0). 
+                       For example: max_rps=10, rps_window=5.0 means max 10 requests in 5 seconds.
+            **kwargs: Additional model-specific parameters
+        """
         self.model_name: str = model_name
         self.max_retries: int = max_retries
         self.raise_exception: bool = raise_exception
+        self.max_rps: int | None = max_rps
+        self.rps_window: float = rps_window
         self.kwargs: dict = kwargs
+        
+        # Rate limiting state - using deque for efficient O(1) operations
+        self._request_timestamps: deque = deque()
+        self._rate_limit_lock = asyncio.Lock()  # For async rate limiting
+        import threading
+        self._rate_limit_lock_sync = threading.Lock()  # For sync rate limiting
+
+    async def _wait_for_rate_limit(self):
+        """Async rate limiting: wait if necessary to respect max_rps constraint within the time window."""
+        if self.max_rps is None:
+            return
+        
+        async with self._rate_limit_lock:
+            current_time = time.time()
+            
+            # Remove timestamps older than the time window
+            while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
+                self._request_timestamps.popleft()
+            
+            # If we've reached the rate limit, wait until we can proceed
+            if len(self._request_timestamps) >= self.max_rps:
+                # Calculate how long to wait
+                oldest_timestamp = self._request_timestamps[0]
+                wait_time = self.rps_window - (current_time - oldest_timestamp)
+                
+                if wait_time > 0:
+                    logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
+                    await asyncio.sleep(wait_time)
+                    
+                    # Clean up old timestamps after waiting
+                    current_time = time.time()
+                    while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
+                        self._request_timestamps.popleft()
+            
+            # Record this request
+            self._request_timestamps.append(time.time())
+    
+    def _wait_for_rate_limit_sync(self):
+        """Synchronous rate limiting: wait if necessary to respect max_rps constraint within the time window."""
+        if self.max_rps is None:
+            return
+        
+        with self._rate_limit_lock_sync:
+            current_time = time.time()
+            
+            # Remove timestamps older than the time window
+            while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
+                self._request_timestamps.popleft()
+            
+            # If we've reached the rate limit, wait until we can proceed
+            if len(self._request_timestamps) >= self.max_rps:
+                # Calculate how long to wait
+                oldest_timestamp = self._request_timestamps[0]
+                wait_time = self.rps_window - (current_time - oldest_timestamp)
+                
+                if wait_time > 0:
+                    logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
+                    time.sleep(wait_time)
+                    
+                    # Clean up old timestamps after waiting
+                    current_time = time.time()
+                    while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
+                        self._request_timestamps.popleft()
+            
+            # Record this request
+            self._request_timestamps.append(time.time())
 
     @staticmethod
     def _accumulate_tool_call_chunk(tool_call, ret_tools: list[ToolCall]):
@@ -68,9 +147,18 @@ class BaseLLM(ABC):
         messages: list[Message],
         tools: list[ToolCall] | None = None,
         log_params: bool = True,
+        model_name: str | None = None,
         **kwargs,
     ) -> dict:
-        """Construct provider-specific parameters for streaming API requests."""
+        """Construct provider-specific parameters for streaming API requests.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            log_params: Whether to log parameters
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
 
     async def _stream_chat(
         self,
@@ -94,10 +182,21 @@ class BaseLLM(ABC):
         self,
         messages: list[Message],
         tools: list[ToolCall] | None = None,
+        model_name: str | None = None,
         **kwargs,
     ) -> AsyncGenerator[StreamChunk, None]:
-        """Public async interface for streaming chat completions with retries."""
-        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
+        """Public async interface for streaming chat completions with retries.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
+        # Apply rate limiting before making the request
+        await self._wait_for_rate_limit()
+        
+        stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
 
         for i in range(self.max_retries):
             try:
@@ -121,10 +220,21 @@ class BaseLLM(ABC):
         self,
         messages: list[Message],
         tools: list[ToolCall] | None = None,
+        model_name: str | None = None,
         **kwargs,
     ) -> Generator[StreamChunk, None, None]:
-        """Public synchronous interface for streaming chat completions with retries."""
-        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
+        """Public synchronous interface for streaming chat completions with retries.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
+        # Apply rate limiting before making the request
+        self._wait_for_rate_limit_sync()
+        
+        stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
 
         for i in range(self.max_retries):
             try:
@@ -148,9 +258,18 @@ class BaseLLM(ABC):
         messages: list[Message],
         tools: list[ToolCall] | None = None,
         enable_stream_print: bool = False,
+        model_name: str | None = None,
         **kwargs,
     ) -> Message:
-        """Internal async method to aggregate a full response by consuming the stream."""
+        """Internal async method to aggregate a full response by consuming the stream.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            enable_stream_print: Whether to print stream chunks
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
         state = {
             "enter_think": False,
             "enter_answer": False,
@@ -159,7 +278,7 @@ class BaseLLM(ABC):
             "tool_calls": [],
         }
 
-        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
+        stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
         async for stream_chunk in self._stream_chat(messages=messages, tools=tools, stream_kwargs=stream_kwargs):
             # Process stream chunk
             if stream_chunk.chunk_type is ChunkEnum.USAGE:
@@ -207,9 +326,18 @@ class BaseLLM(ABC):
         messages: list[Message],
         tools: list[ToolCall] | None = None,
         enable_stream_print: bool = False,
+        model_name: str | None = None,
         **kwargs,
     ) -> Message:
-        """Internal synchronous method to aggregate a full response by consuming the stream."""
+        """Internal synchronous method to aggregate a full response by consuming the stream.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            enable_stream_print: Whether to print stream chunks
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
         state = {
             "enter_think": False,
             "enter_answer": False,
@@ -218,7 +346,7 @@ class BaseLLM(ABC):
             "tool_calls": [],
         }
 
-        stream_kwargs = self._build_stream_kwargs(messages, tools, **kwargs)
+        stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
         for stream_chunk in self._stream_chat_sync(messages=messages, tools=tools, stream_kwargs=stream_kwargs):
             # Process stream chunk
             if stream_chunk.chunk_type is ChunkEnum.USAGE:
@@ -268,21 +396,66 @@ class BaseLLM(ABC):
         enable_stream_print: bool = False,
         callback_fn: Callable[[Message], Any] | None = None,
         default_value: Any = None,
+        model_name: str | None = None,
         **kwargs,
     ) -> Message | Any:
-        """Perform an async chat completion with integrated retries and error handling."""
+        """Perform an async chat completion with integrated retries and error handling.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            enable_stream_print: Whether to print stream chunks
+            callback_fn: Optional callback function to process the result
+            default_value: Default value to return on error
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
+        # Use the provided model_name or fall back to self.model_name
+        effective_model = model_name if model_name is not None else self.model_name
+        
         for i in range(self.max_retries):
             try:
+                # Apply rate limiting before making the request
+                await self._wait_for_rate_limit()
+                
                 result = await self._chat(
                     messages=messages,
                     tools=tools,
                     enable_stream_print=enable_stream_print,
+                    model_name=model_name,
                     **kwargs,
                 )
                 return callback_fn(result) if callback_fn else result
 
             except Exception as e:
-                logger.exception(f"chat with model={self.model_name} encounter error with e={e.args}")
+                # Check if this is an inappropriate content error
+                error_message = str(e.args[0]) if e.args else str(e)
+                is_inappropriate_content = "inappropriate content" in error_message.lower()
+                is_rate_limit_error = "request rate increased too quickly" in error_message.lower()
+                
+                if is_inappropriate_content:
+                    logger.error(f"chat with model={effective_model} detected inappropriate content error")
+                    logger.error("=" * 80)
+                    logger.error("Full message content that triggered the error:")
+                    logger.error("=" * 80)
+                    for idx, msg in enumerate(messages):
+                        logger.error(f"Message {idx + 1} [role={msg.role}]:")
+                        logger.error(f"Content: {msg.content}")
+                        if msg.reasoning_content:
+                            logger.error(f"Reasoning: {msg.reasoning_content}")
+                        if msg.tool_calls:
+                            logger.error(f"Tool calls: {msg.tool_calls}")
+                        logger.error("-" * 80)
+                    logger.error("=" * 80)
+                    # Return empty Message immediately without retrying
+                    return Message(role=Role.ASSISTANT, content="")
+                
+                if is_rate_limit_error:
+                    logger.warning(f"chat with model={effective_model} hit rate limit, sleeping for 60s before retry (attempt {i + 1}/{self.max_retries})")
+                    await asyncio.sleep(60)
+                    continue
+                
+                logger.exception(f"chat with model={effective_model} encounter error with e={e.args}")
 
                 if i == self.max_retries - 1:
                     if self.raise_exception:
@@ -299,21 +472,66 @@ class BaseLLM(ABC):
         enable_stream_print: bool = False,
         callback_fn: Callable[[Message], Any] | None = None,
         default_value: Any = None,
+        model_name: str | None = None,
         **kwargs,
     ) -> Message | Any:
-        """Perform a synchronous chat completion with integrated retries and error handling."""
+        """Perform a synchronous chat completion with integrated retries and error handling.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional list of tool calls
+            enable_stream_print: Whether to print stream chunks
+            callback_fn: Optional callback function to process the result
+            default_value: Default value to return on error
+            model_name: Optional model name to override self.model_name
+            **kwargs: Additional parameters
+        """
+        # Use the provided model_name or fall back to self.model_name
+        effective_model = model_name if model_name is not None else self.model_name
+        
         for i in range(self.max_retries):
             try:
+                # Apply rate limiting before making the request
+                self._wait_for_rate_limit_sync()
+                
                 result = self._chat_sync(
                     messages=messages,
                     tools=tools,
                     enable_stream_print=enable_stream_print,
+                    model_name=model_name,
                     **kwargs,
                 )
                 return callback_fn(result) if callback_fn else result
 
             except Exception as e:
-                logger.exception(f"chat sync with model={self.model_name} encounter error with e={e.args}")
+                # Check if this is an inappropriate content error
+                error_message = str(e.args[0]) if e.args else str(e)
+                is_inappropriate_content = "inappropriate content" in error_message.lower()
+                is_rate_limit_error = "request rate increased too quickly" in error_message.lower()
+                
+                if is_inappropriate_content:
+                    logger.error(f"chat sync with model={effective_model} detected inappropriate content error")
+                    logger.error("=" * 80)
+                    logger.error("Full message content that triggered the error:")
+                    logger.error("=" * 80)
+                    for idx, msg in enumerate(messages):
+                        logger.error(f"Message {idx + 1} [role={msg.role}]:")
+                        logger.error(f"Content: {msg.content}")
+                        if msg.reasoning_content:
+                            logger.error(f"Reasoning: {msg.reasoning_content}")
+                        if msg.tool_calls:
+                            logger.error(f"Tool calls: {msg.tool_calls}")
+                        logger.error("-" * 80)
+                    logger.error("=" * 80)
+                    # Return empty Message immediately without retrying
+                    return Message(role=Role.ASSISTANT, content="")
+                
+                if is_rate_limit_error:
+                    logger.warning(f"chat sync with model={effective_model} hit rate limit, sleeping for 60s before retry (attempt {i + 1}/{self.max_retries})")
+                    time.sleep(60)
+                    continue
+                
+                logger.exception(f"chat sync with model={effective_model} encounter error with e={e.args}")
 
                 if i == self.max_retries - 1:
                     if self.raise_exception:

@@ -81,6 +81,10 @@ class BaseVectorStore(ABC):
         """Remove specific vectors from the collection using their identifiers."""
 
     @abstractmethod
+    async def delete_all(self, **kwargs) -> None:
+        """Remove all vectors from the collection."""
+
+    @abstractmethod
     async def update(self, nodes: VectorNode | list[VectorNode], **kwargs) -> None:
         """Update the data or metadata of existing vectors in the collection."""
 

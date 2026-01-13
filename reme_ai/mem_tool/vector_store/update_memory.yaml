@@ -7,6 +7,8 @@ tool: |
   - You need to refine or improve the clarity of stored information
   Memory ID can be obtained from previous memory retrieval results.
 
+  **CRITICAL**: Only update memories with explicitly stated facts. DO NOT introduce inferred, assumed, or fabricated information in the updated content.
+
 tool_multiple: |
   Update multiple memories in the vector store by replacing old memories with new content.
   Use this tool for batch updates when:
@@ -15,6 +17,8 @@ tool_multiple: |
   - Information has changed across multiple memories
   - You need to refine or improve multiple stored memories at once
   Memory IDs can be obtained from previous memory retrieval results.
+
+  **CRITICAL**: Only update memories with explicitly stated facts. DO NOT introduce inferred, assumed, or fabricated information in any of the updated contents.
 
 memory_id: |
   The unique identifier (memory_id) of the old memory to be replaced.
@@ -28,6 +32,7 @@ memory_content: |
   The new content of the memory to store.
   Should be a clear, concise statement that captures the updated information to remember.
   Keep it focused on a single piece of information for better retrieval accuracy.
+  **Must be strictly accurate and based only on explicitly stated facts - no inference or fabrication.**
 
 memories: |
   A list of memory update objects.

@@ -223,6 +223,24 @@ class LocalVectorStore(BaseVectorStore):
 
         logger.info(f"Deleted {deleted_count} nodes from {self.collection_name}")
 
+    async def delete_all(self, **kwargs):
+        """Remove all vectors from the collection."""
+        col_path = self._get_collection_path(self.collection_name)
+
+        if not col_path.exists():
+            logger.warning(f"Collection {self.collection_name} does not exist")
+            return
+
+        deleted_count = 0
+        for file_path in col_path.glob("*.json"):
+            try:
+                file_path.unlink()
+                deleted_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to delete file {file_path}: {e}")
+
+        logger.info(f"Deleted all {deleted_count} nodes from {self.collection_name}")
+
     async def update(self, nodes: VectorNode | list[VectorNode], **kwargs):
         """Update existing vector nodes with new data or embeddings."""
         if isinstance(nodes, VectorNode):

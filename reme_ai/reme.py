@@ -7,21 +7,32 @@ from .core.embedding import BaseEmbeddingModel
 from .core.enumeration import Role
 from .core.llm import BaseLLM
 from .core.schema import Message
+from .core.utils import singleton
 from .core.vector_store import BaseVectorStore
 from .mem_agent.retriever import ReMeRetriever
+from .mem_agent.retriever_v2 import ReMeRetrieverV2
 from .mem_agent.summarizer import ReMeSummarizer, PersonalSummarizer
+from .mem_agent.summarizer_v2 import ReMeSummarizerV2, PersonalSummarizerV2
 from .mem_tool import (
     HandsOffTool,
     ReadHistoryMemory,
-    AddMetaMemory,
     AddMemory,
     AddSummaryMemory,
     DeleteMemory,
     UpdateMemory,
     VectorRetrieveMemory,
 )
+from .mem_tool.v2 import (
+    AddMemoryDrafts,
+    ReadHistory,
+    RetrieveMemories,
+    RetrieveRecentAndSimilarMemories,
+    SummaryAndHandsOff,
+    UpdateMemories,
+)
 
 
+@singleton
 class ReMe(Application):
     """Simplified ReMe application that auto-initializes the service context."""
 
@@ -63,6 +74,10 @@ class ReMe(Application):
         self.embedding_model: BaseEmbeddingModel = C.get_embedding_model("default")
 
     @staticmethod
+    def get_llm(name: str) -> BaseLLM:
+        return C.get_llm(name)
+
+    @staticmethod
     def _prepare_messages(messages: list[dict | Message], user_id: str, assistant_id: str):
         if not messages:
             return []
@@ -92,7 +107,7 @@ class ReMe(Application):
                 "year": "The `year` information associated with the memory(Optional)",
                 "month": "The `month` information associated with the memory(Optional)",
                 "day": "The `day` information associated with the memory(Optional)",
-                "hour": "The `hour` information associated with the memory(Optional)",
+                # "hour": "The `hour` information associated with the memory(Optional)",
                 # "year": "The year when the memory content occurred(Optional)",
                 # "month": "The month when the memory content occurred(Optional)",
                 # "day": "The day when the memory content occurred(Optional)",
@@ -110,7 +125,6 @@ class ReMe(Application):
             personal_summarizer = PersonalSummarizer(
                 tools=[
                     VectorRetrieveMemory(
-                        enable_summary_memory=False,
                         add_memory_type_target=False,
                         metadata_desc=None,
                         top_k=15,
@@ -125,14 +139,19 @@ class ReMe(Application):
                 meta_memories=meta_memories,
                 enable_identity_memory=False,
                 tools=[
-                    AddMetaMemory(),
+                    # AddMetaMemory(),
                     AddSummaryMemory(metadata_desc=metadata_summary),
                     HandsOffTool(memory_agents=[personal_summarizer]),
                 ],
             )
 
-            await reme_summarizer.call(messages=messages, description=description, **kwargs)
-            return reme_summarizer.memory_nodes
+            try:
+                await reme_summarizer.call(messages=messages, description=description, **kwargs)
+                return reme_summarizer.memory_nodes
+            except Exception as e:
+                print(f"Warning: reme_summarizer.call failed: {e}")
+                return []
+            
 
         else:
             raise NotImplementedError
@@ -144,6 +163,7 @@ class ReMe(Application):
         description: str = "",
         user_id: str = "",
         assistant_id: str = "",
+        top_k: int = 20,
         **kwargs,
     ):
         """Retrieves relevant memories based on the query and specified memory mode."""
@@ -155,7 +175,7 @@ class ReMe(Application):
                 "year": "The year to filter memories(Optional)",
                 "month": "The month to filter memories(Optional)",
                 "day": "The day to filter memories(Optional)",
-                "hour": "The hour to filter memories(Optional)",
+                # "hour": "The hour to filter memories(Optional)",
             }
             meta_memories = [
                 {
@@ -168,18 +188,129 @@ class ReMe(Application):
                 meta_memories=meta_memories,
                 tools=[
                     VectorRetrieveMemory(
-                        enable_summary_memory=True,
                         add_memory_type_target=True,
                         metadata_desc=metadata_retrieve,
-                        top_k=20,
+                        top_k=top_k,
                     ),
                     ReadHistoryMemory(),
                 ],
             )
 
-            await reme_retriever.call(query=query, messages=messages, description=description, **kwargs)
+            try:
+                await reme_retriever.call(query=query, messages=messages, description=description, **kwargs)
+                return reme_retriever.output
+            except Exception as e:
+                print(f"Warning: reme_retriever.call failed: {e}")
+                return "error, not retrieved"
+            
 
-            return reme_retriever.output
+        else:
+            raise NotImplementedError
+
+    async def summary_v2(
+            self,
+            messages: list[dict],
+            description: str = "",
+            user_id: str = "",
+            assistant_id: str = "",
+            **kwargs,
+    ):
+        """Summarizes messages using V2 workflow with simplified tools."""
+
+        if user_id:
+            metadata_desc = {
+                "year": "The year when the memory content occurred.",
+                "month": "The month when the memory content occurred.",
+                "day": "The day when the memory content occurred.",
+            }
+            meta_memories = [
+                {
+                    "memory_type": "personal",
+                    "memory_target": user_id,
+                },
+            ]
+
+            messages = self._prepare_messages(messages, user_id, assistant_id)
+
+            personal_summarizer_v2 = PersonalSummarizerV2(
+                tools=[
+                    AddMemoryDrafts(enable_thinking_params=True, metadata_desc=metadata_desc),
+                    RetrieveRecentAndSimilarMemories(
+                        enable_thinking_params=True,
+                        metadata_desc=None,
+                        recent_top_k=20,
+                        similar_top_k=20,
+                    ),
+                    UpdateMemories(enable_thinking_params=True, metadata_desc=metadata_desc),
+                ],
+            )
+
+            reme_summarizer_v2 = ReMeSummarizerV2(
+                meta_memories=meta_memories,
+                tools=[
+                    SummaryAndHandsOff(
+                        enable_thinking_params=True,
+                        metadata_desc=metadata_desc,
+                        memory_agents=[personal_summarizer_v2],
+                    ),
+                ],
+            )
+
+            try:
+                await reme_summarizer_v2.call(messages=messages, description=description, **kwargs)
+                return personal_summarizer_v2.memory_nodes, personal_summarizer_v2.messages, personal_summarizer_v2.success
+            except Exception as e:
+                print(f"Warning: reme_summarizer_v2.call failed: {e}")
+                return [], [], False
+
+        else:
+            raise NotImplementedError
+
+    async def retrieve_v2(
+            self,
+            query: str = "",
+            messages: list[dict] | None = None,
+            description: str = "",
+            user_id: str = "",
+            assistant_id: str = "",
+            top_k: int = 20,
+            **kwargs,
+    ):
+        """Retrieves relevant memories using V2 workflow with autonomous retrieval."""
+
+        if user_id:
+            messages = self._prepare_messages(messages, user_id, assistant_id)
+
+            metadata_retrieve = {
+                "year": "The year to filter memories.",
+                "month": "The month to filter memories.",
+                "day": "The day to filter memories.",
+            }
+            meta_memories = [
+                {
+                    "memory_type": "personal",
+                    "memory_target": user_id,
+                },
+            ]
+
+            reme_retriever_v2 = ReMeRetrieverV2(
+                meta_memories=meta_memories,
+                tools=[
+                    RetrieveMemories(
+                        enable_thinking_params=True,
+                        metadata_desc=metadata_retrieve,
+                        top_k=top_k,
+                    ),
+                    # ReadHistory(enable_thinking_params=True),
+                ],
+            )
+
+            try:
+                await reme_retriever_v2.call(query=query, messages=messages, description=description, **kwargs)
+                return reme_retriever_v2.output, reme_retriever_v2.messages, reme_retriever_v2.success
+            except Exception as e:
+                print(f"Warning: reme_retriever_v2.call failed: {e}")
+                return "error, not retrieved", [], False
 
         else:
             raise NotImplementedError

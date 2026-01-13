@@ -24,7 +24,6 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
-from tqdm import tqdm
 
 from eval_tools import evaluation_for_question2
 from llms import llm_request_for_json
@@ -424,16 +423,15 @@ class HaluMemBaselineEvaluator:
         user_name = self.data_loader.extract_user_name(user_data["persona_info"])
         uuid = user_data["uuid"]
         
-        logger.info(f"Processing user: {user_name}")
+        total_sessions = len(user_data["sessions"])
+        logger.info(f"Processing user: {user_name} ({total_sessions} sessions)")
         
-        # Create progress bar for sessions
-        with tqdm(
-            total=len(user_data["sessions"]),
-            desc=f"Sessions [{user_name}]",
-            leave=False,
-            ncols=100
-        ) as pbar:
-            for idx, session in enumerate(user_data["sessions"]):
+        # Semaphore for concurrency control within user sessions
+        semaphore = asyncio.Semaphore(self.config.max_concurrency)
+        completed_count = [0]  # Use list to allow modification in nested async function
+        
+        async def process_session_with_log(idx: int, session: dict):
+            async with semaphore:
                 session_data = await self.process_session(
                     session=session,
                     session_id=idx,
@@ -442,7 +440,17 @@ class HaluMemBaselineEvaluator:
                 )
                 
                 self.file_manager.save_session(user_name, idx, session_data)
-                pbar.update(1)
+                
+                # Update and log completion
+                completed_count[0] += 1
+                print(f"✅ {user_name} complete {completed_count[0]}/{total_sessions}")
+        
+        # Process all sessions in parallel
+        tasks = [
+            process_session_with_log(idx, session)
+            for idx, session in enumerate(user_data["sessions"])
+        ]
+        await asyncio.gather(*tasks)
         
         return {"uuid": uuid, "user_name": user_name, "status": "ok"}
     
@@ -456,31 +464,21 @@ class HaluMemBaselineEvaluator:
         
         print("\n" + "=" * 80)
         print("HALUMEM BASELINE EVALUATION - DIRECT QA WITHOUT MEMORY SYSTEM")
-        print(f"Users: {len(users_to_process)} | Concurrency: {self.config.max_concurrency}")
+        print(f"Users: {len(users_to_process)} | Session Concurrency: {self.config.max_concurrency}")
         print("=" * 80 + "\n")
         
-        # Process users with concurrency control
-        semaphore = asyncio.Semaphore(self.config.max_concurrency)
-        
-        async def process_with_cache_check(idx: int, user_data: dict):
-            async with semaphore:
-                user_name = self.data_loader.extract_user_name(user_data["persona_info"])
-                
-                # Check cache
-                if self.file_manager.user_has_cache(user_name):
-                    print(f"⚡ [{idx}/{len(users_to_process)}] Skipping {user_name} (cached)")
-                    return {"user_name": user_name, "status": "cached"}
-                
-                print(f"🔄 [{idx}/{len(users_to_process)}] Processing {user_name}...")
-                result = await self.process_user(user_data)
-                print(f"✅ [{idx}/{len(users_to_process)}] Completed {user_name}")
-                return result
-        
-        tasks = [
-            process_with_cache_check(idx, user) 
-            for idx, user in enumerate(users_to_process, 1)
-        ]
-        await asyncio.gather(*tasks)
+        # Process users sequentially (for loop)
+        for idx, user_data in enumerate(users_to_process, 1):
+            user_name = self.data_loader.extract_user_name(user_data["persona_info"])
+            
+            # Check cache
+            if self.file_manager.user_has_cache(user_name):
+                print(f"⚡ [{idx}/{len(users_to_process)}] Skipping {user_name} (cached)")
+                continue
+            
+            print(f"🔄 [{idx}/{len(users_to_process)}] Processing {user_name}...")
+            await self.process_user(user_data)
+            print(f"✅ [{idx}/{len(users_to_process)}] User {user_name} completed\n")
         
         # Combine results
         output_file = os.path.join(self.config.output_dir, "eval_results.jsonl")

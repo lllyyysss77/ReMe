@@ -23,7 +23,8 @@ llm:
     backend: openai
     model_name: qwen3-max
 #    temperature: 0.6
-    max_rps: 9
+    max_rps: 20
+#    max_rps: 9
     rps_window: 10
 
 embedding_model:

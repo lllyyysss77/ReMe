@@ -1,16 +1,16 @@
 """
-HaluMem Benchmark Evaluator for ReMe - Question Answering
+HaluMem Benchmark Evaluator - Baseline (Direct QA without Memory System)
 
-A modular evaluation pipeline that:
+A simple baseline evaluation pipeline that:
 1. Loads HaluMem benchmark data
-2. Processes user sessions through ReMe (summarization + retrieval)
+2. Directly uses dialogue history to answer questions (no memory system)
 3. Evaluates question answering performance
 4. Generates comprehensive metrics
 
 Usage:
-    python bench/halumem/eval_reme_simple.py \
+    python bench/halumem/eval_baseline_simple.py \
         --data_path /path/to/HaluMem-Medium.jsonl \
-        --top_k 20 --user_num 100 --max_concurrency 20
+        --user_num 100 --max_concurrency 20
 """
 
 import asyncio
@@ -26,9 +26,7 @@ from typing import Any
 from loguru import logger
 
 from eval_tools import evaluation_for_question2
-from reme_ai.core.enumeration import MemoryType
-from reme_ai.core.schema import MemoryNode
-from reme_ai.reme import ReMe
+from llms import llm_request_for_json
 
 
 # ==================== Configuration ====================
@@ -37,11 +35,9 @@ from reme_ai.reme import ReMe
 class EvalConfig:
     """Evaluation configuration parameters."""
     data_path: str
-    top_k: int = 20
     user_num: int = 1
     max_concurrency: int = 2
-    batch_size: int = 20
-    output_dir: str = "bench_results/reme_simple"
+    output_dir: str = "bench_results/baseline_simple"
 
 
 # ==================== Utilities ====================
@@ -175,92 +171,74 @@ class FileManager:
                 f_out.write(json.dumps(user_data, ensure_ascii=False) + "\n")
 
 
-# ==================== Memory Operations ====================
+# ==================== Question Answering Prompt ====================
 
-class MemoryProcessor:
-    """Handles ReMe memory operations."""
-    
-    def __init__(self, reme: ReMe):
-        self.reme = reme
-    
-    async def add_memories(
-        self, 
-        user_id: str, 
-        messages: list[dict],
-        batch_size: int = 20
-    ) -> tuple[list[str], list[list[dict]], float]:
-        """
-        Add memories in batches and return extracted memory contents.
-        
-        Returns:
-            tuple: (extracted_memories, agent_messages, total_duration_ms)
-        """
-        added_memories: list[MemoryNode] = []
-        deleted_memories: list[str] = []
-        all_agent_messages: list = []
-        total_duration_ms = 0
-        for i in range(0, len(messages), batch_size):
-            batch = messages[i:i + batch_size]
-            start = time.time()
-            
-            memory_nodes, agent_messages, success = await self.reme.summary_v2(
-                messages=batch, 
-                user_id=user_id
-            )
-            
-            duration_ms = (time.time() - start) * 1000
-            total_duration_ms += duration_ms
-            
-            # Save agent messages for this batch
-            if agent_messages:
-                all_agent_messages.extend(agent_messages)
-            
-            if memory_nodes:
-                for node in memory_nodes:
-                    if isinstance(node, MemoryNode) and node.memory_type == MemoryType.HISTORY:
-                        continue
+BASELINE_QA_PROMPT = """You are a helpful AI assistant. Based on the dialogue history provided below, please answer the question.
 
-                    if isinstance(node, MemoryNode):
-                        added_memories.append(node)
+**Dialogue History:**
+{dialogue}
 
-                    if isinstance(node, str):
-                        deleted_memories.append(node)
+**Question:**
+{question}
 
-        extracted_memories = deleted_memories
-        extracted_memories += ["[delete]" + n.format_memory() for n in added_memories if n.memory_id in deleted_memories]
-        extracted_memories += ["[add]" + n.format_memory() for n in added_memories if n.memory_id not in deleted_memories]
-        return extracted_memories, all_agent_messages, total_duration_ms
-    
-    async def search_memory(
-        self, 
-        query: str, 
-        user_id: str, 
-        top_k: int = 20
-    ) -> tuple[str, list, float]:
-        """
-        Search memory and return response.
-        
-        Returns:
-            tuple: (response, agent_messages, duration_ms)
-        """
-        start = time.time()
-        response, agent_messages, success = await self.reme.retrieve_v2(
-            query=query, 
-            user_id=user_id, 
-            top_k=top_k
-        )
-        duration_ms = (time.time() - start) * 1000
-        return response, agent_messages, duration_ms
+**Instructions:**
+- Carefully read through the dialogue history
+- Answer the question based ONLY on information present in the dialogue
+- If the information needed to answer the question is NOT in the dialogue, respond with "I don't know" or "The information is not available in the dialogue"
+- Do NOT make up or hallucinate information that is not explicitly mentioned in the dialogue
+- Provide your reasoning process before giving the final answer
+
+**Response Format:**
+Please respond in JSON format with the following structure:
+```json
+{{
+    "reasoning": "Your step-by-step reasoning process",
+    "answer": "Your final answer (or 'I don't know' if information is not available)"
+}}
+```"""
 
 
 # ==================== Evaluation ====================
 
-class QuestionAnsweringEvaluator:
-    """Evaluates question answering performance."""
+class BaselineQuestionAnsweringEvaluator:
+    """Evaluates question answering performance using direct LLM inference (no memory system)."""
     
-    def __init__(self, memory_processor: MemoryProcessor, top_k: int):
-        self.memory_processor = memory_processor
-        self.top_k = top_k
+    def __init__(self):
+        pass
+    
+    async def answer_question(
+        self,
+        question: str,
+        formatted_dialogue: str
+    ) -> tuple[str, str, float]:
+        """
+        Answer a question using the dialogue history directly.
+        
+        Returns:
+            tuple: (answer, reasoning, duration_ms)
+        """
+        start = time.time()
+        
+        # Format prompt
+        prompt = BASELINE_QA_PROMPT.format(
+            dialogue=formatted_dialogue,
+            question=question
+        )
+        
+        # Get answer from LLM
+        try:
+            # model_name = "qwen3-max"
+            model_name = "qwen3-30b-a3b-instruct-2507"
+            result = await llm_request_for_json(prompt, model_name=model_name)
+            answer = result.get("answer", "I don't know")
+            reasoning = result.get("reasoning", "")
+        except Exception as e:
+            logger.error(f"Error getting answer from LLM: {e}")
+            answer = "Error: Failed to get answer"
+            reasoning = str(e)
+        
+        duration_ms = (time.time() - start) * 1000
+        return answer, reasoning, duration_ms
     
     async def evaluate_questions(
         self,
@@ -274,11 +252,10 @@ class QuestionAnsweringEvaluator:
         results = []
         
         for qa in questions:
-            # Search memory for answer
-            response, agent_messages, duration_ms = await self.memory_processor.search_memory(
-                query=qa["question"],
-                user_id=user_name,
-                top_k=self.top_k
+            # Get answer directly from LLM
+            answer, reasoning, duration_ms = await self.answer_question(
+                question=qa["question"],
+                formatted_dialogue=formatted_dialogue
             )
             
             # Evaluate response
@@ -287,7 +264,7 @@ class QuestionAnsweringEvaluator:
                 qa["question"],
                 qa["answer"],
                 evidence_text,
-                response,
+                answer,
                 formatted_dialogue
             )
             
@@ -296,9 +273,9 @@ class QuestionAnsweringEvaluator:
                 **qa,
                 "uuid": uuid,
                 "session_id": session_id,
-                "system_response": response,
-                "retrieve_messages": [m.model_dump() for m in agent_messages],
-                "search_duration_ms": duration_ms,
+                "system_response": answer,
+                "reasoning": reasoning,
+                "answer_duration_ms": duration_ms,
                 "result_type": eval_result.get("evaluation_result"),
                 "question_answering_reasoning": eval_result.get("reasoning", "")
             }
@@ -369,8 +346,7 @@ class MetricsAggregator:
     @staticmethod
     def compute_time_metrics(eval_results_file: str) -> dict[str, float]:
         """Compute timing metrics from evaluation results."""
-        add_duration = 0
-        search_duration = 0
+        answer_duration = 0
         
         with open(eval_results_file, "r", encoding="utf-8") as f:
             for line in f:
@@ -379,34 +355,26 @@ class MetricsAggregator:
                 user_data = json.loads(line)
                 
                 for session in user_data["sessions"]:
-                    add_duration += session.get("add_dialogue_duration_ms", 0)
-                    
                     eval_results = session.get("evaluation_results", {})
                     for qa in eval_results.get("question_answering_records", []):
-                        search_duration += qa.get("search_duration_ms", 0)
+                        answer_duration += qa.get("answer_duration_ms", 0)
         
         # Convert to minutes
         return {
-            "add_dialogue_duration_time": add_duration / 1000 / 60,
-            "search_memory_duration_time": search_duration / 1000 / 60,
-            "total_duration_time": (add_duration + search_duration) / 1000 / 60
+            "answer_duration_time": answer_duration / 1000 / 60,
+            "total_duration_time": answer_duration / 1000 / 60
         }
 
 
 # ==================== Main Pipeline ====================
 
-class HaluMemEvaluator:
-    """Main evaluator orchestrating the entire pipeline."""
+class HaluMemBaselineEvaluator:
+    """Main evaluator orchestrating the baseline evaluation pipeline."""
     
     def __init__(self, config: EvalConfig):
         self.config = config
-        self.reme = ReMe()
         self.file_manager = FileManager(config.output_dir)
-        self.memory_processor = MemoryProcessor(self.reme)
-        self.qa_evaluator = QuestionAnsweringEvaluator(
-            self.memory_processor, 
-            config.top_k
-        )
+        self.qa_evaluator = BaselineQuestionAnsweringEvaluator()
         self.data_loader = DataLoader()
     
     async def process_session(
@@ -429,22 +397,9 @@ class HaluMemEvaluator:
             session_data["is_generated_qa_session"] = True
             return session_data
         
-        # Format and add dialogue to memory
+        # Store dialogue
         dialogue = session["dialogue"]
-        formatted_messages = self.data_loader.format_dialogue_messages(dialogue)
-        
-        extracted_memories, agent_messages, duration_ms = await self.memory_processor.add_memories(
-            user_id=user_name,
-            messages=formatted_messages,
-            batch_size=self.config.batch_size
-        )
-        
-        session_data.update({
-            "dialogue": dialogue,
-            "extracted_memories": extracted_memories,
-            "summary_messages": [m.model_dump() for m in agent_messages],
-            "add_dialogue_duration_ms": duration_ms
-        })
+        session_data["dialogue"] = dialogue
         
         # Evaluate questions if present
         if "questions" in session:
@@ -488,15 +443,12 @@ class HaluMemEvaluator:
         """Run the complete evaluation pipeline."""
         start_time = time.time()
         
-        # Clear existing data
-        await self.reme.vector_store.delete_all()
-        
         # Load user data
         all_users = self.data_loader.load_jsonl(self.config.data_path)
         users_to_process = all_users[:self.config.user_num]
         
         print("\n" + "=" * 80)
-        print("HALUMEM EVALUATION - QUESTION ANSWERING")
+        print("HALUMEM BASELINE EVALUATION - DIRECT QA WITHOUT MEMORY SYSTEM")
         print(f"Users: {len(users_to_process)} | Concurrency: {self.config.max_concurrency}")
         print("=" * 80 + "\n")
         
@@ -595,8 +547,7 @@ class HaluMemEvaluator:
         print(f"  Valid/Total:         {qa_metrics['qa_valid_num']}/{qa_metrics['qa_num']}")
         
         print(f"\n⏱️  Time Metrics:")
-        print(f"  Memory Addition:  {time_metrics['add_dialogue_duration_time']:.2f} min")
-        print(f"  Memory Search:    {time_metrics['search_memory_duration_time']:.2f} min")
+        print(f"  Answer Duration:  {time_metrics['answer_duration_time']:.2f} min")
         print(f"  Total:            {time_metrics['total_duration_time']:.2f} min")
         print("\n" + "=" * 80)
 
@@ -605,19 +556,17 @@ class HaluMemEvaluator:
 
 def main(
     data_path: str,
-    top_k: int = 20,
     user_num: int = 1,
     max_concurrency: int = 2
 ):
     """Main entry point."""
     config = EvalConfig(
         data_path=data_path,
-        top_k=top_k,
         user_num=user_num,
         max_concurrency=max_concurrency
     )
     
-    evaluator = HaluMemEvaluator(config)
+    evaluator = HaluMemBaselineEvaluator(config)
     asyncio.run(evaluator.run_evaluation())
 
 
@@ -625,19 +574,13 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Evaluate ReMe on HaluMem benchmark (Question Answering)"
+        description="Evaluate Baseline (Direct QA) on HaluMem benchmark"
     )
     parser.add_argument(
         "--data_path",
         type=str,
         required=True,
         help="Path to HaluMem JSONL file"
-    )
-    parser.add_argument(
-        "--top_k",
-        type=int,
-        default=20,
-        help="Number of memories to retrieve (default: 20)"
     )
     parser.add_argument(
         "--user_num",
@@ -656,7 +599,6 @@ if __name__ == "__main__":
     
     main(
         data_path=args.data_path,
-        top_k=args.top_k,
         user_num=args.user_num,
         max_concurrency=args.max_concurrency
     )

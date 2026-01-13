@@ -21,7 +21,7 @@ class ReMeSummarizerV2(BaseMemoryAgent):
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": self.prompt_format("tool"),
+                "description": self.get_prompt("tool"),
                 "parameters": {
                     "type": "object",
                     "properties": {

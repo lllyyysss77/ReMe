@@ -11,6 +11,7 @@ memory_ids_to_delete: |
   A list of unique identifiers (memory_ids) of the memories to remove.
   Each ID should be a valid memory_id obtained from previous memory retrieval or addition operations.
   These memories will be removed before adding the new updated memories.
+  **IMPORTANT**: Do NOT add duplicate memory_ids. Each memory_id should appear only once in the list.
 
 memories_to_add: |
   A list of new memory objects to add after removal.

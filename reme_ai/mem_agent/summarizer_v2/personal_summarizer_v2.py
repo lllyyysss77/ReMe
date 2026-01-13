@@ -9,6 +9,8 @@ from ...core.utils import format_messages
 
 @C.register_op()
 class PersonalSummarizerV2(BaseMemoryAgent):
+    memory_type: MemoryType = MemoryType.PERSONAL
+
     """Simplified personal memory summarizer that uses v2 memory tools.
     
     This summarizer follows a three-step workflow:
@@ -16,11 +18,6 @@ class PersonalSummarizerV2(BaseMemoryAgent):
     2. RetrieveRecentAndSimilarMemories: Retrieve similar and recent memories
     3. UpdateMemories: Delete outdated memories and add new ones
     """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    memory_type: MemoryType = MemoryType.PERSONAL
 
     def _build_tool_call(self) -> ToolCall:
         """Build tool call schema for the agent."""
@@ -83,28 +80,28 @@ class PersonalSummarizerV2(BaseMemoryAgent):
             **kwargs,
         )
 
-        # Check if AddMemoryDrafts tool was executed
-        exist_memory_drafts = False
-        if assistant_message.tool_calls:
-            for tool_call in assistant_message.tool_calls:
-                if tool_call.name == "add_memory_drafts":
-                    exist_memory_drafts = True
-                    break
-
-        # If memory drafts were added, regenerate system prompt with simplified context
-        if exist_memory_drafts:
-            simplified_context = "The conversation context has been summarized in memory drafts."
-            new_system_prompt = self.prompt_format(
-                prompt_name="system_prompt",
-                context=simplified_context,
-                memory_type=self.memory_type.value,
-                memory_target=self.memory_target,
-            )
-
-            # Update the system message in the message history
-            for i, msg in enumerate(self.messages):
-                if msg.role == Role.SYSTEM:
-                    self.messages[i] = Message(role=Role.SYSTEM, content=new_system_prompt)
-                    break
+        # # Check if AddMemoryDrafts tool was executed
+        # exist_memory_drafts = False
+        # if assistant_message.tool_calls:
+        #     for tool_call in assistant_message.tool_calls:
+        #         if tool_call.name == "add_memory_drafts":
+        #             exist_memory_drafts = True
+        #             break
+        #
+        # # If memory drafts were added, regenerate system prompt with simplified context
+        # if exist_memory_drafts:
+        #     simplified_context = "The conversation context has been summarized in memory drafts."
+        #     new_system_prompt = self.prompt_format(
+        #         prompt_name="system_prompt",
+        #         context=simplified_context,
+        #         memory_type=self.memory_type.value,
+        #         memory_target=self.memory_target,
+        #     )
+        #
+        #     # Update the system message in the message history
+        #     for i, msg in enumerate(self.messages):
+        #         if msg.role == Role.SYSTEM:
+        #             self.messages[i] = Message(role=Role.SYSTEM, content=new_system_prompt)
+        #             break
 
         return messages

@@ -161,9 +161,6 @@ class RetrieveRecentAndSimilarMemories(BaseMemoryTool):
         # Update retrieved_nodes in context with new memories
         self.retrieved_nodes.extend(new_memory_nodes)
 
-        # Set output to new memories only (after deduplication)
-        self.memory_nodes = new_memory_nodes
-
         if not new_memory_nodes:
             self.output = "No new memory_nodes found (duplicates removed)."
         else:

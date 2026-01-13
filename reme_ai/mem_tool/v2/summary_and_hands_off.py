@@ -8,7 +8,7 @@ from loguru import logger
 from ..base_memory_tool import BaseMemoryTool
 from ...core.context import C
 from ...core.enumeration import MemoryType
-from ...core.schema import MemoryNode
+from ...core.schema import MemoryNode, Message
 
 if TYPE_CHECKING:
     from ...mem_agent import BaseMemoryAgent
@@ -26,6 +26,7 @@ class SummaryAndHandsOff(BaseMemoryTool):
         from ...mem_agent import BaseMemoryAgent
 
         self.sub_ops: list[BaseMemoryAgent] = [a for a in self.sub_ops if isinstance(a, BaseMemoryAgent)]
+        self.messages: list[Message] = []
 
     @property
     def memory_agent_dict(self) -> dict[MemoryType, "BaseMemoryAgent"]:
@@ -144,6 +145,9 @@ class SummaryAndHandsOff(BaseMemoryTool):
             result_str = str(agent.output)
             if agent.memory_nodes:
                 self.memory_nodes.extend(agent.memory_nodes)
+
+            if agent.messages:
+                self.messages.extend(agent.messages)
 
             results.append(
                 {

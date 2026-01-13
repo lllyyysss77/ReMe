@@ -219,9 +219,9 @@ class ReMe(Application):
 
         if user_id:
             metadata_desc = {
-                "year": "The year when the memory content occurred.",
-                "month": "The month when the memory content occurred.",
-                "day": "The day when the memory content occurred.",
+                "year": "The year when the message content occurred.",
+                "month": "The month when the message content occurred.",
+                "day": "The day when the message content occurred.",
             }
             meta_memories = [
                 {
@@ -256,12 +256,12 @@ class ReMe(Application):
                 ],
             )
 
-            try:
-                await reme_summarizer_v2.call(messages=messages, description=description, **kwargs)
-                return personal_summarizer_v2.memory_nodes, personal_summarizer_v2.messages, personal_summarizer_v2.success
-            except Exception as e:
-                print(f"Warning: reme_summarizer_v2.call failed: {e}")
-                return [], [], False
+            # try:
+            await reme_summarizer_v2.call(messages=messages, description=description, **kwargs)
+            return reme_summarizer_v2.memory_nodes, reme_summarizer_v2.messages, reme_summarizer_v2.success
+            # except Exception as e:
+            #     print(f"Warning: reme_summarizer_v2.call failed: {e}")
+            #     return [], [], False
 
         else:
             raise NotImplementedError
@@ -305,12 +305,12 @@ class ReMe(Application):
                 ],
             )
 
-            try:
-                await reme_retriever_v2.call(query=query, messages=messages, description=description, **kwargs)
-                return reme_retriever_v2.output, reme_retriever_v2.messages, reme_retriever_v2.success
-            except Exception as e:
-                print(f"Warning: reme_retriever_v2.call failed: {e}")
-                return "error, not retrieved", [], False
+            # try:
+            await reme_retriever_v2.call(query=query, messages=messages, description=description, **kwargs)
+            return reme_retriever_v2.output, reme_retriever_v2.messages, reme_retriever_v2.success
+            # except Exception as e:
+            #     print(f"Warning: reme_retriever_v2.call failed: {e}")
+            #     return "error, not retrieved", [], False
 
         else:
             raise NotImplementedError

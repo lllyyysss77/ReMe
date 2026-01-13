@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from tqdm import tqdm
 
 from eval_tools import evaluation_for_question2
 from llms import llm_request_for_json
@@ -425,17 +426,23 @@ class HaluMemBaselineEvaluator:
         
         logger.info(f"Processing user: {user_name}")
         
-        for idx, session in enumerate(user_data["sessions"]):
-            logger.info(f"  Session {idx + 1}/{len(user_data['sessions'])}")
-            
-            session_data = await self.process_session(
-                session=session,
-                session_id=idx,
-                user_name=user_name,
-                uuid=uuid
-            )
-            
-            self.file_manager.save_session(user_name, idx, session_data)
+        # Create progress bar for sessions
+        with tqdm(
+            total=len(user_data["sessions"]),
+            desc=f"Sessions [{user_name}]",
+            leave=False,
+            ncols=100
+        ) as pbar:
+            for idx, session in enumerate(user_data["sessions"]):
+                session_data = await self.process_session(
+                    session=session,
+                    session_id=idx,
+                    user_name=user_name,
+                    uuid=uuid
+                )
+                
+                self.file_manager.save_session(user_name, idx, session_data)
+                pbar.update(1)
         
         return {"uuid": uuid, "user_name": user_name, "status": "ok"}
     

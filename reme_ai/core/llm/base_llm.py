@@ -48,60 +48,58 @@ class BaseLLM(ABC):
         if self.max_rps is None:
             return
         
-        async with self._rate_limit_lock:
-            current_time = time.time()
-            
-            # Remove timestamps older than the time window
-            while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                self._request_timestamps.popleft()
-            
-            # If we've reached the rate limit, wait until we can proceed
-            if len(self._request_timestamps) >= self.max_rps:
+        while True:
+            async with self._rate_limit_lock:
+                current_time = time.time()
+                
+                # Remove timestamps older than the time window
+                while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
+                    self._request_timestamps.popleft()
+                
+                # If we have space in the rate limit window, proceed
+                if len(self._request_timestamps) < self.max_rps:
+                    # Record this request
+                    self._request_timestamps.append(current_time)
+                    return
+                
                 # Calculate how long to wait
                 oldest_timestamp = self._request_timestamps[0]
                 wait_time = self.rps_window - (current_time - oldest_timestamp)
-                
-                if wait_time > 0:
-                    logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
-                    await asyncio.sleep(wait_time)
-                    
-                    # Clean up old timestamps after waiting
-                    current_time = time.time()
-                    while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                        self._request_timestamps.popleft()
             
-            # Record this request
-            self._request_timestamps.append(time.time())
+            # Wait OUTSIDE the lock so other requests can proceed
+            if wait_time > 0:
+                logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
+                await asyncio.sleep(wait_time)
+            # Loop back to re-acquire lock and check again
     
     def _wait_for_rate_limit_sync(self):
         """Synchronous rate limiting: wait if necessary to respect max_rps constraint within the time window."""
         if self.max_rps is None:
             return
         
-        with self._rate_limit_lock_sync:
-            current_time = time.time()
-            
-            # Remove timestamps older than the time window
-            while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                self._request_timestamps.popleft()
-            
-            # If we've reached the rate limit, wait until we can proceed
-            if len(self._request_timestamps) >= self.max_rps:
+        while True:
+            with self._rate_limit_lock_sync:
+                current_time = time.time()
+                
+                # Remove timestamps older than the time window
+                while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
+                    self._request_timestamps.popleft()
+                
+                # If we have space in the rate limit window, proceed
+                if len(self._request_timestamps) < self.max_rps:
+                    # Record this request
+                    self._request_timestamps.append(current_time)
+                    return
+                
                 # Calculate how long to wait
                 oldest_timestamp = self._request_timestamps[0]
                 wait_time = self.rps_window - (current_time - oldest_timestamp)
-                
-                if wait_time > 0:
-                    logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
-                    time.sleep(wait_time)
-                    
-                    # Clean up old timestamps after waiting
-                    current_time = time.time()
-                    while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                        self._request_timestamps.popleft()
             
-            # Record this request
-            self._request_timestamps.append(time.time())
+            # Wait OUTSIDE the lock so other requests can proceed
+            if wait_time > 0:
+                logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
+                time.sleep(wait_time)
+            # Loop back to re-acquire lock and check again
 
     @staticmethod
     def _accumulate_tool_call_chunk(tool_call, ret_tools: list[ToolCall]):

@@ -258,10 +258,10 @@ class ReMe(Application):
 
             try:
                 await reme_summarizer_v2.call(messages=messages, description=description, **kwargs)
-                return reme_summarizer_v2.memory_nodes
+                return personal_summarizer_v2.memory_nodes, personal_summarizer_v2.messages, personal_summarizer_v2.success
             except Exception as e:
                 print(f"Warning: reme_summarizer_v2.call failed: {e}")
-                return []
+                return [], [], False
 
         else:
             raise NotImplementedError
@@ -307,10 +307,10 @@ class ReMe(Application):
 
             try:
                 await reme_retriever_v2.call(query=query, messages=messages, description=description, **kwargs)
-                return reme_retriever_v2.output
+                return reme_retriever_v2.output, reme_retriever_v2.messages, reme_retriever_v2.success
             except Exception as e:
                 print(f"Warning: reme_retriever_v2.call failed: {e}")
-                return "error, not retrieved"
+                return "error, not retrieved", [], False
 
         else:
             raise NotImplementedError

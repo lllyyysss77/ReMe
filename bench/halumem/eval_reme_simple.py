@@ -58,18 +58,18 @@ def iter_jsonl(file_path: str):
 # ==================== Main Processing ====================
 
 
-async def add_memory_async(user_id: str, messages: list[dict]) -> tuple[list[MemoryNode], float]:
+async def add_memory_async(user_id: str, messages: list[dict]) -> tuple[list[MemoryNode], list, bool, float]:
     """Add memory to ReMe system asynchronously."""
     start = time.time()
-    result = await reme.summary_v2(messages=messages, user_id=user_id)
+    memory_nodes, agent_messages, success = await reme.summary_v2(messages=messages, user_id=user_id)
     duration_ms = (time.time() - start) * 1000
-    return result, duration_ms
+    return memory_nodes, agent_messages, success, duration_ms
 
 
 async def search_memory_async(query: str, user_id: str, top_k: int = 20):
     """Search memory and get LLM response directly."""
     start = time.time()
-    memories = await reme.retrieve_v2(query=query, user_id=user_id, top_k=top_k)
+    memories, agent_messages, success = await reme.retrieve_v2(query=query, user_id=user_id, top_k=top_k)
     
     # Format the context
     context = f"User: {user_id}\nMemories:\n{memories}"
@@ -79,7 +79,7 @@ async def search_memory_async(query: str, user_id: str, top_k: int = 20):
     response = await llm_request(prompt)
     
     duration_ms = (time.time() - start) * 1000
-    return response, duration_ms
+    return response, agent_messages, success, duration_ms
 
 
 async def process_user_stage1(
@@ -123,17 +123,27 @@ async def process_user_stage1(
 
         # Process in batches
         result = []
+        all_agent_messages = []
+        all_success_flags = []
         total_duration_ms = 0
         batch_size = 20
 
         for i in range(0, len(formatted_dialogue), batch_size):
             batch = formatted_dialogue[i : i + batch_size]
-            batch_result, duration_ms = await add_memory_async(
+            batch_result, agent_messages, success, duration_ms = await add_memory_async(
                 user_id=user_name,
                 messages=batch,
             )
             if batch_result:
                 result.extend(batch_result)
+            all_agent_messages.append({
+                "batch_index": i // batch_size,
+                "messages": [msg.model_dump() if hasattr(msg, 'model_dump') else str(msg) for msg in agent_messages] if agent_messages else []
+            })
+            all_success_flags.append({
+                "batch_index": i // batch_size,
+                "success": success
+            })
             total_duration_ms += duration_ms
 
         duration_ms = total_duration_ms
@@ -146,6 +156,8 @@ async def process_user_stage1(
 
         if session.get("is_generated_qa_session", False):
             new_session["add_dialogue_duration_ms"] = duration_ms
+            new_session["summary_agent_messages"] = all_agent_messages
+            new_session["summary_success_flags"] = all_success_flags
             new_session["is_generated_qa_session"] = True
             del new_session["dialogue"]
             del new_session["memory_points"]
@@ -155,6 +167,8 @@ async def process_user_stage1(
         # Store extracted memories
         new_session["extracted_memories"] = memories
         new_session["add_dialogue_duration_ms"] = duration_ms
+        new_session["summary_agent_messages"] = all_agent_messages
+        new_session["summary_success_flags"] = all_success_flags
 
         # Process questions
         if "questions" not in session:
@@ -164,7 +178,7 @@ async def process_user_stage1(
         new_session["questions"] = []
 
         for qa in session["questions"]:
-            response, duration_ms = await search_memory_async(
+            response, agent_messages, success, duration_ms = await search_memory_async(
                 query=qa["question"],
                 user_id=user_name,
                 top_k=top_k_value,
@@ -173,6 +187,8 @@ async def process_user_stage1(
             new_qa = copy.deepcopy(qa)
             new_qa["system_response"] = response
             new_qa["search_duration_ms"] = duration_ms
+            new_qa["retrieve_agent_messages"] = [msg.model_dump() if hasattr(msg, 'model_dump') else str(msg) for msg in agent_messages] if agent_messages else []
+            new_qa["retrieve_success"] = success
 
             new_session["questions"].append(new_qa)
 

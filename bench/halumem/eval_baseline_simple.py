@@ -77,15 +77,19 @@ class DataLoader:
     
     @staticmethod
     def format_dialogue_for_eval(dialogue: list[dict], user_name: str = None) -> str:
-        """Format dialogue into string for evaluation."""
+        """Format dialogue into string for evaluation (only user messages)."""
         formatted_turns = []
         for turn in dialogue:
+            # Skip assistant messages - only include user messages
+            if turn['role'] != 'user':
+                continue
+                
             timestamp = datetime.strptime(
                 turn["timestamp"], "%b %d, %Y, %H:%M:%S"
             ).replace(tzinfo=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             
-            # Use user_name if role is 'user' and user_name is provided
-            role = user_name if turn['role'] == 'user' and user_name else turn['role']
+            # Use user_name if provided
+            role = user_name if user_name else 'user'
             
             formatted_turns.append(
                 f"Role: {role}\n"

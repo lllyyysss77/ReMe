@@ -16,16 +16,13 @@ llm:
   default:
     backend: openai
     model_name: qwen3-30b-a3b-instruct-2507
-    max_rps: 6
-    rps_window: 10
+    max_concurrency: 20
 
   qwen3_max_instruct:
     backend: openai
     model_name: qwen3-max
 #    temperature: 0.6
-    max_rps: 2
-#    max_rps: 9
-    rps_window: 1
+    max_concurrency: 20
 
 embedding_model:
   default:

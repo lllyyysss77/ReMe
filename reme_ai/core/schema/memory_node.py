@@ -153,7 +153,7 @@ class MemoryNode(BaseModel):
             str: Formatted string with when_to_use, content, and ref_memory_id.
         """
         parts: list[str] = [
-            f"memory_id={self.memory_id} modified_time={self.time_modified}",
+            f"memory_id={self.memory_id}",
         ]
 
         if self.when_to_use:

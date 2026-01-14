@@ -12,11 +12,13 @@ class VectorRetrieveMemory(BaseMemoryTool):
         self,
         add_memory_type_target: bool = False,
         top_k: int = 20,
+        enable_metadata: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.add_memory_type_target: bool = add_memory_type_target
         self.top_k: int = top_k
+        self.enable_metadata: bool = enable_metadata
 
     def _build_query_schema(self) -> tuple[dict, list[str]]:
         properties = {}
@@ -39,10 +41,11 @@ class VectorRetrieveMemory(BaseMemoryTool):
         }
         required.append("query")
 
-        properties["metadata"] = {
-            "type": "object",
-            "description": self.get_prompt("metadata"),
-        }
+        if self.enable_metadata:
+            properties["metadata"] = {
+                "type": "object",
+                "description": self.get_prompt("metadata"),
+            }
 
         return properties, required
 
@@ -133,7 +136,7 @@ class VectorRetrieveMemory(BaseMemoryTool):
         for item in query_items:
             memory_type = item.get("memory_type") or default_memory_type
             memory_target = item.get("memory_target") or default_memory_target
-            metadata = item.get("metadata", {})
+            metadata = item.get("metadata", {}) if self.enable_metadata else None
 
             if not memory_type or not memory_target:
                 logger.warning(f"Skipping query with missing memory_type or memory_target: {item}")

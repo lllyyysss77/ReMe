@@ -1,0 +1,20 @@
+tool: |
+  Retrieve memories using vector similarity search.
+
+tool_multiple: |
+  Retrieve memories using multiple queries with vector similarity search.
+
+memory_type: |
+  The type of memory to search for.
+
+memory_target: |
+  The target of the memory to search within.
+
+query: |
+  The query text for vector similarity search.
+
+query_items: |
+  A list of query items for vector similarity search.
+
+metadata: |
+  Optional metadata filters for narrowing search results.

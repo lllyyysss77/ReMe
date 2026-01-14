@@ -22,7 +22,7 @@ class BaseEmbeddingModel(ABC):
     def __init__(
         self,
         model_name: str = "",
-        dimensions: int = 1024,
+        dimensions: int | None = 1024,
         max_batch_size: int = 10,
         max_retries: int = 3,
         raise_exception: bool = True,

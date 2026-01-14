@@ -102,29 +102,5 @@ class AddMemoryDrafts(BaseMemoryTool):
 
     async def execute(self):
         """Execute add drafts operation: create memory drafts without persisting to vector store."""
-        # Get memory drafts to add
-        memory_drafts = self.context.get("memory_drafts", [])
-
-        # Validate input
-        if not memory_drafts:
-            self.output = "No memory drafts provided. Please provide at least one draft memory."
-            return
-
-        # Build memory nodes (without persisting)
-        memory_nodes = []
-        for mem in memory_drafts:
-            memory_content, when_to_use, metadata = self._extract_memory_data(mem)
-            if not memory_content:
-                logger.warning("Skipping memory draft with empty content")
-                continue
-
-            memory_nodes.append(self._build_memory_node(memory_content, when_to_use=when_to_use, metadata=metadata))
-
-        if memory_nodes:
-            self.memory_nodes.extend(memory_nodes)
-            draft_count = len(memory_nodes)
-            self.output = f"Successfully created {draft_count} memory draft(s). These drafts are not yet persisted to the vector store."
-            logger.info(self.output)
-        else:
-            self.output = "No valid memory drafts created. Please check your input."
-            logger.warning(self.output)
+        self.output = f"Successfully created memory draft(s). These drafts are not yet persisted to the vector store."
+        logger.info(self.output)

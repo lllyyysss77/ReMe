@@ -4,7 +4,6 @@ import asyncio
 import json
 import time
 from abc import ABC, abstractmethod
-from collections import deque
 from typing import Callable, Generator, AsyncGenerator, Any
 
 from loguru import logger
@@ -18,90 +17,24 @@ from ..schema import ToolCall
 class BaseLLM(ABC):
     """Abstract base class defining the standard interface for LLM interactions."""
 
-    def __init__(self, model_name: str, max_retries: int = 10, raise_exception: bool = False, max_rps: int | None = None, rps_window: float = 1.0, **kwargs):
+    def __init__(self, model_name: str, max_retries: int = 10, raise_exception: bool = False, max_concurrency: int | None = None, **kwargs):
         """Initialize the LLM client with model configurations and retry policies.
         
         Args:
             model_name: The name of the model to use
             max_retries: Maximum number of retry attempts on failure
             raise_exception: Whether to raise exceptions or return default values
-            max_rps: Maximum requests allowed within the time window. If None, no rate limiting is applied.
-            rps_window: Time window in seconds for rate limiting (default: 1.0). 
-                       For example: max_rps=10, rps_window=5.0 means max 10 requests in 5 seconds.
+            max_concurrency: Maximum concurrent requests for async operations. If None, no concurrency limit is applied.
             **kwargs: Additional model-specific parameters
         """
         self.model_name: str = model_name
         self.max_retries: int = max_retries
         self.raise_exception: bool = raise_exception
-        self.max_rps: int | None = max_rps
-        self.rps_window: float = rps_window
+        self.max_concurrency: int | None = max_concurrency
         self.kwargs: dict = kwargs
         
-        # Rate limiting state - using deque for efficient O(1) operations
-        self._request_timestamps: deque = deque()
-        self._rate_limit_lock = asyncio.Lock()  # For async rate limiting
-        import threading
-        self._rate_limit_lock_sync = threading.Lock()  # For sync rate limiting
-
-    async def _wait_for_rate_limit(self):
-        """Async rate limiting: wait if necessary to respect max_rps constraint within the time window."""
-        if self.max_rps is None:
-            return
-        
-        async with self._rate_limit_lock:
-            current_time = time.time()
-            
-            # Remove timestamps older than the time window
-            while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                self._request_timestamps.popleft()
-            
-            # If we've reached the rate limit, wait until we can proceed
-            if len(self._request_timestamps) >= self.max_rps:
-                # Calculate how long to wait
-                oldest_timestamp = self._request_timestamps[0]
-                wait_time = self.rps_window - (current_time - oldest_timestamp)
-                
-                if wait_time > 0:
-                    logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
-                    await asyncio.sleep(wait_time)
-                    
-                    # Clean up old timestamps after waiting
-                    current_time = time.time()
-                    while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                        self._request_timestamps.popleft()
-            
-            # Record this request
-            self._request_timestamps.append(time.time())
-    
-    def _wait_for_rate_limit_sync(self):
-        """Synchronous rate limiting: wait if necessary to respect max_rps constraint within the time window."""
-        if self.max_rps is None:
-            return
-        
-        with self._rate_limit_lock_sync:
-            current_time = time.time()
-            
-            # Remove timestamps older than the time window
-            while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                self._request_timestamps.popleft()
-            
-            # If we've reached the rate limit, wait until we can proceed
-            if len(self._request_timestamps) >= self.max_rps:
-                # Calculate how long to wait
-                oldest_timestamp = self._request_timestamps[0]
-                wait_time = self.rps_window - (current_time - oldest_timestamp)
-                
-                if wait_time > 0:
-                    logger.debug(f"Rate limit reached ({self.max_rps} requests in {self.rps_window}s). Waiting {wait_time:.3f}s")
-                    time.sleep(wait_time)
-                    
-                    # Clean up old timestamps after waiting
-                    current_time = time.time()
-                    while self._request_timestamps and current_time - self._request_timestamps[0] >= self.rps_window:
-                        self._request_timestamps.popleft()
-            
-            # Record this request
-            self._request_timestamps.append(time.time())
+        # Concurrency control for async operations
+        self._semaphore: asyncio.Semaphore | None = asyncio.Semaphore(max_concurrency) if max_concurrency else None
 
     @staticmethod
     def _accumulate_tool_call_chunk(tool_call, ret_tools: list[ToolCall]):
@@ -193,9 +126,23 @@ class BaseLLM(ABC):
             model_name: Optional model name to override self.model_name
             **kwargs: Additional parameters
         """
-        # Apply rate limiting before making the request
-        await self._wait_for_rate_limit()
-        
+        # Apply concurrency control if configured
+        if self._semaphore:
+            async with self._semaphore:
+                async for chunk in self._stream_chat_impl(messages, tools, model_name, **kwargs):
+                    yield chunk
+        else:
+            async for chunk in self._stream_chat_impl(messages, tools, model_name, **kwargs):
+                yield chunk
+    
+    async def _stream_chat_impl(
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        model_name: str | None = None,
+        **kwargs,
+    ) -> AsyncGenerator[StreamChunk, None]:
+        """Internal implementation of stream_chat with retry logic."""
         stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
 
         for i in range(self.max_retries):
@@ -231,9 +178,6 @@ class BaseLLM(ABC):
             model_name: Optional model name to override self.model_name
             **kwargs: Additional parameters
         """
-        # Apply rate limiting before making the request
-        self._wait_for_rate_limit_sync()
-        
         stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
 
         for i in range(self.max_retries):
@@ -410,14 +354,29 @@ class BaseLLM(ABC):
             model_name: Optional model name to override self.model_name
             **kwargs: Additional parameters
         """
+        # Apply concurrency control if configured
+        if self._semaphore:
+            async with self._semaphore:
+                return await self._chat_impl(messages, tools, enable_stream_print, callback_fn, default_value, model_name, **kwargs)
+        else:
+            return await self._chat_impl(messages, tools, enable_stream_print, callback_fn, default_value, model_name, **kwargs)
+    
+    async def _chat_impl(
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        enable_stream_print: bool = False,
+        callback_fn: Callable[[Message], Any] | None = None,
+        default_value: Any = None,
+        model_name: str | None = None,
+        **kwargs,
+    ) -> Message | Any:
+        """Internal implementation of chat with retry and error handling logic."""
         # Use the provided model_name or fall back to self.model_name
         effective_model = model_name if model_name is not None else self.model_name
         
         for i in range(self.max_retries):
             try:
-                # Apply rate limiting before making the request
-                await self._wait_for_rate_limit()
-                
                 result = await self._chat(
                     messages=messages,
                     tools=tools,
@@ -491,9 +450,6 @@ class BaseLLM(ABC):
         
         for i in range(self.max_retries):
             try:
-                # Apply rate limiting before making the request
-                self._wait_for_rate_limit_sync()
-                
                 result = self._chat_sync(
                     messages=messages,
                     tools=tools,

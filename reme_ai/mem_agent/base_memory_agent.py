@@ -142,6 +142,9 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
             if op.memory_nodes:
                 self.memory_nodes.extend(op.memory_nodes)
 
+            if hasattr(op, "messages") and op.messages:
+                self.messages.extend(op.messages)
+
             tool_result = str(op.output)
             tool_message = Message(
                 role=Role.TOOL,

@@ -1,0 +1,8 @@
+tool_multiple: |
+  Add multiple memories to the vector store for future retrieval.
+
+memory_content: |
+  The content of the memory to store.
+
+memories: |
+  A list of memory objects to store.

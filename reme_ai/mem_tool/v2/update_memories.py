@@ -111,13 +111,15 @@ class UpdateMemories(BaseMemoryTool):
         # Get removal IDs
         memory_ids_to_delete = self.context.get("memory_ids_to_delete", [])
         memory_ids_to_delete = [m for m in memory_ids_to_delete if m]
+        # Deduplicate memory IDs to avoid redundant deletions
+        memory_ids_to_delete = list(dict.fromkeys(memory_ids_to_delete))
 
         # Get memories to add
         memories_to_add = self.context.get("memories_to_add", [])
 
         # Validate input
         if not memory_ids_to_delete and not memories_to_add:
-            self.output = "No memories to remove or add. Please provide at least one operation."
+            self.output = "No memories to remove or add. Operation has been done."
             return
 
         removed_count = 0
@@ -164,6 +166,6 @@ class UpdateMemories(BaseMemoryTool):
         if operations:
             self.output = f"Successfully {' and '.join(operations)} in vector_store."
         else:
-            self.output = "No valid operations performed. Please check your input."
+            self.output = "Operation has been done."
 
         logger.info(self.output)

@@ -3,9 +3,6 @@ tool: |
   Use this tool to analyze dialogues and extract important personal information about users,
   such as preferences, habits, personal background, relationships, and significant facts.
 
-# - **Memory granularity**: Each memory should record ONE complete piece of information - don't pack multiple facts into one memory, and don't split a single fact into multiple memories.
-# - **Self-contained**: Each memory entry must be self-contained and understandable without additional context.
-
 system_prompt: |
   You are a professional memory agent managing **{memory_type}** memories about **{memory_target}** for the main agent.
 

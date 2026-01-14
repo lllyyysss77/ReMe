@@ -1,17 +1,12 @@
-"""Simplified orchestrator for memory summarization workflow - V2."""
-
 from loguru import logger
 
 from ..base_memory_agent import BaseMemoryAgent
-from ...core.context import C
 from ...core.enumeration import Role, MemoryType
 from ...core.schema import Message, MemoryNode, ToolCall
 from ...core.utils import format_messages
 
 
-@C.register_op()
-class ReMeSummarizerV2(BaseMemoryAgent):
-    """Simplified version that coordinates memory updates using only summary_and_hands_off tool."""
+class ReMeSummarizerWk(BaseMemoryAgent):
 
     def __init__(self, meta_memories: list[dict] | None = None, **kwargs):
         """Initialize with meta memories list."""
@@ -49,7 +44,6 @@ class ReMeSummarizerV2(BaseMemoryAgent):
         )
 
     async def _read_meta_memories(self) -> str:
-        """Fetch meta-memory entries using format_memory_metadata."""
         from ...mem_tool import ReadMetaMemory
 
         return ReadMetaMemory().format_memory_metadata(self.meta_memories)

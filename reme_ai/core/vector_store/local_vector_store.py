@@ -91,17 +91,32 @@ class LocalVectorStore(BaseVectorStore):
 
     @staticmethod
     def _match_filters(node: VectorNode, filters: dict | None) -> bool:
-        """Check if a vector node matches the provided metadata filters."""
+        """Check if a vector node matches the provided metadata filters.
+        
+        Supports two filter formats:
+        1. Range query: {"field": [start_value, end_value]} - filters for field >= start_value AND field <= end_value
+        2. Exact match: {"field": value} - filters for field == value
+        """
         if not filters:
             return True
 
         for key, value in filters.items():
             node_value = node.metadata.get(key)
 
-            if isinstance(value, list):
-                if node_value not in value:
+            # New syntax: [start, end] represents a range query
+            if isinstance(value, list) and len(value) == 2:
+                # Range query: field >= value[0] AND field <= value[1]
+                if node_value is None:
+                    return False
+                try:
+                    # Try numeric comparison
+                    if not (value[0] <= node_value <= value[1]):
+                        return False
+                except TypeError:
+                    # If comparison fails, the filter doesn't match
                     return False
             else:
+                # Exact match
                 if node_value != value:
                     return False
 

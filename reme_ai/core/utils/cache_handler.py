@@ -15,7 +15,7 @@ class CacheHandler:
     _EXTENSIONS = {
         pd.DataFrame: ".csv",
         dict: ".json",
-        list: ".json",
+        list: ".jsonl",
         str: ".txt",
     }
 
@@ -76,9 +76,15 @@ class CacheHandler:
             data.to_csv(path, index=kwargs.get("index", False), encoding="utf-8")
             return {"row_count": len(data), "file_size": path.stat().st_size}
 
-        if dtype in (dict, list):
+        if dtype is dict:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
+            return {"item_count": len(data), "file_size": path.stat().st_size}
+
+        if dtype is list:
+            with open(path, "w", encoding="utf-8") as f:
+                for item in data:
+                    f.write(json.dumps(item, ensure_ascii=False) + "\n")
             return {"item_count": len(data), "file_size": path.stat().st_size}
 
         if dtype is str:
@@ -92,9 +98,17 @@ class CacheHandler:
         """Execute type-specific load operations."""
         if type_name == "DataFrame":
             return pd.read_csv(path, encoding=kwargs.get("encoding", "utf-8"))
-        if type_name in ("dict", "list"):
+        if type_name == "dict":
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
+        if type_name == "list":
+            result = []
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        result.append(json.loads(line))
+            return result
         if type_name == "str":
             return path.read_text(encoding=kwargs.get("encoding", "utf-8"))
         raise ValueError(f"Unknown data type in metadata: {type_name}")

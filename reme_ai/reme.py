@@ -13,6 +13,11 @@ from .mem_agent.retriever import ReMeRetriever
 from .mem_agent.retriever_v2 import ReMeRetrieverV2
 from .mem_agent.summarizer import ReMeSummarizer, PersonalSummarizer
 from .mem_agent.summarizer_v2 import ReMeSummarizerV2, PersonalSummarizerV2
+from .mem_agent.v3 import (
+    PersonalSummarizerV3,
+    ReMeRetrieverV3,
+    ReMeSummarizerV3,
+)
 from .mem_tool import (
     HandsOffTool,
     ReadHistoryMemory,
@@ -24,11 +29,18 @@ from .mem_tool import (
 )
 from .mem_tool.v2 import (
     AddMemoryDrafts,
-    ReadHistory,
     RetrieveMemories,
     RetrieveRecentAndSimilarMemories,
     SummaryAndHandsOff,
     UpdateMemories,
+)
+from .mem_tool.v3 import (
+    AddMemory as AddMemoryV3,
+    ReadHistory as ReadHistoryV3,
+    ReadUserProfile,
+    RetrieveMemory,
+    SummaryAndHandsOff as SummaryAndHandsOffV3,
+    UpdateUserProfile,
 )
 
 
@@ -310,6 +322,89 @@ class ReMe(Application):
             return reme_retriever_v2.output, reme_retriever_v2.messages, reme_retriever_v2.success
             # except Exception as e:
             #     print(f"Warning: reme_retriever_v2.call failed: {e}")
+            #     return "error, not retrieved", [], False
+
+        else:
+            raise NotImplementedError
+
+    async def summary_v3(
+            self,
+            messages: list[dict],
+            description: str = "",
+            user_id: str = "",
+            assistant_id: str = "",
+            **kwargs,
+    ):
+        """Summarizes messages using V3 workflow with user profile management."""
+
+        if user_id:
+            meta_memories = [
+                {
+                    "memory_type": "personal",
+                    "memory_target": user_id,
+                },
+            ]
+            messages = self._prepare_messages(messages, user_id, assistant_id)
+
+            personal_summarizer_v3 = PersonalSummarizerV3(
+                tools=[
+                    AddMemoryV3(),
+                    ReadUserProfile(add_memory_type_target=False),
+                    UpdateUserProfile(),
+                ],
+            )
+
+            reme_summarizer_v3 = ReMeSummarizerV3(
+                meta_memories=meta_memories,
+                tools=[SummaryAndHandsOffV3(memory_agents=[personal_summarizer_v3])],
+            )
+
+            # try:
+            await reme_summarizer_v3.call(messages=messages, description=description, **kwargs)
+            return reme_summarizer_v3.memory_nodes, reme_summarizer_v3.messages, reme_summarizer_v3.success
+            # except Exception as e:
+            #     print(f"Warning: reme_summarizer_v3.call failed: {e}")
+            #     return [], [], False
+
+        else:
+            raise NotImplementedError
+
+    async def retrieve_v3(
+            self,
+            query: str = "",
+            messages: list[dict] | None = None,
+            description: str = "",
+            user_id: str = "",
+            assistant_id: str = "",
+            top_k: int = 20,
+            **kwargs,
+    ):
+        """Retrieves relevant memories using V3 workflow with user profile support."""
+
+        if user_id:
+            messages = self._prepare_messages(messages, user_id, assistant_id)
+
+            meta_memories = [
+                {
+                    "memory_type": "personal",
+                    "memory_target": user_id,
+                },
+            ]
+
+            reme_retriever_v3 = ReMeRetrieverV3(
+                meta_memories=meta_memories,
+                tools=[
+                    ReadUserProfile(add_memory_type_target=True),
+                    RetrieveMemory(top_k=top_k),
+                    ReadHistoryV3(),
+                ],
+            )
+
+            # try:
+            await reme_retriever_v3.call(query=query, messages=messages, description=description, **kwargs)
+            return reme_retriever_v3.output, reme_retriever_v3.messages, reme_retriever_v3.success
+            # except Exception as e:
+            #     print(f"Warning: reme_retriever_v3.call failed: {e}")
             #     return "error, not retrieved", [], False
 
         else:

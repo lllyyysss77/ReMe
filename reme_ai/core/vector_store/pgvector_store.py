@@ -1,6 +1,7 @@
 """PostgreSQL pgvector implementation for vector storage and retrieval."""
 
 import json
+import re
 from typing import Any
 
 from loguru import logger
@@ -25,6 +26,25 @@ except ImportError as e:
 class PGVectorStore(BaseVectorStore):
     """Vector store implementation using PostgreSQL and pgvector for efficient similarity search."""
 
+    @staticmethod
+    def _validate_table_name(name: str) -> None:
+        """Validate table name to prevent SQL injection.
+        
+        PostgreSQL table names must:
+        - Contain only alphanumeric characters and underscores
+        - Not start with a digit
+        - Be between 1 and 63 characters
+        """
+        if not name:
+            raise ValueError("Table name cannot be empty")
+        if len(name) > 63:
+            raise ValueError(f"Table name too long: {len(name)} characters (max 63)")
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+            raise ValueError(
+                f"Invalid table name: {name}. Must start with letter or underscore, "
+                "and contain only alphanumeric characters and underscores."
+            )
+
     def __init__(
         self,
         collection_name: str,
@@ -46,6 +66,9 @@ class PGVectorStore(BaseVectorStore):
             raise ImportError(
                 "PGVector requires extra dependencies. Install with `pip install asyncpg pgvector`",
             ) from _ASYNCPG_IMPORT_ERROR
+
+        # Validate collection name to prevent SQL injection
+        self._validate_table_name(collection_name)
 
         super().__init__(collection_name=collection_name, embedding_model=embedding_model, **kwargs)
 
@@ -106,6 +129,7 @@ class PGVectorStore(BaseVectorStore):
 
     async def create_collection(self, collection_name: str, **kwargs):
         """Create a new PostgreSQL table with vector support and appropriate indexing."""
+        self._validate_table_name(collection_name)
         pool = await self._get_pool()
         dimensions = kwargs.get("dimensions", self.embedding_model_dims)
 
@@ -150,6 +174,7 @@ class PGVectorStore(BaseVectorStore):
 
     async def delete_collection(self, collection_name: str, **kwargs):
         """Remove the specified collection table from the database."""
+        self._validate_table_name(collection_name)
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             await conn.execute(f"DROP TABLE IF EXISTS {collection_name}")
@@ -157,6 +182,7 @@ class PGVectorStore(BaseVectorStore):
 
     async def copy_collection(self, collection_name: str, **kwargs):
         """Duplicate the structure and content of the current collection to a new table."""
+        self._validate_table_name(collection_name)
         pool = await self._get_pool()
 
         async with pool.acquire() as conn:
@@ -252,7 +278,14 @@ class PGVectorStore(BaseVectorStore):
 
     @staticmethod
     def _build_filter_clause(filters: dict | None) -> tuple[str, list]:
-        """Generate an SQL WHERE clause and parameter list from a filter dictionary."""
+        """Generate an SQL WHERE clause and parameter list from a filter dictionary.
+        
+        Supports two filter formats:
+        1. Range query: {"field": [start_value, end_value]} - filters for field >= start_value AND field <= end_value
+        2. Exact match: {"field": value} - filters for field == value
+        
+        Range queries support both numeric and string (e.g., timestamp strings) comparisons.
+        """
         if not filters:
             return "", []
 
@@ -261,12 +294,28 @@ class PGVectorStore(BaseVectorStore):
         param_idx = 1
 
         for key, value in filters.items():
-            if isinstance(value, list):
-                placeholders = ", ".join([f"${param_idx + i}" for i in range(len(value))])
-                conditions.append(f"metadata->>'{key}' IN ({placeholders})")
-                params.extend([str(v) for v in value])
-                param_idx += len(value)
+            # Sanitize key to prevent SQL injection (only allow alphanumeric and underscore)
+            if not key.replace('_', '').replace('.', '').isalnum():
+                raise ValueError(f"Invalid metadata key: {key}. Only alphanumeric characters, underscore and dot are allowed.")
+            
+            # New syntax: [start, end] represents a range query
+            if isinstance(value, list) and len(value) == 2:
+                # Range query: field >= value[0] AND field <= value[1]
+                # Try numeric comparison first, fall back to text comparison if needed
+                if isinstance(value[0], (int, float)) and isinstance(value[1], (int, float)):
+                    # Numeric range query
+                    conditions.append(
+                        f"(metadata->>'{key}')::numeric >= ${param_idx} AND (metadata->>'{key}')::numeric <= ${param_idx + 1}"
+                    )
+                else:
+                    # Text range query (works for strings, timestamps, etc.)
+                    conditions.append(
+                        f"metadata->>'{key}' >= ${param_idx} AND metadata->>'{key}' <= ${param_idx + 1}"
+                    )
+                params.extend([value[0], value[1]])
+                param_idx += 2
             else:
+                # Exact match
                 conditions.append(f"metadata->>'{key}' = ${param_idx}")
                 params.append(str(value))
                 param_idx += 1
@@ -290,11 +339,14 @@ class PGVectorStore(BaseVectorStore):
 
         filter_clause, filter_params = self._build_filter_clause(filters)
 
+        # Adjust parameter indices in filter clause to account for $1 being used by vector_str
         if filter_clause:
-            for i in range(len(filter_params)):
-                old_idx = i + 1
-                new_idx = i + 2
-                filter_clause = filter_clause.replace(f"${old_idx}", f"${new_idx}", 1)
+            # Replace from highest index to lowest to avoid conflicts
+            for i in range(len(filter_params), 0, -1):
+                old_placeholder = f"${i}"
+                new_placeholder = f"${i + 1}"
+                # Use word boundary to ensure we only replace exact matches (e.g., $1 not $10)
+                filter_clause = re.sub(rf'\${i}\b', new_placeholder, filter_clause)
 
         async with pool.acquire() as conn:
             sql = f"""

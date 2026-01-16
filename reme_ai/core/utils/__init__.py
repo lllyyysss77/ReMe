@@ -9,7 +9,15 @@ from .http_client import HttpClient
 from .llm_utils import extract_content, format_messages, deduplicate_memories
 from .logger_utils import init_logger
 from .logo_utils import print_logo
-from .mcp_client import MCPClient
+
+# Make MCPClient import optional to avoid breaking if MCP dependencies are not available
+try:
+    from .mcp_client import MCPClient
+    _HAS_MCP = True
+except ImportError:
+    MCPClient = None
+    _HAS_MCP = False
+
 from .pydantic_config_parser import PydanticConfigParser
 from .pydantic_utils import create_pydantic_model
 from .singleton import singleton

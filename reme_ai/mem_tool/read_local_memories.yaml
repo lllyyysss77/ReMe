@@ -1,0 +1,8 @@
+tool: |
+  Read memory nodes from local memory files.
+
+memory_type: |
+  The type of local memory to read.
+
+memory_target: |
+  The target identifier for the local memory.

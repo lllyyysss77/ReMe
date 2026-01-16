@@ -29,6 +29,7 @@ class UserStats:
     dialogues_per_session: list[int]  # 每个 session 的对话数量
     dialogue_lengths_per_session: list[int]  # 每个 session 的对话总长度（字符数）
     num_chunks_after_split: int  # 按 5000 字符分割后的 chunk 数量
+    session_time_ranges: list[tuple[Any, Any]]  # 每个 session 的 (开始时间, 结束时间)
 
 
 @dataclass
@@ -169,6 +170,7 @@ class DatasetAnalyzer:
         
         dialogues_per_session = []
         dialogue_lengths_per_session = []
+        session_time_ranges = []
         total_chunks = 0
         
         for session in sessions:
@@ -178,6 +180,11 @@ class DatasetAnalyzer:
             
             dialogues_per_session.append(num_dialogues)
             dialogue_lengths_per_session.append(dialogue_length)
+            
+            # 收集 session 的时间范围
+            start_time = session.get("start_time", None)
+            end_time = session.get("end_time", None)
+            session_time_ranges.append((start_time, end_time))
             
             # 计算这个 session 分割后的 chunk 数量
             num_chunks = self.split_session_into_chunks(dialogue, max_length=5000)
@@ -202,7 +209,8 @@ class DatasetAnalyzer:
             num_sessions=len(sessions),
             dialogues_per_session=dialogues_per_session,
             dialogue_lengths_per_session=dialogue_lengths_per_session,
-            num_chunks_after_split=total_chunks
+            num_chunks_after_split=total_chunks,
+            session_time_ranges=session_time_ranges
         )
         
         self.user_stats_list.append(user_stats)
@@ -392,6 +400,32 @@ class DatasetAnalyzer:
             print(f"    平均每 Session 对话长度: {avg_length:.2f} 字符")
             print()
     
+    def print_first_user_session_times(self):
+        """打印第一个用户的每个 session 的时间范围"""
+        if not self.user_stats_list:
+            print("\n没有用户数据")
+            return
+        
+        first_user = self.user_stats_list[0]
+        
+        print("\n" + "=" * 80)
+        print(f"第一个用户的 Session 时间统计")
+        print("=" * 80 + "\n")
+        print(f"用户名: {first_user.user_name}")
+        print(f"UUID: {first_user.uuid}")
+        print(f"总 Session 数: {first_user.num_sessions}\n")
+        
+        print("-" * 80)
+        print(f"{'Session #':<12} {'开始时间':<30} {'结束时间':<30}")
+        print("-" * 80)
+        
+        for idx, (start_time, end_time) in enumerate(first_user.session_time_ranges, 1):
+            start_str = str(start_time) if start_time is not None else "无"
+            end_str = str(end_time) if end_time is not None else "无"
+            print(f"{idx:<12} {start_str:<30} {end_str:<30}")
+        
+        print("=" * 80)
+    
     def print_user_split_summary(self):
         """打印每个用户的分割统计摘要（表格形式）"""
         print("\n" + "=" * 80)
@@ -469,7 +503,11 @@ class DatasetAnalyzer:
                         if u.dialogue_lengths_per_session else 0
                     ),
                     "dialogues_per_session": u.dialogues_per_session,
-                    "dialogue_lengths_per_session": u.dialogue_lengths_per_session
+                    "dialogue_lengths_per_session": u.dialogue_lengths_per_session,
+                    "session_time_ranges": [
+                        {"start_time": start, "end_time": end}
+                        for start, end in u.session_time_ranges
+                    ]
                 }
                 for u in self.user_stats_list
             ]
@@ -497,6 +535,9 @@ def main(data_path: str, output_path: str = None, show_per_user: bool = False):
     
     # 打印摘要
     analyzer.print_summary(stats)
+    
+    # 打印第一个用户的 session 时间统计
+    analyzer.print_first_user_session_times()
     
     # 打印每个用户的分割统计摘要（始终显示）
     analyzer.print_user_split_summary()

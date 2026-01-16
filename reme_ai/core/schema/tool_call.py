@@ -41,14 +41,14 @@ class ToolAttr(BaseModel):
         if self.enum:
             res["enum"] = self.enum
 
-        if self.type == "object" and self.properties:
+        if self.type == "object" and self.properties is not None:
             res["properties"] = {
                 k: v.simple_input_dump() if isinstance(v, ToolAttr) else v for k, v in self.properties.items()
             }
-            if self.required:
+            if self.required is not None:
                 res["required"] = self.required
 
-        if self.type == "array" and self.items:
+        if self.type == "array" and self.items is not None:
             res["items"] = self.items.simple_input_dump() if isinstance(self.items, ToolAttr) else self.items
 
         return res

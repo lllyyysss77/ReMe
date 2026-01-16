@@ -117,14 +117,33 @@ class ChromaVectorStore(BaseVectorStore):
 
     @staticmethod
     def _generate_where_clause(filters: dict | None) -> dict | None:
-        """Convert the universal filter format to a ChromaDB-compatible where clause."""
+        """Convert the universal filter format to a ChromaDB-compatible where clause.
+        
+        Supports two filter formats:
+        1. Range query: {"field": [start_value, end_value]} - filters for field >= start_value AND field <= end_value
+        2. Exact match: {"field": value} - filters for field == value
+        """
         if not filters:
             return None
 
-        def convert_condition(k: str, v: Any) -> dict | None:
-            """Convert a single filter condition to ChromaDB operator format."""
+        def convert_condition(k: str, v: Any) -> dict | list | None:
+            """Convert a single filter condition to ChromaDB operator format.
+            
+            Returns:
+                - dict for simple conditions
+                - list of dicts for range queries (which need to be wrapped in $and)
+                - None for wildcard filters
+            """
             if v == "*":
                 return None
+            # New syntax: [start, end] represents a range query
+            if isinstance(v, list) and len(v) == 2:
+                # Range query: field >= v[0] AND field <= v[1]
+                # ChromaDB requires separate conditions combined with $and
+                return [
+                    {k: {"$gte": v[0]}},
+                    {k: {"$lte": v[1]}}
+                ]
             if isinstance(v, dict):
                 chroma_condition = {}
                 for op, val in v.items():
@@ -141,8 +160,7 @@ class ChromaVectorStore(BaseVectorStore):
                     chroma_op = mapping.get(op, "$eq")
                     chroma_condition[k] = {chroma_op: val}
                 return chroma_condition
-            if isinstance(v, list):
-                return {k: {"$in": v}}
+            # Exact match for non-list values
             return {k: {"$eq": v}}
 
         processed_filters = []
@@ -155,7 +173,11 @@ class ChromaVectorStore(BaseVectorStore):
                     for sub_key, sub_value in condition.items():
                         converted = convert_condition(sub_key, sub_value)
                         if converted:
-                            or_condition.update(converted)
+                            if isinstance(converted, list):
+                                # Range query in OR condition - need to wrap in $and
+                                or_conditions.append({"$and": converted})
+                            else:
+                                or_condition.update(converted)
                     if or_condition:
                         or_conditions.append(or_condition)
                 if len(or_conditions) > 1:
@@ -168,13 +190,21 @@ class ChromaVectorStore(BaseVectorStore):
                     for sub_key, sub_value in condition.items():
                         converted = convert_condition(sub_key, sub_value)
                         if converted:
-                            processed_filters.append(converted)
+                            if isinstance(converted, list):
+                                # Range query - add each condition separately
+                                processed_filters.extend(converted)
+                            else:
+                                processed_filters.append(converted)
             elif key == "$not":
                 continue
             else:
                 converted = convert_condition(key, value)
                 if converted:
-                    processed_filters.append(converted)
+                    if isinstance(converted, list):
+                        # Range query - add each condition separately
+                        processed_filters.extend(converted)
+                    else:
+                        processed_filters.append(converted)
 
         if not processed_filters:
             return None

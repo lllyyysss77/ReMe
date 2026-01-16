@@ -246,29 +246,65 @@ class QdrantVectorStore(BaseVectorStore):
 
     @staticmethod
     def _create_filter(filters: dict) -> Filter | None:
-        """Convert a dictionary of filter conditions into a Qdrant Filter object."""
+        """Convert a dictionary of filter conditions into a Qdrant Filter object.
+        
+        Supports two filter formats:
+        1. Range query: {"field": [start_value, end_value]} - filters for field >= start_value AND field <= end_value
+        2. Exact match: {"field": value} - filters for field == value
+        """
         if not filters:
             return None
 
         conditions = []
         for key, value in filters.items():
-            if isinstance(value, dict) and ("gte" in value or "lte" in value):
+            # New syntax: [start, end] represents a range query
+            if isinstance(value, list) and len(value) == 2:
+                # Range query: field >= value[0] AND field <= value[1]
+                # Qdrant's Range only supports numeric values
+                if isinstance(value[0], (int, float)) and isinstance(value[1], (int, float)):
+                    conditions.append(
+                        FieldCondition(
+                            key=f"metadata.{key}",
+                            range=Range(gte=value[0], lte=value[1]),
+                        ),
+                    )
+                else:
+                    # For non-numeric values (e.g., string dates), Qdrant doesn't support range queries
+                    # We need to skip this filter with a warning
+                    logger.warning(
+                        f"Qdrant does not support range queries for non-numeric values. "
+                        f"Skipping range filter for key '{key}' with values {value}. "
+                        f"Consider using numeric timestamps instead."
+                    )
+            elif isinstance(value, dict) and ("gte" in value or "lte" in value):
                 range_params = {}
+                # Check if values are numeric
                 if "gte" in value:
-                    range_params["gte"] = value["gte"]
+                    if isinstance(value["gte"], (int, float)):
+                        range_params["gte"] = value["gte"]
+                    else:
+                        logger.warning(
+                            f"Qdrant range filter for key '{key}' requires numeric gte value, got {type(value['gte']).__name__}. Skipping."
+                        )
+                        continue
                 if "lte" in value:
-                    range_params["lte"] = value["lte"]
-                conditions.append(
-                    FieldCondition(
-                        key=f"metadata.{key}",
-                        range=Range(**range_params),
-                    ),
-                )
-            elif isinstance(value, list):
-                conditions.append(
-                    FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value[0])),
-                )
+                    if isinstance(value["lte"], (int, float)):
+                        range_params["lte"] = value["lte"]
+                    else:
+                        logger.warning(
+                            f"Qdrant range filter for key '{key}' requires numeric lte value, got {type(value['lte']).__name__}. Skipping."
+                        )
+                        continue
+                
+                if range_params:  # Only add condition if we have valid numeric parameters
+                    conditions.append(
+                        FieldCondition(
+                            key=f"metadata.{key}",
+                            range=Range(**range_params),
+                        ),
+                    )
             else:
+                # Exact match
                 conditions.append(
                     FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)),
                 )

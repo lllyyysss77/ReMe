@@ -55,7 +55,7 @@ class PromptHandler(BaseContext):
             key += "_" + self.language.strip()
 
         assert key in self, f"prompt_name={key} not found."
-        return self[key]
+        return self[key].strip()
 
     def prompt_format(self, prompt_name: str, **kwargs) -> str:
         """Format a prompt by filtering flagged lines and filling template variables."""

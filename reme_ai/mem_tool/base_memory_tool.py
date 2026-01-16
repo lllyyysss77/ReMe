@@ -3,8 +3,6 @@
 from abc import ABCMeta
 from pathlib import Path
 
-from loguru import logger
-
 from ..core.enumeration import MemoryType
 from ..core.op import BaseOp
 from ..core.schema import ToolCall, MemoryNode

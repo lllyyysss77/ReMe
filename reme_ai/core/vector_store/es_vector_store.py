@@ -262,9 +262,19 @@ class ESVectorStore(BaseVectorStore):
         if filters:
             filter_conditions = []
             for key, value in filters.items():
-                if isinstance(value, list):
-                    filter_conditions.append({"terms": {f"metadata.{key}": value}})
+                # New syntax: [start, end] represents a range query
+                if isinstance(value, list) and len(value) == 2:
+                    # Range query: field >= value[0] AND field <= value[1]
+                    filter_conditions.append({
+                        "range": {
+                            f"metadata.{key}": {
+                                "gte": value[0],
+                                "lte": value[1]
+                            }
+                        }
+                    })
                 else:
+                    # Exact match
                     filter_conditions.append({"term": {f"metadata.{key}": value}})
             search_query["knn"]["filter"] = {"bool": {"must": filter_conditions}}
 
@@ -448,9 +458,19 @@ class ESVectorStore(BaseVectorStore):
         if filters:
             filter_conditions = []
             for key, value in filters.items():
-                if isinstance(value, list):
-                    filter_conditions.append({"terms": {f"metadata.{key}": value}})
+                # New syntax: [start, end] represents a range query
+                if isinstance(value, list) and len(value) == 2:
+                    # Range query: field >= value[0] AND field <= value[1]
+                    filter_conditions.append({
+                        "range": {
+                            f"metadata.{key}": {
+                                "gte": value[0],
+                                "lte": value[1]
+                            }
+                        }
+                    })
                 else:
+                    # Exact match
                     filter_conditions.append({"term": {f"metadata.{key}": value}})
             query["query"] = {"bool": {"must": filter_conditions}}
 

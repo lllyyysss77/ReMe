@@ -1,14 +1,14 @@
 """
-HaluMem Benchmark Evaluator for ReMe V3 - Question Answering
+HaluMem Benchmark Evaluator for ReMe - Question Answering
 
 A modular evaluation pipeline that:
 1. Loads HaluMem benchmark data
-2. Processes user sessions through ReMe V3 (summarization + retrieval)
+2. Processes user sessions through ReMe (summarization + retrieval)
 3. Evaluates question answering performance
 4. Generates comprehensive metrics
 
 Usage:
-    python bench/halumem/eval_reme_simple_v3.py \
+    python bench/halumem/eval_reme_simple_v4.py \
         --data_path /Users/yuli/workspace/HaluMem/data/HaluMem-Medium.jsonl \
         --top_k 20 --user_num 100 --max_concurrency 20
 """
@@ -42,7 +42,7 @@ class EvalConfig:
     user_num: int = 1
     max_concurrency: int = 2
     batch_size: int = 20
-    output_dir: str = "bench_results/reme_simple_v3"
+    output_dir: str = "bench_results/reme_simple_v4"
 
 
 # ==================== Utilities ====================
@@ -180,7 +180,7 @@ class FileManager:
 # ==================== Memory Operations ====================
 
 class MemoryProcessor:
-    """Handles ReMe V3 memory operations."""
+    """Handles ReMe memory operations."""
     
     def __init__(self, reme: ReMe):
         self.reme = reme
@@ -192,7 +192,7 @@ class MemoryProcessor:
         batch_size: int = 10000
     ) -> tuple[list[str], list[list[dict]], float]:
         """
-        Add memories in batches using ReMe V3 and return extracted memory contents.
+        Add memories in batches using ReMe and return extracted memory contents.
         
         Returns:
             tuple: (extracted_memories, agent_messages, total_duration_ms)
@@ -206,8 +206,7 @@ class MemoryProcessor:
             batch = messages[i:i + batch_size]
             start = time.time()
             
-            # Use summary_v3 instead of summary_v2
-            memory_nodes, agent_messages, success = await self.reme.summary_v3(
+            memory_nodes, agent_messages, success = await self.reme.summary_v4(
                 messages=batch, 
                 user_id=user_id
             )
@@ -242,15 +241,14 @@ class MemoryProcessor:
         top_k: int = 20
     ) -> tuple[str, list, float]:
         """
-        Search memory using ReMe V3 and return response.
+        Search memory using ReMe and return response.
         
         Returns:
             tuple: (response, agent_messages, duration_ms)
         """
         start = time.time()
         
-        # Use retrieve_v3 instead of retrieve_v2
-        response, agent_messages, success = await self.reme.retrieve_v3(
+        response, agent_messages, success = await self.reme.retrieve_v4(
             query=query, 
             user_id=user_id, 
             top_k=top_k
@@ -281,7 +279,6 @@ class QuestionAnsweringEvaluator:
         results = []
         
         for qa in questions:
-            # Search memory for answer using V3
             response, agent_messages, duration_ms = await self.memory_processor.search_memory(
                 query=qa["question"],
                 user_id=user_name,
@@ -402,9 +399,8 @@ class MetricsAggregator:
 
 # ==================== Main Pipeline ====================
 
-class HaluMemEvaluatorV3:
-    """Main evaluator orchestrating the entire ReMe V3 pipeline."""
-    
+class HaluMemEvaluatorV4:
+
     def __init__(self, config: EvalConfig):
         self.config = config
         self.reme = ReMe()
@@ -423,7 +419,7 @@ class HaluMemEvaluatorV3:
         user_name: str,
         uuid: str
     ) -> dict:
-        """Process a single session using ReMe V3."""
+        """Process a single session using ReMe."""
         session_data = {
             "uuid": uuid,
             "user_name": user_name,
@@ -435,8 +431,7 @@ class HaluMemEvaluatorV3:
         if session.get("is_generated_qa_session", False):
             session_data["is_generated_qa_session"] = True
             return session_data
-        
-        # Format and add dialogue to memory using V3
+
         dialogue = session["dialogue"]
         formatted_messages = self.data_loader.format_dialogue_messages(dialogue)
         
@@ -492,7 +487,7 @@ class HaluMemEvaluatorV3:
         return {"uuid": uuid, "user_name": user_name, "status": "ok"}
     
     async def run_evaluation(self):
-        """Run the complete evaluation pipeline using ReMe V3."""
+        """Run the complete evaluation pipeline using ReMe."""
         start_time = time.time()
         
         # Clear existing data
@@ -510,7 +505,7 @@ class HaluMemEvaluatorV3:
         users_to_process = all_users[:self.config.user_num]
         
         print("\n" + "=" * 80)
-        print("HALUMEM EVALUATION - REME V3 - QUESTION ANSWERING")
+        print("HALUMEM EVALUATION - REME - QUESTION ANSWERING")
         print(f"Users: {len(users_to_process)} | Concurrency: {self.config.max_concurrency}")
         print("=" * 80 + "\n")
         
@@ -596,7 +591,7 @@ class HaluMemEvaluatorV3:
     def _print_summary(self, qa_metrics: dict, time_metrics: dict):
         """Print evaluation summary."""
         print("=" * 80)
-        print("EVALUATION SUMMARY - REME V3")
+        print("EVALUATION SUMMARY - REME")
         print("=" * 80 + "\n")
         
         print("📊 Question Answering:")
@@ -623,7 +618,7 @@ def main(
     user_num: int = 1,
     max_concurrency: int = 2
 ):
-    """Main entry point for ReMe V3 evaluation."""
+    """Main entry point for ReMe evaluation."""
     config = EvalConfig(
         data_path=data_path,
         top_k=top_k,
@@ -631,7 +626,7 @@ def main(
         max_concurrency=max_concurrency
     )
     
-    evaluator = HaluMemEvaluatorV3(config)
+    evaluator = HaluMemEvaluatorV4(config)
     asyncio.run(evaluator.run_evaluation())
 
 
@@ -639,7 +634,7 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Evaluate ReMe V3 on HaluMem benchmark (Question Answering)"
+        description="Evaluate ReMe on HaluMem benchmark (Question Answering)"
     )
     parser.add_argument(
         "--data_path",

@@ -68,7 +68,9 @@ class BaseLLM(ABC):
             if tool.name not in tool_dict:
                 continue
 
-            if not tool.check_argument():
+            # First try sanitizing arguments
+            if not tool.sanitize_and_check_argument():
+                logger.error(f"Tool call {tool.name} has invalid JSON arguments after sanitization attempt: {tool.arguments}")
                 raise ValueError(f"Tool call {tool.name} has invalid JSON arguments: {tool.arguments}")
 
             validated_tools.append(tool.simple_output_dump())

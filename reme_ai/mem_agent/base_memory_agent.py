@@ -152,7 +152,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 tool_call_id=op.tool_call.id,
             )
             tool_result_messages.append(tool_message)
-            logger.info(f"[{self.__class__.__name__}] step{step + 1}.{j} join tool_result={tool_result[:500]}...\n\n")
+            logger.info(f"[{self.__class__.__name__}] step{step + 1}.{j} join tool_result={tool_result[:2000]}...\n\n")
         return tool_result_messages
 
     async def react(self, messages: list[Message]):
@@ -209,3 +209,8 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
     def author(self) -> str:
         """Returns the LLM model name as the author identifier."""
         return self.llm.model_name
+
+    @property
+    def history_node(self):
+        """Returns the history node."""
+        return self.context.get("history_node", None)

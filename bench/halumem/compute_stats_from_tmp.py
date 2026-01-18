@@ -9,7 +9,7 @@ are available in the tmp directory. It will:
 4. Aggregate results and compute metrics
 
 Usage:
-    python bench/halumem/compute_stats_from_tmp.py --tmp_dir bench_results/reme/tmp
+    python bench/halumem/compute_stats_from_tmp.py --tmp_dir bench_results/reme_simple_v4/tmp
 """
 
 import asyncio

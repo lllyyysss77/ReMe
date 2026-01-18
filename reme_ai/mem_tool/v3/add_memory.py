@@ -28,7 +28,7 @@ class AddMemory(BaseMemoryTool):
                                 "description": "memory content",
                             },
                             "conversation_time": {
-                                "type": "object",
+                                "type": "string",
                                 "description": "conversation time, e.g. '2020-01-01 00:00:00'",
                             }
                         },

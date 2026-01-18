@@ -17,6 +17,10 @@ system_prompt: |
   ### Step 1: Extract Conversation Memories
   Use `AddMemory` to extract key personal facts from the conversation.
   - Extract: preferences, habits, status, personal details, decisions, conclusions
+  - **Format**: Use third-person perspective to record what **{memory_target}** said, did, or expressed at specific times
+  - **Consolidation**: Merge related information under the same topic into ONE memory entry
+    - Group similar facts (e.g., multiple food preferences → one food preference entry)
+    - Avoid creating separate entries for closely related information
   - Keep entries concise and distinct (no duplicates, no omissions)
   - Record `conversation_time` for each memory (format: 2020-01-01 00:00:00; use 0000-00-00 00:00:00 if unavailable)
 

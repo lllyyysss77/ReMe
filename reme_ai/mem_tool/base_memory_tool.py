@@ -81,9 +81,19 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
         return self.context.get("ref_memory_id", "")
 
     @property
+    def description(self) -> str:
+        """Get the description from context."""
+        return self.context.get("description", "")
+
+    @property
     def messages_formated(self) -> str:
         """Get the formated messages from context."""
         return self.context.get("messages_formated", "")
+
+    @property
+    def history_node(self) -> MemoryNode:
+        """Get the history node from context."""
+        return self.context.get("history_node")
 
     @property
     def retrieved_nodes(self) -> list[MemoryNode]:
@@ -115,8 +125,4 @@ class BaseMemoryTool(BaseOp, metaclass=ABCMeta):
             author=author or self.author,
             metadata=metadata or {},
         )
-
-        # logger.opt(depth=1).info(
-        #     f"[{self.__class__.__name__}] build node={node.model_dump_json(indent=2, exclude_none=True)}",
-        # )
         return node

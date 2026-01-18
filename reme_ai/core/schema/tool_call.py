@@ -177,6 +177,43 @@ class ToolCall(BaseModel):
             return True
         except Exception:
             return False
+    
+    def sanitize_and_check_argument(self) -> bool:
+        """
+        Attempt to sanitize and validate arguments JSON.
+        Common issues from LLM streaming:
+        - Extra closing brackets: }]}] -> }]
+        - Missing closing brackets
+        - Trailing commas
+        """
+        if not self.arguments or not self.arguments.strip():
+            return False
+            
+        try:
+            # First try parsing as-is
+            _ = json.loads(self.arguments)
+            return True
+        except json.JSONDecodeError:
+            pass
+        
+        # Try to fix common issues
+        sanitized = self.arguments.strip()
+        
+        # Remove trailing extra brackets/braces
+        # Pattern: if it ends with multiple closing chars, try removing extras
+        while len(sanitized) > 1:
+            try:
+                json.loads(sanitized)
+                self.arguments = sanitized  # Update with sanitized version
+                return True
+            except json.JSONDecodeError:
+                # Try removing last character
+                if sanitized[-1] in ']}':
+                    sanitized = sanitized[:-1].rstrip()
+                else:
+                    break
+        
+        return False
 
     def simple_output_dump(self) -> dict:
         """Convert ToolCall to output format dictionary for API responses."""

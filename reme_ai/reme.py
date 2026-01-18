@@ -18,6 +18,12 @@ from .mem_agent.v3 import (
     ReMeRetrieverV3,
     ReMeSummarizerV3,
 )
+from .mem_agent.v4 import (
+    PersonalSummarizerV4,
+    PersonalRetrieverV4,
+    ReMeRetrieverV4,
+    ReMeSummarizerV4,
+)
 from .mem_tool import (
     HandsOffTool,
     ReadHistoryMemory,
@@ -41,6 +47,14 @@ from .mem_tool.v3 import (
     RetrieveMemory,
     SummaryAndHandsOff as SummaryAndHandsOffV3,
     UpdateUserProfile,
+)
+from .mem_tool.v4 import (
+    AddSummaryMemory as AddSummaryMemoryV4,
+    HandsOff as HandsOffV4,
+    ReadHistory as ReadHistoryV4,
+    ReadUserProfile as ReadUserProfileV4,
+    RetrieveMemory as RetrieveMemoryV4,
+    UpdateUserProfile as UpdateUserProfileV4,
 )
 
 
@@ -348,9 +362,9 @@ class ReMe(Application):
 
             personal_summarizer_v3 = PersonalSummarizerV3(
                 tools=[
-                    AddMemoryV3(),
-                    ReadUserProfile(add_memory_type_target=False),
-                    UpdateUserProfile(),
+                    AddMemoryV3(enable_thinking_params=True),
+                    ReadUserProfile(enable_thinking_params=True, add_memory_type_target=False),
+                    UpdateUserProfile(enable_thinking_params=True),
                 ],
             )
 
@@ -394,9 +408,9 @@ class ReMe(Application):
             reme_retriever_v3 = ReMeRetrieverV3(
                 meta_memories=meta_memories,
                 tools=[
-                    ReadUserProfile(add_memory_type_target=True),
-                    RetrieveMemory(top_k=top_k),
-                    ReadHistoryV3(),
+                    ReadUserProfile(enable_thinking_params=True, add_memory_type_target=True),
+                    RetrieveMemory(enable_thinking_params=True, top_k=top_k),
+                    ReadHistoryV3(enable_thinking_params=True),
                 ],
             )
 
@@ -406,6 +420,86 @@ class ReMe(Application):
             # except Exception as e:
             #     print(f"Warning: reme_retriever_v3.call failed: {e}")
             #     return "error, not retrieved", [], False
+
+        else:
+            raise NotImplementedError
+
+    async def summary_v4(
+            self,
+            messages: list[dict],
+            description: str = "",
+            user_id: str = "",
+            assistant_id: str = "",
+            enable_thinking_params: bool = False,
+            **kwargs,
+    ):
+        """Summarizes messages using V4 workflow with simplified memory management."""
+
+        if user_id:
+            meta_memories = [
+                {
+                    "memory_type": "personal",
+                    "memory_target": user_id,
+                },
+            ]
+            messages = self._prepare_messages(messages, user_id, assistant_id)
+
+            personal_summarizer_v4 = PersonalSummarizerV4(
+                tools=[
+                    AddSummaryMemoryV4(enable_thinking_params=enable_thinking_params),
+                    ReadUserProfileV4(enable_thinking_params=enable_thinking_params),
+                    UpdateUserProfileV4(enable_thinking_params=enable_thinking_params),
+                ],
+            )
+
+            reme_summarizer_v4 = ReMeSummarizerV4(
+                meta_memories=meta_memories,
+                tools=[HandsOffV4(memory_agents=[personal_summarizer_v4])],
+            )
+
+            await reme_summarizer_v4.call(messages=messages, description=description, **kwargs)
+            return reme_summarizer_v4.memory_nodes, reme_summarizer_v4.messages, reme_summarizer_v4.success
+
+        else:
+            raise NotImplementedError
+
+    async def retrieve_v4(
+            self,
+            query: str = "",
+            messages: list[dict] | None = None,
+            description: str = "",
+            user_id: str = "",
+            assistant_id: str = "",
+            top_k: int = 20,
+            enable_thinking_params: bool = False,
+            **kwargs,
+    ):
+        """Retrieves relevant memories using V4 workflow with enhanced retrieval."""
+
+        if user_id:
+            messages = self._prepare_messages(messages, user_id, assistant_id)
+
+            meta_memories = [
+                {
+                    "memory_type": "personal",
+                    "memory_target": user_id,
+                },
+            ]
+
+            personal_retriever_v4 = PersonalRetrieverV4(
+                tools=[
+                    RetrieveMemoryV4(enable_thinking_params=enable_thinking_params, top_k=top_k),
+                    ReadHistoryV4(enable_thinking_params=enable_thinking_params),
+                ],
+            )
+
+            reme_retriever_v4 = ReMeRetrieverV4(
+                meta_memories=meta_memories,
+                tools=[HandsOffV4(memory_agents=[personal_retriever_v4])],
+            )
+
+            await reme_retriever_v4.call(query=query, messages=messages, description=description, **kwargs)
+            return reme_retriever_v4.output, reme_retriever_v4.messages, reme_retriever_v4.success
 
         else:
             raise NotImplementedError

@@ -26,7 +26,7 @@ from typing import Any
 
 from loguru import logger
 
-from eval_tools import evaluation_for_question2
+from eval_tools import evaluation_for_question2, answer_question_with_memories
 from reme_ai.core.enumeration import MemoryType
 from reme_ai.core.schema import MemoryNode
 from reme_ai.reme import ReMe
@@ -239,23 +239,35 @@ class MemoryProcessor:
         query: str, 
         user_id: str, 
         top_k: int = 20
-    ) -> tuple[str, list, float]:
+    ) -> tuple[dict, list, float]:
         """
-        Search memory using ReMe and return response.
+        Search memory using ReMe and return structured answer with reasoning.
         
         Returns:
-            tuple: (response, agent_messages, duration_ms)
+            tuple: (answer_dict, agent_messages, duration_ms)
+                answer_dict contains: {"reasoning": str, "answer": str, "memories": str}
         """
         start = time.time()
         
-        response, agent_messages, success = await self.reme.retrieve_v4(
+        # Retrieve memories from ReMe
+        memories_response, agent_messages, success = await self.reme.retrieve_v4(
             query=query, 
             user_id=user_id, 
             top_k=top_k
         )
         
+        # Use LLM to generate structured answer from memories
+        answer_result = await answer_question_with_memories(
+            question=query,
+            memories=memories_response,
+            user_id=user_id
+        )
+        
+        # Add original memories to the result
+        answer_result["memories"] = memories_response
+        
         duration_ms = (time.time() - start) * 1000
-        return response, agent_messages, duration_ms
+        return answer_result, agent_messages, duration_ms
 
 
 # ==================== Evaluation ====================
@@ -279,11 +291,16 @@ class QuestionAnsweringEvaluator:
         results = []
         
         for qa in questions:
-            response, agent_messages, duration_ms = await self.memory_processor.search_memory(
+            answer_dict, agent_messages, duration_ms = await self.memory_processor.search_memory(
                 query=qa["question"],
                 user_id=user_name,
                 top_k=self.top_k
             )
+            
+            # Extract answer and reasoning from the structured response
+            system_answer = answer_dict.get("answer", "")
+            system_reasoning = answer_dict.get("reasoning", "")
+            retrieved_memories = answer_dict.get("memories", "")
             
             # Evaluate response
             evidence_text = "\n".join([e["memory_content"] for e in qa["evidence"]])
@@ -291,7 +308,7 @@ class QuestionAnsweringEvaluator:
                 qa["question"],
                 qa["answer"],
                 evidence_text,
-                response,
+                system_answer,
                 formatted_dialogue
             )
             
@@ -300,7 +317,9 @@ class QuestionAnsweringEvaluator:
                 **qa,
                 "uuid": uuid,
                 "session_id": session_id,
-                "system_response": response,
+                "system_response": system_answer,
+                "system_reasoning": system_reasoning,
+                "retrieved_memories": retrieved_memories,
                 "retrieve_messages": [m.model_dump() for m in agent_messages],
                 "search_duration_ms": duration_ms,
                 "result_type": eval_result.get("evaluation_result"),

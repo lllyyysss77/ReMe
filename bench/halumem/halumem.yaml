@@ -2,6 +2,30 @@ TEMPLATE_MEMOS: |
   Memories for user {user_id}:
     {memories}
 
+PROMPT_MEMZERO_JSON: |
+  # CONTEXT:
+  {context}
+
+  # CONTEXT PRIORITY:
+  When the context contains information from multiple sources, follow this strict priority order:
+  1. **Historical Dialogue** (highest priority) - Direct conversation content
+  2. **Extracted Memories** (medium priority) - Summarized memory points
+  3. **User Profile** (lowest priority) - General user information
+  
+  # Question:
+  {question}
+
+  # OUTPUT FORMAT:
+  Do not hallucinate; strictly answer the user's question based on the content of the CONTEXT.
+  Please provide your response in the following JSON format:
+
+  ```json
+  {{
+    "reasoning": "reasoning content",
+    "answer": "Provide a detailed answer"
+  }}
+  ```
+
 PROMPT_MEMZERO: |
   You are an intelligent memory assistant tasked with retrieving accurate information from conversation memories.
 

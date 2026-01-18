@@ -13,17 +13,13 @@ class PersonalSummarizerV4(BaseMemoryAgent):
         history_node: MemoryNode = self.context.history_node
         messages = [
             Message(
-                role=Role.SYSTEM,
+                role=Role.USER,
                 content=self.prompt_format(
-                    prompt_name="system_prompt_phase1",
+                    prompt_name="user_message_phase1",
                     context=history_node.content,
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
                 )),
-            Message(
-                role=Role.USER,
-                content=self.get_prompt("user_message_phase1"),
-            ),
         ]
         return messages
 
@@ -32,25 +28,22 @@ class PersonalSummarizerV4(BaseMemoryAgent):
         history_node: MemoryNode = self.context.history_node
         messages = [
             Message(
-                role=Role.SYSTEM,
+                role=Role.USER,
                 content=self.prompt_format(
-                    prompt_name="system_prompt_phase2",
+                    prompt_name="user_message_phase2",
                     context=history_node.content,
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
                     user_profile=user_profile,
                 )),
-            Message(
-                role=Role.USER,
-                content=self.get_prompt("user_message_phase2"),
-            ),
         ]
         return messages
 
-    async def _acting_step(self, assistant_message: Message, step: int, **kwargs) -> list[Message]:
+    async def _acting_step(self, assistant_message: Message, step: int, stage: str = "", **kwargs) -> list[Message]:
         return await super()._acting_step(
             assistant_message,
             step,
+            stage=stage,
             memory_type=self.memory_type.value,
             memory_target=self.memory_target,
             history_node=self.history_node,
@@ -68,7 +61,7 @@ class PersonalSummarizerV4(BaseMemoryAgent):
             )
 
         # Phase 1: AddSummaryMemory
-        logger.info(f"[{self.__class__.__name__}] Starting Phase 1: AddSummaryMemory")
+        logger.info(f"[{self.__class__.__name__}-S1] Starting Phase 1: AddSummaryMemory")
 
         # Filter tools for phase 1 (only AddSummaryMemory)
         original_tools = self.tools.copy()
@@ -77,16 +70,16 @@ class PersonalSummarizerV4(BaseMemoryAgent):
         messages_phase1 = await self.build_messages_phase1()
         for i, message in enumerate(messages_phase1):
             logger.info(
-                f"[{self.__class__.__name__}] phase1.step0.{i} {message.role} "
+                f"[{self.__class__.__name__}-S1] phase1.step0.{i} {message.role} "
                 f"{message.simple_dump(enable_json_dump=True)}",
             )
 
-        messages_phase1, success_phase1 = await self.react(messages_phase1)
+        messages_phase1, success_phase1 = await self.react(messages_phase1, stage="S1")
         if not success_phase1:
-            logger.warning(f"[{self.__class__.__name__}] Phase 1 did not complete successfully")
+            logger.warning(f"[{self.__class__.__name__}-S1] Phase 1 did not complete successfully")
 
         # Phase 2: Read user profile and UpdateUserProfile
-        logger.info(f"[{self.__class__.__name__}] Starting Phase 2: UpdateUserProfile")
+        logger.info(f"[{self.__class__.__name__}-S2] Starting Phase 2: UpdateUserProfile")
 
         # Restore original tools and get ReadUserProfile tool
         self.tools = original_tools
@@ -94,13 +87,17 @@ class PersonalSummarizerV4(BaseMemoryAgent):
 
         user_profile = ""
         if read_profile_tool:
-            # Call ReadUserProfile to load current profile
-            logger.info(f"[{self.__class__.__name__}] Loading user profile with ReadUserProfile")
-            await read_profile_tool.call(memory_type=self.memory_type.value, memory_target=self.memory_target)
+            # Call ReadUserProfile to load current profile (only show profile_id, not history_id)
+            logger.info(f"[{self.__class__.__name__}-S2] Loading user profile with ReadUserProfile")
+            await read_profile_tool.call(
+                memory_type=self.memory_type.value,
+                memory_target=self.memory_target,
+                show_ids="profile",
+            )
             user_profile = str(read_profile_tool.output)
-            logger.info(f"[{self.__class__.__name__}] User profile loaded: {user_profile}...")
+            logger.info(f"[{self.__class__.__name__}-S2] User profile loaded: {user_profile}...")
         else:
-            logger.warning(f"[{self.__class__.__name__}] ReadUserProfile tool not found")
+            logger.warning(f"[{self.__class__.__name__}-S2] ReadUserProfile tool not found")
 
         # Filter tools for phase 2 (only UpdateUserProfile)
         self.tools = [t for t in self.tools if t.tool_call.name == "update_user_profile"]
@@ -108,11 +105,11 @@ class PersonalSummarizerV4(BaseMemoryAgent):
         messages_phase2 = await self.build_messages_phase2(user_profile)
         for i, message in enumerate(messages_phase2):
             logger.info(
-                f"[{self.__class__.__name__}] phase2.step0.{i} {message.role} "
+                f"[{self.__class__.__name__}-S2] phase2.step0.{i} {message.role} "
                 f"{message.simple_dump(enable_json_dump=True)}",
             )
 
-        messages_phase2, success_phase2 = await self.react(messages_phase2)
+        messages_phase2, success_phase2 = await self.react(messages_phase2, stage="S2")
 
         # Restore original tools
         self.tools = original_tools

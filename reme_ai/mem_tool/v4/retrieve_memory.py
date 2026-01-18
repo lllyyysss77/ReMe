@@ -98,6 +98,6 @@ class RetrieveMemory(BaseMemoryTool):
                 if node.ref_memory_id:
                     line += f"history_id={node.ref_memory_id} "
                 output.append(line.strip())
-            self.output = "\n".join(output)
+            self.output = "### Extracted Memories\n" + "\n".join(output)
 
         logger.info(f"Retrieved {len(memory_nodes)} memory_nodes, {len(new_memory_nodes)} new after deduplication")

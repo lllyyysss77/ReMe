@@ -34,5 +34,5 @@ class ReadHistory(BaseMemoryTool):
             return
 
         memory = MemoryNode.from_vector_node(nodes[0])
-        self.output = memory.content
+        self.output = f"### Historical Dialogue\n{memory.content}"
         logger.info(f"Successfully read history memory: {history_id}")

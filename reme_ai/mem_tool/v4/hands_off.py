@@ -20,6 +20,7 @@ class HandsOff(BaseMemoryTool):
 
         self.sub_ops: list[BaseMemoryAgent] = [a for a in self.sub_ops if isinstance(a, BaseMemoryAgent)]
         self.messages: list[Message] = []
+        self.meta_info_dict: dict[str, str] = {}
 
     @property
     def memory_agent_dict(self) -> dict[MemoryType, "BaseMemoryAgent"]:
@@ -105,6 +106,8 @@ class HandsOff(BaseMemoryTool):
                 self.memory_nodes.extend(agent.memory_nodes)
             if agent.messages:
                 self.messages.extend(agent.messages)
+            if agent.meta_info:
+                self.meta_info_dict[f"{memory_type.value} {memory_target}"] = agent.meta_info
 
             results.append(f"{memory_type.value} {memory_target} agent result: {agent.output}")
 

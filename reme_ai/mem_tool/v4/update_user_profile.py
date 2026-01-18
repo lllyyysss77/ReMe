@@ -80,7 +80,7 @@ class UpdateUserProfile(BaseMemoryTool):
                     memory_target=self.memory_target,
                     when_to_use="",
                     content=mem.get("profile_content", ""),
-                    ref_memory_id=self.ref_memory_id,
+                    ref_memory_id=self.history_node.memory_id,
                     author=self.author,
                     metadata={"conversation_time": mem.get("conversation_time", "")},
                 )

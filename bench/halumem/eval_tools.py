@@ -131,3 +131,40 @@ async def evaluation_for_question2(
     result = await llm_request_for_json(prompt)
 
     return result
+
+
+async def answer_question_with_memories(
+    question: str,
+    memories: str,
+    user_id: str = None,
+):
+    """
+    Answer a question using retrieved memories with PROMPT_MEMZERO_JSON template.
+    
+    Args:
+        question: The question to answer
+        memories: The retrieved memories (formatted as context)
+        user_id: Optional user ID for context formatting
+    
+    Returns:
+        dict with 'reasoning' and 'answer' fields
+    """
+    # Format context with memories
+    if user_id:
+        context = _PROMPTS["TEMPLATE_MEMOS"].format(
+            user_id=user_id,
+            memories=memories
+        )
+    else:
+        context = f"Memories:\n{memories}"
+    
+    # Use PROMPT_MEMZERO_JSON template for structured JSON response
+    prompt = _PROMPTS["PROMPT_MEMZERO_JSON"].format(
+        context=context,
+        question=question
+    )
+    
+    # result = await llm_request_for_json(prompt, model_name="qwen3-max")
+    result = await llm_request_for_json(prompt, model_name="qwen3-30b-a3b-instruct-2507")
+
+    return result

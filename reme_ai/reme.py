@@ -458,7 +458,7 @@ class ReMe(Application):
             )
 
             await reme_summarizer_v4.call(messages=messages, description=description, **kwargs)
-            return reme_summarizer_v4.memory_nodes, reme_summarizer_v4.messages, reme_summarizer_v4.success
+            return reme_summarizer_v4.memory_nodes, reme_summarizer_v4.tool_messages, reme_summarizer_v4.success
 
         else:
             raise NotImplementedError
@@ -499,7 +499,7 @@ class ReMe(Application):
             )
 
             await reme_retriever_v4.call(query=query, messages=messages, description=description, **kwargs)
-            return reme_retriever_v4.output, reme_retriever_v4.messages, reme_retriever_v4.success
+            return reme_retriever_v4.output, reme_retriever_v4.tool_messages, reme_retriever_v4.success
 
         else:
             raise NotImplementedError

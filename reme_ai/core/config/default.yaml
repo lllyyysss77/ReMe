@@ -17,6 +17,7 @@ llm:
     backend: openai
     model_name: qwen3-30b-a3b-instruct-2507
     max_concurrency: 20
+    temperature: 0.0001
 
   qwen3_max_instruct:
     backend: openai

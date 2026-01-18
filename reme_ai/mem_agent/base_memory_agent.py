@@ -22,7 +22,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         tools: list[BaseMemoryTool],
         add_think_tool: bool = False,  # only for instruct model
         tool_call_interval: float = 0,
-        max_steps: int = 20,
+        max_steps: int = 8,
         **kwargs,
     ):
         tools = tools or []
@@ -35,10 +35,11 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         self.max_steps: int = max_steps
 
         self.messages: list[Message] = []
+        self.tool_messages: list[Message] = []
         self.success: bool = True
-
         self.retrieved_nodes: list[MemoryNode] = []
         self.memory_nodes: list[MemoryNode | str] = []
+        self.meta_info: str = ""
 
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
@@ -97,35 +98,37 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
         """Builds and returns the initial messages for the agent."""
         return self.get_messages()
 
-    async def _reasoning_step(self, messages: list[Message], step: int, **kwargs) -> tuple[Message, bool]:
+    async def _reasoning_step(self, messages: list[Message], step: int, stage: str = "", **kwargs) -> tuple[Message, bool]:
         assistant_message: Message = await self.llm.chat(
             messages=messages,
             tools=[t.tool_call for t in self.tools],
             **kwargs,
         )
         messages.append(assistant_message)
+        stage_prefix = f"-{stage}" if stage else ""
         logger.info(
-            f"[{self.__class__.__name__}] "
+            f"[{self.__class__.__name__}{stage_prefix}] "
             f"step{step + 1}.assistant={assistant_message.simple_dump(enable_json_dump=True)}",
         )
         should_act = bool(assistant_message.tool_calls)
         return assistant_message, should_act
 
-    async def _acting_step(self, assistant_message: Message, step: int, **kwargs) -> list[Message]:
+    async def _acting_step(self, assistant_message: Message, step: int, stage: str = "", **kwargs) -> list[Message]:
         if not assistant_message.tool_calls:
             return []
 
         tool_list: list[BaseMemoryTool] = []
         tool_result_messages: list[Message] = []
         tool_dict = {t.tool_call.name: t for t in self.tools}
+        stage_prefix = f"-{stage}" if stage else ""
 
         for j, tool_call in enumerate(assistant_message.tool_calls):
             if tool_call.name not in tool_dict:
-                logger.warning(f"[{self.__class__.__name__}] unknown tool_call.name={tool_call.name}")
+                logger.warning(f"[{self.__class__.__name__}{stage_prefix}] unknown tool_call.name={tool_call.name}")
                 continue
 
             logger.info(
-                f"[{self.__class__.__name__}] step{step + 1}.{j} "
+                f"[{self.__class__.__name__}{stage_prefix}] step{step + 1}.{j} "
                 f"submit tool_calls={tool_call.name} argument={tool_call.arguments}",
             )
             tool_copy: BaseMemoryTool = tool_dict[tool_call.name].copy()
@@ -143,7 +146,7 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 self.memory_nodes.extend(op.memory_nodes)
 
             if hasattr(op, "messages") and op.messages:
-                self.messages.extend(op.messages)
+                self.tool_messages.extend(op.messages)
 
             tool_result = str(op.output)
             tool_message = Message(
@@ -152,20 +155,27 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 tool_call_id=op.tool_call.id,
             )
             tool_result_messages.append(tool_message)
-            logger.info(f"[{self.__class__.__name__}] step{step + 1}.{j} join tool_result={tool_result[:2000]}...\n\n")
+            
+            # # Collect tool call information to meta_info
+            # tool_info = f"\n## Tool Call {step + 1}.{j + 1}: {op.tool_call.name}\n"
+            # tool_info += f"Arguments: {json.dumps(assistant_message.tool_calls[j].argument_dict, ensure_ascii=False)}\n"
+            # tool_info += f"Result: {tool_result}\n"
+            self.meta_info += tool_result + "\n"
+            
+            logger.info(f"[{self.__class__.__name__}{stage_prefix}] step{step + 1}.{j} join tool_result={tool_result[:2000]}...\n\n")
         return tool_result_messages
 
-    async def react(self, messages: list[Message]):
+    async def react(self, messages: list[Message], stage: str = ""):
         """Performs reasoning and acting steps until completion or max steps reached."""
         success: bool = False
         for step in range(self.max_steps):
-            assistant_message, should_act = await self._reasoning_step(messages, step)
+            assistant_message, should_act = await self._reasoning_step(messages, step, stage=stage)
 
             if not should_act:
                 success = True
                 break
 
-            tool_result_messages = await self._acting_step(assistant_message, step)
+            tool_result_messages = await self._acting_step(assistant_message, step, stage=stage)
             messages.extend(tool_result_messages)
 
         return messages, success

@@ -58,7 +58,8 @@ async def llm_request(prompt, model_name: str = "qwen3-max", **kwargs) -> str:
     reraise=True,
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-async def llm_request_for_json(prompt, model_name: str = "qwen3-max", **kwargs):
+async def llm_request_for_json(prompt, model_name: str = "qwen-flash", **kwargs):
+    # async def llm_request_for_json(prompt, model_name: str = "qwen3-max", **kwargs):
     """Make an LLM request expecting JSON response using ReMe's LLM.
     
     Args:

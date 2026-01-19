@@ -120,7 +120,8 @@ async def evaluation_for_question2(
     dialogue: The formatted dialogue history (role, content, time_created).
     """
 
-    prompt = _PROMPTS["EVALUATION_PROMPT_FOR_QUESTION2"].format(
+    # prompt = _PROMPTS["EVALUATION_PROMPT_FOR_QUESTION2"].format(
+    prompt = _PROMPTS["EVALUATION_PROMPT_FOR_QUESTION"].format(
         question=question,
         reference_answer=reference_answer,
         key_memory_points=key_memory_points,
@@ -128,7 +129,7 @@ async def evaluation_for_question2(
         dialogue=dialogue,
     )
 
-    result = await llm_request_for_json(prompt)
+    result = await llm_request_for_json(prompt, model_name="qwen3-max")
 
     return result
 

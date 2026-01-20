@@ -24,7 +24,7 @@ llm:
     backend: openai
     model_name: qwen3-max
 #    temperature: 0.6
-    request_interval: 1
+    request_interval: 2
 
 embedding_model:
   default:

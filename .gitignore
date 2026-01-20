@@ -37,3 +37,5 @@ local_vector_store/*
 chroma_vector_store/*
 bench_results/*
 meta_memory/*
+*.sqlite3
+**/data/*.json

@@ -98,7 +98,7 @@ class LiteLLM(BaseLLM):
             if not chunk.choices:
                 if hasattr(chunk, "usage") and chunk.usage:
                     yield StreamChunk(chunk_type=ChunkEnum.USAGE, chunk=chunk.usage.model_dump())
-                    continue
+                continue
 
             delta = chunk.choices[0].delta
 

@@ -40,7 +40,7 @@ class UpdateUserProfile(BaseMemoryTool):
                                 "description": "profile_content",
                             },
                         },
-                        "required": ["profile_content", "conversation_time"],
+                        "required": ["conversation_time", "profile_content"],
                     },
                 },
             },

@@ -402,7 +402,11 @@ class BaseLLM(ABC):
                 # Check if this is an inappropriate content error
                 error_message = str(e.args[0]) if e.args else str(e)
                 is_inappropriate_content = "inappropriate content" in error_message.lower()
-                is_rate_limit_error = "request rate increased too quickly" in error_message.lower()
+                is_rate_limit_error = (
+                    "request rate increased too quickly" in error_message.lower() or
+                    "exceeded your current quota" in error_message.lower() or
+                    "insufficient_quota" in error_message.lower()
+                )
                 
                 if is_inappropriate_content:
                     logger.error(f"chat with model={effective_model} detected inappropriate content error")
@@ -475,7 +479,11 @@ class BaseLLM(ABC):
                 # Check if this is an inappropriate content error
                 error_message = str(e.args[0]) if e.args else str(e)
                 is_inappropriate_content = "inappropriate content" in error_message.lower()
-                is_rate_limit_error = "request rate increased too quickly" in error_message.lower()
+                is_rate_limit_error = (
+                    "request rate increased too quickly" in error_message.lower() or
+                    "exceeded your current quota" in error_message.lower() or
+                    "insufficient_quota" in error_message.lower()
+                )
                 
                 if is_inappropriate_content:
                     logger.error(f"chat sync with model={effective_model} detected inappropriate content error")

@@ -28,25 +28,24 @@ class PromptNotFoundError(KeyError):
         super().__init__(
             f"Prompt '{prompt_name}' not found. "
             f"Available prompts: {', '.join(available_prompts[:10])}"
-            f"{'...' if len(available_prompts) > 10 else ''}"
+            f"{'...' if len(available_prompts) > 10 else ''}",
         )
 
 
 class PromptFormattingError(ValueError):
     """Exception raised when prompt formatting fails."""
-    pass
 
 
 class PromptHandler(BaseContext):
     """A context-aware handler for loading, retrieving, and formatting prompt templates.
-    
+
     This handler supports:
     - Loading prompts from YAML/JSON files or dictionaries
     - Multi-language prompt support with automatic language suffix
     - Conditional line filtering using boolean flags (e.g., [debug], [verbose])
     - Template variable substitution with validation
     - Method chaining for fluent API
-    
+
     Examples:
         >>> handler = PromptHandler(language="en")
         >>> handler.load_prompt_dict({
@@ -61,7 +60,7 @@ class PromptHandler(BaseContext):
 
     def __init__(self, language: str = "", **kwargs):
         """Initialize the PromptHandler with optional language configuration.
-        
+
         Args:
             language: Language code to append as suffix (e.g., "en", "zh", "ja").
                      If provided, get_prompt will automatically try to find
@@ -72,24 +71,24 @@ class PromptHandler(BaseContext):
         self.language: str = language.strip()
 
     def load_prompt_by_file(
-            self,
-            prompt_file_path: Optional[Union[Path, str]] = None,
-            overwrite: bool = True
+        self,
+        prompt_file_path: Optional[Union[Path, str]] = None,
+        overwrite: bool = True,
     ) -> "PromptHandler":
         """Load prompt configurations from a YAML or JSON file into the context.
-        
+
         Supports both YAML (.yaml, .yml) and JSON (.json) file formats.
         Non-existent files are silently skipped.
-        
+
         Args:
             prompt_file_path: Path to the prompt configuration file.
                             If None, returns self without changes.
             overwrite: If True, allows overwriting existing prompts with warnings.
                       If False, skips existing prompts without overwriting.
-        
+
         Returns:
             Self for method chaining.
-            
+
         Raises:
             ValueError: If file format is not supported.
             yaml.YAMLError: If YAML parsing fails.
@@ -115,8 +114,7 @@ class PromptHandler(BaseContext):
                     prompt_dict = json.load(f)
                 else:
                     raise ValueError(
-                        f"Unsupported file format: {suffix}. "
-                        f"Supported formats: .yaml, .yml, .json"
+                        f"Unsupported file format: {suffix}. " f"Supported formats: .yaml, .yml, .json",
                     )
 
             logger.info(f"Loaded {len(prompt_dict or {})} prompts from {prompt_file_path}")
@@ -125,23 +123,23 @@ class PromptHandler(BaseContext):
         except (yaml.YAMLError, json.JSONDecodeError) as e:
             logger.error(f"Failed to parse prompt file {prompt_file_path}: {e}")
             raise
-            
+
         return self
 
     def load_prompt_dict(
-            self,
-            prompt_dict: Optional[Dict[str, Any]] = None,
-            overwrite: bool = True
+        self,
+        prompt_dict: Optional[Dict[str, Any]] = None,
+        overwrite: bool = True,
     ) -> "PromptHandler":
         """Merge a dictionary of prompt strings into the current context.
-        
+
         Only string values are stored as prompts. Non-string values are skipped.
-        
+
         Args:
             prompt_dict: Dictionary mapping prompt names to prompt template strings.
             overwrite: If True, allows overwriting existing prompts with warnings.
                       If False, skips existing prompts without overwriting.
-        
+
         Returns:
             Self for method chaining.
         """
@@ -156,8 +154,7 @@ class PromptHandler(BaseContext):
             if key in self:
                 if overwrite:
                     logger.warning(
-                        f"Overwriting prompt '{key}': "
-                        f"old length={len(self[key])}, new length={len(value)}"
+                        f"Overwriting prompt '{key}': " f"old length={len(self[key])}, new length={len(value)}",
                     )
                     self[key] = value
                 else:
@@ -170,20 +167,20 @@ class PromptHandler(BaseContext):
 
     def get_prompt(self, prompt_name: str, fallback_to_base: bool = True) -> str:
         """Retrieve a prompt by name with automatic language suffix handling.
-        
+
         If a language is configured, this method will:
         1. First try to find the prompt with language suffix (e.g., "greeting_en")
         2. If not found and fallback_to_base is True, try the base name (e.g., "greeting")
         3. Otherwise, raise PromptNotFoundError
-        
+
         Args:
             prompt_name: Name of the prompt to retrieve.
             fallback_to_base: If True and language-specific prompt not found,
                             fallback to prompt without language suffix.
-        
+
         Returns:
             The prompt template string, stripped of leading/trailing whitespace.
-            
+
         Raises:
             PromptNotFoundError: If the prompt is not found.
         """
@@ -211,10 +208,10 @@ class PromptHandler(BaseContext):
 
     def has_prompt(self, prompt_name: str) -> bool:
         """Check if a prompt exists (with or without language suffix).
-        
+
         Args:
             prompt_name: Name of the prompt to check.
-            
+
         Returns:
             True if the prompt exists, False otherwise.
         """
@@ -226,11 +223,11 @@ class PromptHandler(BaseContext):
 
     def list_prompts(self, language_filter: Optional[str] = None) -> list[str]:
         """List all available prompt names.
-        
+
         Args:
             language_filter: If provided, only return prompts for this language.
                            If None, return all prompts.
-        
+
         Returns:
             List of prompt names.
         """
@@ -243,31 +240,27 @@ class PromptHandler(BaseContext):
     @staticmethod
     def _extract_format_fields(template: str) -> set[str]:
         """Extract all format field names from a template string.
-        
+
         Args:
             template: Template string with {variable} placeholders.
-            
+
         Returns:
             Set of field names used in the template.
         """
-        return {
-            field_name
-            for _, field_name, _, _ in Formatter().parse(template)
-            if field_name is not None
-        }
+        return {field_name for _, field_name, _, _ in Formatter().parse(template) if field_name is not None}
 
     @staticmethod
     def _filter_conditional_lines(prompt: str, flags: Dict[str, bool]) -> str:
         """Filter lines based on boolean flags.
-        
+
         Lines starting with [flag_name] are conditionally included based on
         the value of flags[flag_name]. If True, the line is included (without
         the flag marker). If False, the line is excluded.
-        
+
         Args:
             prompt: The prompt text with conditional markers.
             flags: Dictionary of flag names to boolean values.
-            
+
         Returns:
             Filtered prompt text.
         """
@@ -288,38 +281,38 @@ class PromptHandler(BaseContext):
             elif flags[matched_flag]:
                 # Flag is True, include without marker
                 marker = f"[{matched_flag}]"
-                filtered_lines.append(line[len(marker):])
+                filtered_lines.append(line[len(marker) :])
             # else: Flag is False, skip this line
 
         return "\n".join(filtered_lines)
 
     def prompt_format(
-            self,
-            prompt_name: str,
-            validate: bool = True,
-            **kwargs
+        self,
+        prompt_name: str,
+        validate: bool = True,
+        **kwargs,
     ) -> str:
         """Format a prompt with conditional line filtering and variable substitution.
-        
+
         This method performs two-stage formatting:
         1. Conditional line filtering: Lines marked with [flag] are included only
            if the corresponding boolean kwarg is True.
         2. Variable substitution: Template variables {var} are replaced with
            provided values.
-        
+
         Args:
             prompt_name: Name of the prompt to format.
             validate: If True, check that all required template variables are provided.
             **kwargs: Keyword arguments for formatting. Boolean values are treated as
                      conditional flags, other values are used for template substitution.
-        
+
         Returns:
             Formatted prompt string.
-            
+
         Raises:
             PromptNotFoundError: If the prompt is not found.
             PromptFormattingError: If validation fails or formatting errors occur.
-            
+
         Examples:
             >>> handler = PromptHandler()
             >>> handler["test"] = "[debug]Debug: {info}\\nResult: {value}"
@@ -347,7 +340,7 @@ class PromptHandler(BaseContext):
             if missing_fields:
                 raise PromptFormattingError(
                     f"Missing required format variables for prompt '{prompt_name}': "
-                    f"{', '.join(sorted(missing_fields))}"
+                    f"{', '.join(sorted(missing_fields))}",
                 )
 
         # Step 3: Format with variables
@@ -356,18 +349,15 @@ class PromptHandler(BaseContext):
                 prompt = prompt.format(**format_kwargs)
         except KeyError as e:
             raise PromptFormattingError(
-                f"Format error in prompt '{prompt_name}': missing variable {e}"
+                f"Format error in prompt '{prompt_name}': missing variable {e}",
             ) from e
         except (ValueError, IndexError) as e:
             raise PromptFormattingError(
-                f"Format error in prompt '{prompt_name}': {e}"
+                f"Format error in prompt '{prompt_name}': {e}",
             ) from e
 
         return prompt.strip()
 
     def __repr__(self) -> str:
         """Return a string representation of the PromptHandler."""
-        return (
-            f"PromptHandler(language='{self.language}', "
-            f"num_prompts={len(self)})"
-        )
+        return f"PromptHandler(language='{self.language}', " f"num_prompts={len(self)})"

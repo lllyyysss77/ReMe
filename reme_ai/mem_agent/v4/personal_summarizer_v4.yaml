@@ -13,7 +13,7 @@ user_message_phase1: |
   **CRITICAL**: Extract ONLY explicitly stated information. DO NOT infer, assume, or fabricate.
 
   ## Task: Extract Memories with `AddSummaryMemory`
-  
+
   Summarize all important information about **{memory_target}**
   - Set `conversation_time` (format: 2020-01-01 00:00:00; use 0000-00-00 00:00:00 if unavailable)
 
@@ -34,13 +34,13 @@ user_message_phase2: |
   {user_profile}
 
   ## Task: Update Profile with `UpdateUserProfile`
-  
+
   Synchronize profile with new information from the conversation:
   - `profile_ids_to_delete`: Remove conflicting, or redundant entries (array of profile IDs).
   - `profiles_to_add`:
     - `conversation_time`: Time of conversation (format: `YYYY-MM-DD HH:MM:SS`, e.g., `2024-01-15 14:30:00`)
     - `profile_content`: Complete, self-contained profile description with full context
-  
+
   **Profile Requirements**:
   - One user profile entry records one dimension of the user portrait, and MUST be complete and self-contained with all necessary context (preconditions, causes, and consequences)
   - All profiles MUST be mutually exclusive (non-overlapping) and non-conflicting

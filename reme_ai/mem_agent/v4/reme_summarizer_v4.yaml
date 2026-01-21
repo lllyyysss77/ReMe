@@ -19,7 +19,7 @@ system_prompt: |
      - The `memory_type` and `memory_target` must **exactly match** existing entries in the "Available Memory Agents" listed above
      - Do NOT create new agents or use memory_type/memory_target combinations that don't exist above
   3. Multiple tasks can be specified to enable parallel processing by specialized agents
-  
+
   Note: If the context contains no memorable information (e.g., simple greetings), return `<NO_MEMORY_NEEDED>`.
 
 user_message: |

@@ -1,9 +1,9 @@
 from loguru import logger
 
 from ..base_memory_agent import BaseMemoryAgent
-from ...core.enumeration import Role, MemoryType
-from ...core.schema import Message, MemoryNode
-from ...core.utils import format_messages
+from ...core_old.enumeration import Role, MemoryType
+from ...core_old.schema import Message, MemoryNode
+from ...core_old.utils import format_messages
 
 
 class ReMeSummarizerV4(BaseMemoryAgent):

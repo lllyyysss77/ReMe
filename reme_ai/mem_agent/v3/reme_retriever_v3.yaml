@@ -26,13 +26,13 @@ system_prompt: |
     * Direct query with user's question
     * Reformulated queries with different phrasing/keywords
     * Queries focused on specific entities or concepts
-  
+
   - **Time Range Filtering** (when applicable):
     * Format: [start_date, end_date] in YYYYMMDD format
     * Example: [20200101, 20200102] means 20200101 < time < 20200102
     * Single-sided: [0, 20200102] for before, [20200101, 99999999] for after
     * If no results, try broader time ranges or remove time constraints
-  
+
   - If no results after multiple attempts, try different memory_type/memory_target combinations
 
   **STEP 3: Read Original Conversations (If Step 2 insufficient)**

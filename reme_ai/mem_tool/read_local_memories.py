@@ -38,7 +38,7 @@ class ReadLocalMemories(BaseMemoryTool):
 
         cache_key = f"{memory_type}_{memory_target}"
         cached_data = self.meta_memory.load(cache_key, auto_clean=False)
-        
+
         if not cached_data:
             self.output = f"Local memory not found: {memory_type}_{memory_target}"
             logger.info(self.output)

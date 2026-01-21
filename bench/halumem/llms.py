@@ -5,8 +5,8 @@ import re
 
 from tenacity import retry, stop_after_attempt, wait_random_exponential, before_sleep_log
 
-from reme_ai.core.schema import Message
-from reme_ai.core.utils import load_env
+from reme_ai.core_old.schema import Message
+from reme_ai.core_old.utils import load_env
 from reme_ai.reme import ReMe
 
 logger = logging.getLogger(__name__)
@@ -28,12 +28,12 @@ reme = ReMe()
 )
 async def llm_request(prompt, model_name: str = "qwen3-max", **kwargs) -> str:
     """Make an LLM request using ReMe's LLM with optional model override.
-    
+
     Args:
         prompt: The prompt to send to the LLM
         model_name: Optional model name to override the default model (default: "qwen3-max")
         **kwargs: Additional arguments to pass to the chat method
-    
+
     Returns:
         The assistant's response content
     """
@@ -61,15 +61,15 @@ async def llm_request(prompt, model_name: str = "qwen3-max", **kwargs) -> str:
 async def llm_request_for_json(prompt, model_name: str = "qwen-flash", **kwargs):
     # async def llm_request_for_json(prompt, model_name: str = "qwen3-max", **kwargs):
     """Make an LLM request expecting JSON response using ReMe's LLM.
-    
+
     Args:
         prompt: The prompt to send to the LLM
         model_name: Optional model name to override the default model (default: "qwen3-max")
         **kwargs: Additional arguments to pass to the chat method
-    
+
     Returns:
         Parsed JSON object from the LLM response
-        
+
     Raises:
         ValueError: If no JSON block is found in the model output
     """

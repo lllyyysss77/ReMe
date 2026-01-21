@@ -3,8 +3,8 @@ import json
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.schema import MemoryNode
-from ...core.utils import deduplicate_memories
+from ...core_old.schema import MemoryNode
+from ...core_old.utils import deduplicate_memories
 
 
 class RetrieveMemory(BaseMemoryTool):
@@ -62,7 +62,7 @@ class RetrieveMemory(BaseMemoryTool):
                     except json.JSONDecodeError:
                         # If it's a plain string like "20250907", treat it as a single date
                         time_range = time_range
-                
+
                 # Convert to list format [start, end]
                 if isinstance(time_range, (list, tuple)):
                     if len(time_range) == 1:

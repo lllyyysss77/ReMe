@@ -6,9 +6,9 @@ from abc import ABCMeta
 
 from loguru import logger
 
-from ..core.enumeration import Role, MemoryType
-from ..core.op import BaseOp
-from ..core.schema import Message, ToolCall, MemoryNode
+from ..core_old.enumeration import Role, MemoryType
+from ..core_old.op import BaseOp
+from ..core_old.schema import Message, ToolCall, MemoryNode
 from ..mem_tool import BaseMemoryTool, ThinkTool
 
 
@@ -155,13 +155,13 @@ class BaseMemoryAgent(BaseOp, metaclass=ABCMeta):
                 tool_call_id=op.tool_call.id,
             )
             tool_result_messages.append(tool_message)
-            
+
             # # Collect tool call information to meta_info
             # tool_info = f"\n## Tool Call {step + 1}.{j + 1}: {op.tool_call.name}\n"
             # tool_info += f"Arguments: {json.dumps(assistant_message.tool_calls[j].argument_dict, ensure_ascii=False)}\n"
             # tool_info += f"Result: {tool_result}\n"
             self.meta_info += tool_result + "\n"
-            
+
             logger.info(f"[{self.__class__.__name__}{stage_prefix}] step{step + 1}.{j} join tool_result={tool_result[:2000]}...\n\n")
         return tool_result_messages
 

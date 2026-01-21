@@ -1,10 +1,10 @@
 """Specialized agent for extracting and managing personal memories about specific individuals."""
 
 from ..base_memory_agent import BaseMemoryAgent
-from ...core.context import C
-from ...core.enumeration import Role, MemoryType
-from ...core.schema import Message, ToolCall
-from ...core.utils import get_now_time, format_messages
+from ...core_old.context import C
+from ...core_old.enumeration import Role, MemoryType
+from ...core_old.schema import Message, ToolCall
+from ...core_old.utils import get_now_time, format_messages
 
 
 @C.register_op()

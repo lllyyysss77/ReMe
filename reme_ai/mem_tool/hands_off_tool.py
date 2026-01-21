@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from .base_memory_tool import BaseMemoryTool
-from ..core.context import C
-from ..core.enumeration import MemoryType
+from ..core_old.context import C
+from ..core_old.enumeration import MemoryType
 
 if TYPE_CHECKING:
     from ..mem_agent import BaseMemoryAgent

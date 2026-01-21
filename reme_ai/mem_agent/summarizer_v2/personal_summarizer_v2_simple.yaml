@@ -10,7 +10,7 @@ system_prompt: |
 
   ## Context:
   {context}
-  
+
   **Context Format Explanation**:
   The context contains formatted conversation messages in the following structure:
   - Each message is formatted as: `round{index} [{timestamp}] {role/name}: {content}`

@@ -1,8 +1,8 @@
 from loguru import logger
 
 from ..base_memory_agent import BaseMemoryAgent
-from ...core.enumeration import Role, MemoryType
-from ...core.schema import Message, MemoryNode
+from ...core_old.enumeration import Role, MemoryType
+from ...core_old.schema import Message, MemoryNode
 
 
 class PersonalSummarizerV4(BaseMemoryAgent):

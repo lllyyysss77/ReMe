@@ -38,29 +38,29 @@ class DatasetStats:
     total_users: int
     total_sessions: int
     total_dialogues: int
-    
+
     avg_sessions_per_user: float
     avg_dialogues_per_session: float
     avg_dialogue_length_per_session: float
-    
+
     # 详细分布
     sessions_per_user_list: list[int]
     dialogues_per_session_list: list[int]
     dialogue_lengths_per_session_list: list[int]
-    
+
     # Content 统计
     total_contents: int  # 所有对话回合的 content 总数
     content_sizes: list[int]  # 每个 content 的大小（字符数）
     min_content_size: int
     max_content_size: int
     percentiles: dict[str, float]  # 分位点统计（全部）
-    
+
     # 按 role 分类的 Content 统计
     total_user_contents: int
     total_assistant_contents: int
     user_percentiles: dict[str, float]  # user 角色的分位点
     assistant_percentiles: dict[str, float]  # assistant 角色的分位点
-    
+
     # Session 分割统计
     total_chunks_after_split: int  # 按 5000 字符分割后的总 chunk 数
     chunks_per_user_list: list[int]  # 每个用户分割后的 chunk 数量
@@ -69,14 +69,14 @@ class DatasetStats:
 
 class DatasetAnalyzer:
     """数据集分析器"""
-    
+
     def __init__(self, data_path: str):
         self.data_path = data_path
         self.user_stats_list: list[UserStats] = []
         self.all_content_sizes: list[int] = []  # 收集所有 content 的大小
         self.user_content_sizes: list[int] = []  # user 角色的 content 大小
         self.assistant_content_sizes: list[int] = []  # assistant 角色的 content 大小
-    
+
     @staticmethod
     def extract_user_name(persona_info: str) -> str:
         """从 persona_info 中提取用户名"""
@@ -84,7 +84,7 @@ class DatasetAnalyzer:
         if not match:
             return "Unknown"
         return match.group(1).strip()
-    
+
     @staticmethod
     def calculate_dialogue_length(dialogue: list[dict]) -> int:
         """计算对话的总长度（字符数）"""
@@ -93,7 +93,7 @@ class DatasetAnalyzer:
             content = turn.get("content", "")
             total_length += len(content)
         return total_length
-    
+
     @staticmethod
     def split_session_into_chunks(dialogue: list[dict], max_length: int = 5000) -> int:
         """
@@ -102,23 +102,23 @@ class DatasetAnalyzer:
         1. 每次添加 2 个对话回合（user-assistant 对）
         2. 如果添加后超过 max_length，就开始新的 chunk
         3. 但是每个 chunk 至少包含 2 个对话回合
-        
+
         返回分割后的 chunk 数量
         """
         if not dialogue:
             return 0
-        
+
         chunks = []
         current_chunk = []
         current_length = 0
-        
+
         # 每次处理 2 个对话回合
         i = 0
         while i < len(dialogue):
             # 取 2 个对话回合（如果不足 2 个，取剩余的）
             pair = dialogue[i:i+2]
             pair_length = sum(len(turn.get("content", "")) for turn in pair)
-            
+
             # 如果当前 chunk 为空，直接添加（保证至少 2 个）
             if not current_chunk:
                 current_chunk.extend(pair)
@@ -137,72 +137,72 @@ class DatasetAnalyzer:
                     current_chunk.extend(pair)
                     current_length += pair_length
                     i += len(pair)
-        
+
         # 添加最后一个 chunk
         if current_chunk:
             chunks.append(current_chunk)
-        
+
         return len(chunks)
-    
+
     def load_and_analyze(self):
         """加载并分析数据集"""
         logger.info(f"Loading data from: {self.data_path}")
-        
+
         with open(self.data_path, "r", encoding="utf-8") as f:
             for line_num, line in enumerate(f, 1):
                 if not line.strip():
                     continue
-                
+
                 try:
                     user_data = json.loads(line)
                     self._analyze_user(user_data)
                 except json.JSONDecodeError as e:
                     logger.error(f"Error parsing line {line_num}: {e}")
                     continue
-        
+
         logger.info(f"Analyzed {len(self.user_stats_list)} users")
-    
+
     def _analyze_user(self, user_data: dict):
         """分析单个用户的数据"""
         user_name = self.extract_user_name(user_data.get("persona_info", ""))
         uuid = user_data.get("uuid", "")
         sessions = user_data.get("sessions", [])
-        
+
         dialogues_per_session = []
         dialogue_lengths_per_session = []
         session_time_ranges = []
         total_chunks = 0
-        
+
         for session in sessions:
             dialogue = session.get("dialogue", [])
             num_dialogues = len(dialogue)
             dialogue_length = self.calculate_dialogue_length(dialogue)
-            
+
             dialogues_per_session.append(num_dialogues)
             dialogue_lengths_per_session.append(dialogue_length)
-            
+
             # 收集 session 的时间范围
             start_time = session.get("start_time", None)
             end_time = session.get("end_time", None)
             session_time_ranges.append((start_time, end_time))
-            
+
             # 计算这个 session 分割后的 chunk 数量
             num_chunks = self.split_session_into_chunks(dialogue, max_length=5000)
             total_chunks += num_chunks
-            
+
             # 收集每个 content 的大小，并按 role 分类
             for turn in dialogue:
                 content = turn.get("content", "")
                 content_size = len(content)
                 role = turn.get("role", "")
-                
+
                 self.all_content_sizes.append(content_size)
-                
+
                 if role == "user":
                     self.user_content_sizes.append(content_size)
                 elif role == "assistant":
                     self.assistant_content_sizes.append(content_size)
-        
+
         user_stats = UserStats(
             user_name=user_name,
             uuid=uuid,
@@ -212,25 +212,25 @@ class DatasetAnalyzer:
             num_chunks_after_split=total_chunks,
             session_time_ranges=session_time_ranges
         )
-        
+
         self.user_stats_list.append(user_stats)
-    
+
     def compute_dataset_stats(self) -> DatasetStats:
         """计算整体数据集统计"""
         total_users = len(self.user_stats_list)
-        
+
         sessions_per_user_list = [u.num_sessions for u in self.user_stats_list]
         total_sessions = sum(sessions_per_user_list)
-        
+
         dialogues_per_session_list = []
         dialogue_lengths_per_session_list = []
-        
+
         for user in self.user_stats_list:
             dialogues_per_session_list.extend(user.dialogues_per_session)
             dialogue_lengths_per_session_list.extend(user.dialogue_lengths_per_session)
-        
+
         total_dialogues = sum(dialogues_per_session_list)
-        
+
         # 计算平均值
         avg_sessions_per_user = total_sessions / total_users if total_users > 0 else 0
         avg_dialogues_per_session = (
@@ -240,43 +240,43 @@ class DatasetAnalyzer:
             sum(dialogue_lengths_per_session_list) / len(dialogue_lengths_per_session_list)
             if dialogue_lengths_per_session_list else 0
         )
-        
+
         # Content 统计
         total_contents = len(self.all_content_sizes)
         min_content_size = min(self.all_content_sizes) if self.all_content_sizes else 0
         max_content_size = max(self.all_content_sizes) if self.all_content_sizes else 0
-        
+
         # 计算分位点 (10%, 15%, 20%, ..., 95%)
         percentile_points = list(range(10, 100, 5))  # 10, 15, 20, ..., 95
-        
+
         # 全部 content 的分位点
         percentiles = {}
         if self.all_content_sizes:
             content_array = np.array(self.all_content_sizes)
             for p in percentile_points:
                 percentiles[f"p{p}"] = float(np.percentile(content_array, p))
-        
+
         # user 角色的分位点
         user_percentiles = {}
         if self.user_content_sizes:
             user_array = np.array(self.user_content_sizes)
             for p in percentile_points:
                 user_percentiles[f"p{p}"] = float(np.percentile(user_array, p))
-        
+
         # assistant 角色的分位点
         assistant_percentiles = {}
         if self.assistant_content_sizes:
             assistant_array = np.array(self.assistant_content_sizes)
             for p in percentile_points:
                 assistant_percentiles[f"p{p}"] = float(np.percentile(assistant_array, p))
-        
+
         # Session 分割统计
         chunks_per_user_list = [u.num_chunks_after_split for u in self.user_stats_list]
         total_chunks_after_split = sum(chunks_per_user_list)
         avg_chunks_per_user = (
             total_chunks_after_split / total_users if total_users > 0 else 0
         )
-        
+
         return DatasetStats(
             total_users=total_users,
             total_sessions=total_sessions,
@@ -300,16 +300,16 @@ class DatasetAnalyzer:
             chunks_per_user_list=chunks_per_user_list,
             avg_chunks_per_user=avg_chunks_per_user
         )
-    
+
     @staticmethod
     def _print_percentiles(percentiles: dict[str, float]):
         """打印分位点统计（辅助函数）"""
         if not percentiles:
             print("    (无数据)")
             return
-        
+
         sorted_percentiles = sorted(percentiles.keys(), key=lambda x: int(x[1:]))
-        
+
         # 每行显示 5 个分位点，让输出更紧凑
         for i in range(0, len(sorted_percentiles), 5):
             line_items = []
@@ -318,36 +318,36 @@ class DatasetAnalyzer:
                 p_num = percentile_key[1:]  # 去掉 'p' 前缀
                 line_items.append(f"{p_num}%: {percentile_value:.0f}")
             print(f"    {' | '.join(line_items)}")
-    
+
     def print_summary(self, stats: DatasetStats):
         """打印统计摘要"""
         print("\n" + "=" * 80)
         print("HALUMEM DATASET STATISTICS")
         print("=" * 80 + "\n")
-        
+
         print("📊 总体统计:")
         print(f"  总用户数:              {stats.total_users}")
         print(f"  总 Session 数:         {stats.total_sessions}")
         print(f"  总对话数:              {stats.total_dialogues}")
-        
+
         print(f"\n📈 平均值:")
         print(f"  每个用户的平均 Session 数:           {stats.avg_sessions_per_user:.2f}")
         print(f"  每个 Session 的平均对话数:           {stats.avg_dialogues_per_session:.2f}")
         print(f"  每个 Session 的平均对话长度（字符）: {stats.avg_dialogue_length_per_session:.2f}")
-        
+
         print(f"\n📊 分布统计:")
         if stats.sessions_per_user_list:
             print(f"  每用户 Session 数 - 最小: {min(stats.sessions_per_user_list)}, "
                   f"最大: {max(stats.sessions_per_user_list)}")
-        
+
         if stats.dialogues_per_session_list:
             print(f"  每 Session 对话数 - 最小: {min(stats.dialogues_per_session_list)}, "
                   f"最大: {max(stats.dialogues_per_session_list)}")
-        
+
         if stats.dialogue_lengths_per_session_list:
             print(f"  每 Session 对话长度 - 最小: {min(stats.dialogue_lengths_per_session_list)}, "
                   f"最大: {max(stats.dialogue_lengths_per_session_list)}")
-        
+
         print(f"\n💬 Content 详细统计:")
         print(f"  总 Content 数量:       {stats.total_contents}")
         print(f"    User 消息数:         {stats.total_user_contents}")
@@ -355,34 +355,34 @@ class DatasetAnalyzer:
         print(f"  Content 大小（字符数）:")
         print(f"    最小值:              {stats.min_content_size}")
         print(f"    最大值:              {stats.max_content_size}")
-        
+
         if stats.content_sizes:
             avg_content_size = sum(stats.content_sizes) / len(stats.content_sizes)
             print(f"    平均值:              {avg_content_size:.2f}")
-        
+
         print(f"\n📈 Content 大小分位点 (全部):")
         self._print_percentiles(stats.percentiles)
-        
+
         print(f"\n📈 Content 大小分位点 (User 角色):")
         self._print_percentiles(stats.user_percentiles)
-        
+
         print(f"\n📈 Content 大小分位点 (Assistant 角色):")
         self._print_percentiles(stats.assistant_percentiles)
-        
+
         print(f"\n✂️  Session 分割统计 (按 5000 字符分割):")
         print(f"  原始 Session 总数:      {stats.total_sessions}")
         print(f"  分割后 Chunk 总数:      {stats.total_chunks_after_split}")
         print(f"  每个用户平均 Chunk 数:  {stats.avg_chunks_per_user:.2f}")
         print(f"  Chunk/Session 比例:     {stats.total_chunks_after_split / stats.total_sessions:.2f}x")
-        
+
         print("\n" + "=" * 80)
-    
+
     def print_per_user_stats(self):
         """打印每个用户的详细统计"""
         print("\n" + "=" * 80)
         print("PER-USER STATISTICS")
         print("=" * 80 + "\n")
-        
+
         for idx, user_stats in enumerate(self.user_stats_list, 1):
             avg_dialogues = (
                 sum(user_stats.dialogues_per_session) / len(user_stats.dialogues_per_session)
@@ -392,50 +392,50 @@ class DatasetAnalyzer:
                 sum(user_stats.dialogue_lengths_per_session) / len(user_stats.dialogue_lengths_per_session)
                 if user_stats.dialogue_lengths_per_session else 0
             )
-            
+
             print(f"[{idx}] {user_stats.user_name} (UUID: {user_stats.uuid[:8]}...)")
             print(f"    Session 数: {user_stats.num_sessions}")
             print(f"    分割后 Chunk 数: {user_stats.num_chunks_after_split}")
             print(f"    平均每 Session 对话数: {avg_dialogues:.2f}")
             print(f"    平均每 Session 对话长度: {avg_length:.2f} 字符")
             print()
-    
+
     def print_first_user_session_times(self):
         """打印第一个用户的每个 session 的时间范围"""
         if not self.user_stats_list:
             print("\n没有用户数据")
             return
-        
+
         first_user = self.user_stats_list[0]
-        
+
         print("\n" + "=" * 80)
         print(f"第一个用户的 Session 时间统计")
         print("=" * 80 + "\n")
         print(f"用户名: {first_user.user_name}")
         print(f"UUID: {first_user.uuid}")
         print(f"总 Session 数: {first_user.num_sessions}\n")
-        
+
         print("-" * 80)
         print(f"{'Session #':<12} {'开始时间':<30} {'结束时间':<30}")
         print("-" * 80)
-        
+
         for idx, (start_time, end_time) in enumerate(first_user.session_time_ranges, 1):
             start_str = str(start_time) if start_time is not None else "无"
             end_str = str(end_time) if end_time is not None else "无"
             print(f"{idx:<12} {start_str:<30} {end_str:<30}")
-        
+
         print("=" * 80)
-    
+
     def print_user_split_summary(self):
         """打印每个用户的分割统计摘要（表格形式）"""
         print("\n" + "=" * 80)
         print("PER-USER SESSION SPLIT SUMMARY (按 5000 字符分割)")
         print("=" * 80 + "\n")
-        
+
         # 表头
         print(f"{'序号':<6} {'用户名':<25} {'原始Sessions':<15} {'分割后Chunks':<15} {'比例':<10}")
         print("-" * 80)
-        
+
         # 每个用户的数据
         for idx, user_stats in enumerate(self.user_stats_list, 1):
             ratio = (
@@ -444,17 +444,17 @@ class DatasetAnalyzer:
             )
             print(f"{idx:<6} {user_stats.user_name[:24]:<25} {user_stats.num_sessions:<15} "
                   f"{user_stats.num_chunks_after_split:<15} {ratio:.2f}x")
-        
+
         print("-" * 80)
-        
+
         # 总计
         total_sessions = sum(u.num_sessions for u in self.user_stats_list)
         total_chunks = sum(u.num_chunks_after_split for u in self.user_stats_list)
         overall_ratio = total_chunks / total_sessions if total_sessions > 0 else 0
-        
+
         print(f"{'总计':<6} {'':<25} {total_sessions:<15} {total_chunks:<15} {overall_ratio:.2f}x")
         print("=" * 80)
-    
+
     def save_results(self, output_path: str, stats: DatasetStats):
         """保存统计结果到 JSON 文件"""
         results = {
@@ -512,10 +512,10 @@ class DatasetAnalyzer:
                 for u in self.user_stats_list
             ]
         }
-        
+
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
-        
+
         logger.info(f"Results saved to: {output_path}")
 
 
@@ -525,27 +525,27 @@ def main(data_path: str, output_path: str = None, show_per_user: bool = False):
     if not Path(data_path).exists():
         logger.error(f"File not found: {data_path}")
         return
-    
+
     # 创建分析器并执行分析
     analyzer = DatasetAnalyzer(data_path)
     analyzer.load_and_analyze()
-    
+
     # 计算统计数据
     stats = analyzer.compute_dataset_stats()
-    
+
     # 打印摘要
     analyzer.print_summary(stats)
-    
+
     # 打印第一个用户的 session 时间统计
     analyzer.print_first_user_session_times()
-    
+
     # 打印每个用户的分割统计摘要（始终显示）
     analyzer.print_user_split_summary()
-    
+
     # 打印每个用户的详细统计（可选）
     if show_per_user:
         analyzer.print_per_user_stats()
-    
+
     # 保存结果到文件
     if output_path:
         analyzer.save_results(output_path, stats)
@@ -557,7 +557,7 @@ def main(data_path: str, output_path: str = None, show_per_user: bool = False):
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="Analyze HaluMem dataset statistics"
     )
@@ -578,9 +578,9 @@ if __name__ == "__main__":
         action="store_true",
         help="Show detailed statistics for each user"
     )
-    
+
     args = parser.parse_args()
-    
+
     main(
         data_path=args.data_path,
         output_path=args.output_path,

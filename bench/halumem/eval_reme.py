@@ -35,8 +35,8 @@ from eval_tools import (
     evaluation_for_update_memory,
 )
 from llms import llm_request
-from reme_ai.core.enumeration import MemoryType
-from reme_ai.core.schema import MemoryNode
+from reme_ai.core_old.enumeration import MemoryType
+from reme_ai.core_old.schema import MemoryNode
 from reme_ai.reme import ReMe
 
 # Template for formatting memories (from shared YAML config)
@@ -685,7 +685,7 @@ async def main_async(
     user_data_list = user_data_list[:total_users]
 
     print(f"Processing {total_users} users with max concurrency {max_concurrency}...")
-    
+
     # Create semaphore to limit concurrency for Stage 1
     semaphore_stage1 = asyncio.Semaphore(max_concurrency)
 
@@ -694,11 +694,11 @@ async def main_async(
         async with semaphore_stage1:
             uuid = user_data['uuid']
             tmp_file = os.path.join(tmp_dir, f"{uuid}.json")
-            
+
             if os.path.exists(tmp_file):
                 print(f"⚡ Skipping user {uuid} ({idx}/{total_users}) — cached result found.")
                 return {"uuid": uuid, "status": "cached", "path": tmp_file}
-            
+
             print(f"[{idx}/{total_users}] Processing user {uuid}...")
             result = await process_user_stage1(user_data, top_k, save_path)
             print(f"[{idx}/{total_users}] ✅ Finished {uuid} ({result['status']})")
@@ -733,7 +733,7 @@ async def main_async(
 
     # Load all users and process sequentially
     user_data_list = list(enumerate(iter_jsonl(output_file_stage1), 1))
-    
+
     for idx, user_data in user_data_list:
         uuid = user_data["uuid"]
         tmp_file = os.path.join(tmp_dir2, f"{uuid}.json")

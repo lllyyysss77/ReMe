@@ -3,9 +3,9 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.context import C
-from ...core.schema import MemoryNode, VectorNode
-from ...core.utils import deduplicate_memories
+from ...core_old.context import C
+from ...core_old.schema import MemoryNode, VectorNode
+from ...core_old.utils import deduplicate_memories
 
 
 @C.register_op()

@@ -3,20 +3,20 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.context import C
-from ...core.schema import MemoryNode
+from ...core_old.context import C
+from ...core_old.schema import MemoryNode
 
 
 @C.register_op()
 class ReadHistory(BaseMemoryTool):
     """Read original history dialogue by reference memory ID.
-    
+
     Only supports single memory read (enable_multiple=False).
     """
 
     def __init__(self, **kwargs):
         """Initialize ReadHistory.
-        
+
         Args:
             **kwargs: Additional args for BaseMemoryTool.
         """

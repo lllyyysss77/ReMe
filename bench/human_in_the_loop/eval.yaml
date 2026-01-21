@@ -64,7 +64,7 @@ EVALUATION_PROMPT_FOR_QUESTION: |
     "evaluation_result": "Correct | Hallucination | Omission"
   }}
   ```
-  
+
 
 EVALUATION_PROMPT_FOR_QUESTION2: |
   You are an **evaluation expert for AI memory system question answering**.

@@ -3,8 +3,8 @@ import json
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.schema import MemoryNode
-from ...core.utils import deduplicate_memories
+from ...core_old.schema import MemoryNode
+from ...core_old.utils import deduplicate_memories
 
 
 class RetrieveMemory(BaseMemoryTool):

@@ -1,7 +1,7 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.schema.memory_node import MemoryNode
+from ...core_old.schema.memory_node import MemoryNode
 
 
 class UpdateUserProfile(BaseMemoryTool):

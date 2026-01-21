@@ -5,8 +5,8 @@ before taking actions, helping agents reason about their next steps.
 """
 
 from .base_memory_tool import BaseMemoryTool
-from ..core.context import C
-from ..core.schema import ToolCall
+from ..core_old.context import C
+from ..core_old.schema import ToolCall
 
 
 @C.register_op()

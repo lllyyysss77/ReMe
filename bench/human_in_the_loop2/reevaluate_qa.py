@@ -16,8 +16,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from reme_ai.core.schema import Message
-from reme_ai.core.utils import load_env
+from reme_ai.core_old.schema import Message
+from reme_ai.core_old.utils import load_env
 from reme_ai.reme import ReMe
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
@@ -82,7 +82,7 @@ async def evaluate_qa_record(
     prompt_version: str = "v1"
 ) -> dict:
     """Evaluate a single QA record using LLM with specified prompt version.
-    
+
     Args:
         question: The question to evaluate
         reference_answer: The reference answer
@@ -90,9 +90,9 @@ async def evaluate_qa_record(
         response: System response to evaluate
         dialogue: Dialogue context (optional)
         model_name: LLM model name
-        prompt_version: "v1" for EVALUATION_PROMPT_FOR_QUESTION, 
+        prompt_version: "v1" for EVALUATION_PROMPT_FOR_QUESTION,
                        "v2" for EVALUATION_PROMPT_FOR_QUESTION2
-    
+
     Returns:
         dict with evaluation_result and reasoning
     """
@@ -101,7 +101,7 @@ async def evaluate_qa_record(
         prompt_template = _PROMPTS["EVALUATION_PROMPT_FOR_QUESTION2"]
     else:
         prompt_template = _PROMPTS["EVALUATION_PROMPT_FOR_QUESTION"]
-    
+
     # Format prompt
     prompt = prompt_template.format(
         question=question,
@@ -110,7 +110,7 @@ async def evaluate_qa_record(
         response=response,
         dialogue=dialogue or "N/A"
     )
-    
+
     result = await llm_request_for_json(prompt, model_name=model_name)
     return result
 
@@ -118,14 +118,14 @@ async def evaluate_qa_record(
 def load_from_data_dir(data_dir: str) -> list[dict]:
     """Load data from data directory (same as compute_qa_stats.py)."""
     data_path = Path(data_dir)
-    
+
     # Try flat file structure first (conversation_{user}_session_{idx}.json)
     json_files = [f for f in data_path.iterdir() if f.is_file() and f.suffix == ".json"]
-    
+
     if json_files:
         # Group files by user
         users_dict = defaultdict(list)
-        
+
         for json_file in json_files:
             with open(json_file, "r", encoding="utf-8") as f:
                 session_data = json.load(f)
@@ -135,18 +135,18 @@ def load_from_data_dir(data_dir: str) -> list[dict]:
                         "file": json_file,
                         "data": session_data
                     })
-        
+
         # Sort sessions by session_idx for each user
         users_data = []
         for user_name, sessions in users_dict.items():
             sessions_sorted = sorted(
-                sessions, 
+                sessions,
                 key=lambda s: s["data"].get("session_idx", 0)
             )
             users_data.extend(sessions_sorted)
-        
+
         return users_data
-    
+
     return []
 
 
@@ -155,7 +155,7 @@ def format_dialogue_context(session_data: dict) -> str:
     dialogue = session_data.get("session", {}).get("dialogue", [])
     if not dialogue:
         return "N/A"
-    
+
     formatted_turns = []
     for turn in dialogue:
         role = turn.get("role", "unknown")
@@ -175,34 +175,34 @@ async def reevaluate_session(
     parallel: bool = True
 ) -> dict:
     """Re-evaluate all QA records in a session using multiple models and prompts.
-    
+
     Args:
         session_file: Path to session file
         session_data: Session data dict
         models: List of model names to use for evaluation
         prompt_versions: List of prompt versions ("v1", "v2")
-        parallel: If True, use asyncio.gather for parallel execution; 
+        parallel: If True, use asyncio.gather for parallel execution;
                  if False, execute sequentially
-    
+
     Returns:
         Updated session data with evaluation results for each model+prompt combination
-    
+
     Note:
         Request rate limiting is handled by base_llm.py's request_interval mechanism.
     """
     eval_results = session_data.get("session", {}).get("evaluation_results", {})
     qa_records = eval_results.get("question_answering_records", [])
-    
+
     if not qa_records:
         print(f"  ⏭️  No QA records found")
         return session_data
-    
+
     total_evals = len(models) * len(prompt_versions) * len(qa_records)
     print(f"  🔍 Re-evaluating {len(qa_records)} QA records with {len(models)} models × {len(prompt_versions)} prompts = {total_evals} evaluations...")
-    
+
     # Format dialogue context once
     dialogue_context = format_dialogue_context(session_data)
-    
+
     async def evaluate_single_combination(
         idx: int,
         qa: dict,
@@ -210,19 +210,19 @@ async def reevaluate_session(
         prompt_version: str
     ) -> tuple[int, str, str, dict]:
         """Evaluate a single QA record with specific model and prompt.
-        
+
         Note: Rate limiting is handled by BaseLLM's request_interval mechanism.
         """
         question = qa.get("question", "")
         reference_answer = qa.get("answer", "")
-        
+
         # Get key memory points from evidence
         evidence = qa.get("evidence", [])
         key_memory_points = "\n".join([e.get("memory_content", "") for e in evidence])
-        
+
         # Get system response
         system_response = qa.get("system_response", "")
-        
+
         try:
             # Call LLM for evaluation
             eval_result = await evaluate_qa_record(
@@ -234,28 +234,28 @@ async def reevaluate_session(
                 model_name=model_name,
                 prompt_version=prompt_version
             )
-            
+
             result = {
                 "result_type": eval_result.get("evaluation_result", "Invalid"),
                 "reasoning": eval_result.get("reasoning", "")
             }
-            
+
             return idx, model_name, prompt_version, result
-            
+
         except Exception as e:
             print(f"    ❌ QA[{idx+1}] {model_name}/{prompt_version}: Error: {e}")
             return idx, model_name, prompt_version, {
                 "result_type": "Error",
                 "reasoning": f"Evaluation error: {str(e)}"
             }
-    
+
     # Create all evaluation tasks (all combinations of models, prompts, and QA records)
     tasks = []
     for idx, qa in enumerate(qa_records):
         for model_name in models:
             for prompt_version in prompt_versions:
                 tasks.append(evaluate_single_combination(idx, qa, model_name, prompt_version))
-    
+
     # Execute evaluations based on parallel mode
     if parallel:
         print(f"  ⚡ Starting {len(tasks)} parallel evaluations (rate limited by LLM layer)...")
@@ -268,18 +268,18 @@ async def reevaluate_session(
             results.append(result)
             if i % 10 == 0 or i == len(tasks):
                 print(f"    ⏳ Progress: {i}/{len(tasks)} evaluations completed")
-    
+
     # Organize results by QA index, then by model and prompt
     # Structure: qa_records[idx]["evaluations"][model][prompt_version] = {result_type, reasoning}
     for idx, qa in enumerate(qa_records):
         if "evaluations" not in qa:
             qa["evaluations"] = {}
-        
+
         # Initialize evaluations structure
         for model_name in models:
             if model_name not in qa["evaluations"]:
                 qa["evaluations"][model_name] = {}
-    
+
     # Fill in results
     completed_count = 0
     for qa_idx, model_name, prompt_version, result in results:
@@ -287,7 +287,7 @@ async def reevaluate_session(
         completed_count += 1
         if completed_count % 10 == 0 or completed_count == len(results):
             print(f"    ✅ Completed {completed_count}/{len(results)} evaluations")
-    
+
     # Set default result_type to first model's v1 result for compatibility
     if models and prompt_versions:
         default_model = models[0]
@@ -296,21 +296,21 @@ async def reevaluate_session(
             default_eval = qa["evaluations"].get(default_model, {}).get(default_prompt, {})
             qa["result_type"] = default_eval.get("result_type", "Invalid")
             qa["question_answering_reasoning"] = default_eval.get("reasoning", "")
-    
+
     # Update session data
     if "session" not in session_data:
         session_data["session"] = {}
     if "evaluation_results" not in session_data["session"]:
         session_data["session"]["evaluation_results"] = {}
-    
+
     session_data["session"]["evaluation_results"]["question_answering_records"] = qa_records
-    
+
     # Save updated session data
     with open(session_file, "w", encoding="utf-8") as f:
         json.dump(session_data, f, ensure_ascii=False, indent=2)
-    
+
     print(f"  💾 Updated session saved with all evaluations")
-    
+
     return session_data
 
 
@@ -328,9 +328,9 @@ def compute_qa_metrics(qa_records: list[dict]) -> dict[str, Any]:
             "qa_valid_num": 0,
             "qa_num": 0
         }
-    
+
     correct = hallucination = omission = valid = 0
-    
+
     for qa in qa_records:
         result_type = qa.get("result_type", "")
         if result_type == "Correct":
@@ -342,7 +342,7 @@ def compute_qa_metrics(qa_records: list[dict]) -> dict[str, Any]:
         elif result_type == "Omission":
             omission += 1
             valid += 1
-    
+
     metrics = {
         "correct_qa_ratio(all)": correct / total,
         "hallucination_qa_ratio(all)": hallucination / total,
@@ -353,7 +353,7 @@ def compute_qa_metrics(qa_records: list[dict]) -> dict[str, Any]:
         "qa_valid_num": valid,
         "qa_num": total
     }
-    
+
     return metrics
 
 
@@ -364,28 +364,28 @@ async def main(
     parallel: bool = True
 ):
     """Main function to re-evaluate QA records from data directory with multiple models and prompts.
-    
+
     Args:
         data_dir: Path to data directory
         models: List of model names (e.g., ["qwen3-max", "qwen-flash"])
         prompt_versions: List of prompt versions (e.g., ["v1", "v2"])
         parallel: If True, use parallel execution; if False, use sequential execution
-    
+
     Note:
         Request rate limiting is automatically handled by base_llm.py's request_interval mechanism.
     """
     data_path = Path(data_dir)
-    
+
     if not data_path.exists() or not data_path.is_dir():
         print(f"❌ Error: Directory not found: {data_dir}")
         return
-    
+
     # Default values
     if models is None:
         models = ["qwen3-max"]
     if prompt_versions is None:
         prompt_versions = ["v1"]
-    
+
     print("=" * 80)
     print("RE-EVALUATING QA RECORDS WITH MULTIPLE MODELS & PROMPTS")
     print(f"Models: {', '.join(models)}")
@@ -393,27 +393,27 @@ async def main(
     print(f"Execution mode: {'Parallel' if parallel else 'Sequential'}")
     print("Note: Request rate limiting handled by LLM layer (base_llm.py)")
     print("=" * 80 + "\n")
-    
+
     # Load data from directory
     sessions = load_from_data_dir(data_dir)
-    
+
     if not sessions:
         print(f"❌ No session files found in {data_dir}")
         return
-    
+
     print(f"📂 Found {len(sessions)} session files\n")
-    
+
     # Process each session
     all_qa_records = []
-    
+
     for idx, session_info in enumerate(sessions, 1):
         session_file = session_info["file"]
         session_data = session_info["data"]
         user_name = session_data.get("user_name", "Unknown")
         session_idx = session_data.get("session_idx", 0)
-        
+
         print(f"[{idx}/{len(sessions)}] {user_name} - Session {session_idx}")
-        
+
         updated_session = await reevaluate_session(
             session_file=session_file,
             session_data=session_data,
@@ -421,25 +421,25 @@ async def main(
             prompt_versions=prompt_versions,
             parallel=parallel
         )
-        
+
         # Collect QA records for metrics
         eval_results = updated_session.get("session", {}).get("evaluation_results", {})
         qa_records = eval_results.get("question_answering_records", [])
         all_qa_records.extend(qa_records)
-        
+
         print()
-    
+
     # Compute and display metrics for each model+prompt combination
     print("=" * 80)
     print("UPDATED METRICS (BY MODEL & PROMPT)")
     print("=" * 80 + "\n")
-    
+
     for model_name in models:
         for prompt_version in prompt_versions:
             prompt_name = "EVALUATION_PROMPT_FOR_QUESTION" if prompt_version == "v1" else "EVALUATION_PROMPT_FOR_QUESTION2"
             print(f"\n📊 {model_name} / {prompt_name}:")
             print("─" * 80)
-            
+
             # Extract QA records for this model+prompt combination
             model_qa_records = []
             for qa in all_qa_records:
@@ -452,10 +452,10 @@ async def main(
                         "question_answering_reasoning": eval_data.get("reasoning", "")
                     }
                     model_qa_records.append(qa_copy)
-            
+
             if model_qa_records:
                 metrics = compute_qa_metrics(model_qa_records)
-                
+
                 print(f"  Correct (all):         {metrics['correct_qa_ratio(all)']:.4f}")
                 print(f"  Hallucination (all):   {metrics['hallucination_qa_ratio(all)']:.4f}")
                 print(f"  Omission (all):        {metrics['omission_qa_ratio(all)']:.4f}")
@@ -463,17 +463,17 @@ async def main(
                 print(f"  Hallucination (valid): {metrics['hallucination_qa_ratio(valid)']:.4f}")
                 print(f"  Omission (valid):      {metrics['omission_qa_ratio(valid)']:.4f}")
                 print(f"  Valid/Total:           {metrics['qa_valid_num']}/{metrics['qa_num']}")
-    
+
     # Save detailed results with all evaluations
     report_file = data_path.parent / "reme_eval_stat_result_detailed.json"
-    
+
     # Create summary for each model+prompt combination
     evaluation_summary = {}
     for model_name in models:
         evaluation_summary[model_name] = {}
         for prompt_version in prompt_versions:
             prompt_name = "EVALUATION_PROMPT_FOR_QUESTION" if prompt_version == "v1" else "EVALUATION_PROMPT_FOR_QUESTION2"
-            
+
             # Extract QA records for this combination
             model_qa_records = []
             for qa in all_qa_records:
@@ -485,28 +485,28 @@ async def main(
                         "question_answering_reasoning": eval_data.get("reasoning", "")
                     }
                     model_qa_records.append(qa_copy)
-            
+
             metrics = compute_qa_metrics(model_qa_records)
             evaluation_summary[model_name][prompt_name] = {
                 "metrics": metrics,
                 "qa_records": model_qa_records
             }
-    
+
     final_results = {
         "evaluation_summary": evaluation_summary,
         "all_qa_records_with_evaluations": all_qa_records
     }
-    
+
     with open(report_file, "w", encoding="utf-8") as f:
         json.dump(final_results, f, ensure_ascii=False, indent=2)
-    
+
     print(f"\n💾 Detailed results saved: {report_file}")
     print("\n" + "=" * 80)
 
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="Re-evaluate QA records from data directory using multiple models and prompts in parallel. "
                     "Request rate limiting is automatically handled by base_llm.py's request_interval mechanism."
@@ -539,9 +539,9 @@ if __name__ == "__main__":
         action="store_true",
         help="Use sequential execution instead of parallel (default: parallel)"
     )
-    
+
     args = parser.parse_args()
-    
+
     asyncio.run(main(
         data_dir=args.data_dir,
         models=args.models,

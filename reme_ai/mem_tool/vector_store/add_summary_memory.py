@@ -3,9 +3,9 @@
 from loguru import logger
 
 from .add_memory import AddMemory
-from ...core.context import C
-from ...core.enumeration import MemoryType
-from ...core.schema import MemoryNode
+from ...core_old.context import C
+from ...core_old.enumeration import MemoryType
+from ...core_old.schema import MemoryNode
 
 
 @C.register_op()

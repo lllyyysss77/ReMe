@@ -3,10 +3,10 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.context import C
-from ...core.enumeration import MemoryType
-from ...core.schema import ToolCall, Message
-from ...core.utils import format_messages
+from ...core_old.context import C
+from ...core_old.enumeration import MemoryType
+from ...core_old.schema import ToolCall, Message
+from ...core_old.utils import format_messages
 
 
 @C.register_op()

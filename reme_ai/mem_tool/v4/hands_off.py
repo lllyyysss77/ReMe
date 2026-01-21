@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.enumeration import MemoryType
-from ...core.schema import Message
+from ...core_old.enumeration import MemoryType
+from ...core_old.schema import Message
 
 if TYPE_CHECKING:
     from ...mem_agent import BaseMemoryAgent
@@ -62,14 +62,14 @@ class HandsOff(BaseMemoryTool):
         for task in self.context.get("memory_tasks", []):
             memory_type = MemoryType(task.get("memory_type", ""))
             memory_target = task.get("memory_target", "")
-            
+
             # Deduplicate tasks with same memory_type and memory_target
             task_key = (memory_type, memory_target)
             if task_key in seen:
                 logger.info(f"Skipping duplicate task: memory_type={memory_type.value}, memory_target={memory_target}")
                 continue
             seen.add(task_key)
-            
+
             tasks.append({
                 "memory_type": memory_type,
                 "memory_target": memory_target,

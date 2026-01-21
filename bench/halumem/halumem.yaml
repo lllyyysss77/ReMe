@@ -11,7 +11,7 @@ PROMPT_MEMZERO_JSON: |
   1. **Historical Dialogue** (highest priority) - Direct conversation content
   2. **Extracted Memories** (medium priority) - Summarized memory points
   3. **User Profile** (lowest priority) - General user information
-  
+
   # Question:
   {question}
 
@@ -35,7 +35,7 @@ PROMPT_MEMZERO_JSON2: |
   1. **Historical Dialogue** (highest priority) - Direct conversation content
   2. **Extracted Memories** (medium priority) - Summarized memory points
   3. **User Profile** (lowest priority) - General user information
-  
+
   # Question:
   {question}
 
@@ -467,7 +467,7 @@ EVALUATION_PROMPT_FOR_QUESTION: |
     "evaluation_result": "Correct | Hallucination | Omission"
   }}
   ```
-  
+
 
 EVALUATION_PROMPT_FOR_QUESTION2: |
   You are an **evaluation expert for AI memory system question answering**.

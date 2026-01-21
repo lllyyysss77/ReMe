@@ -1,7 +1,7 @@
 from ..base_memory_agent import BaseMemoryAgent
-from ...core.enumeration import Role, MemoryType
-from ...core.schema import Message
-from ...core.utils import format_messages
+from ...core_old.enumeration import Role, MemoryType
+from ...core_old.schema import Message
+from ...core_old.utils import format_messages
 from ...mem_tool.v4 import ReadUserProfile
 
 
@@ -41,7 +41,7 @@ class PersonalRetrieverV4(BaseMemoryAgent):
     async def execute(self):
         """Execute the retriever and determine success based on output markers."""
         await super().execute()
-        
+
         # Check for memory found/not found markers in the output
         if self.output:
             if "<MEMORY_FOUND>" in self.output:

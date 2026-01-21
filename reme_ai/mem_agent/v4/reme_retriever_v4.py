@@ -1,9 +1,9 @@
 from loguru import logger
 
 from ..base_memory_agent import BaseMemoryAgent
-from ...core.enumeration import Role
-from ...core.schema import Message
-from ...core.utils import format_messages
+from ...core_old.enumeration import Role
+from ...core_old.schema import Message
+from ...core_old.utils import format_messages
 
 
 class ReMeRetrieverV4(BaseMemoryAgent):
@@ -47,7 +47,7 @@ class ReMeRetrieverV4(BaseMemoryAgent):
     async def _acting_step(self, assistant_message: Message, step: int, **kwargs) -> list[Message]:
         import asyncio
         from ...mem_tool.v4 import HandsOff
-        
+
         if not assistant_message.tool_calls:
             return []
 
@@ -98,16 +98,16 @@ class ReMeRetrieverV4(BaseMemoryAgent):
                 tool_call_id=op.tool_call.id,
             )
             tool_result_messages.append(tool_message)
-            
+
             self.meta_info += tool_result + "\n"
-            
+
             logger.info(f"[{self.__class__.__name__}{stage_prefix}] step{step + 1}.{j} join tool_result={tool_result[:2000]}...\n\n")
-        
+
         return tool_result_messages
 
     async def execute(self):
         await super().execute()
-        
+
         # Assemble meta_info_dict into output
         if self.meta_info_dict:
             output_parts = []

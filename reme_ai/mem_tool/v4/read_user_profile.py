@@ -2,7 +2,7 @@ from typing import Literal
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core.schema.memory_node import MemoryNode
+from ...core_old.schema.memory_node import MemoryNode
 
 
 class ReadUserProfile(BaseMemoryTool):
@@ -39,11 +39,11 @@ class ReadUserProfile(BaseMemoryTool):
                 "required": [],
             }
 
-    async def execute(self):        
+    async def execute(self):
         # Determine which IDs to show
         show_profile_id = self.show_ids in ("both", "profile")
         show_history_id = self.show_ids in ("both", "history")
-        
+
         cache_key = f"{self.memory_type}_{self.memory_target}".replace(" ", "_").lower()
         cached_data = self.meta_memory.load(cache_key, auto_clean=False)
 
@@ -58,22 +58,22 @@ class ReadUserProfile(BaseMemoryTool):
         memory_formated = []
         for node in memory_nodes:
             node_formated_parts = []
-            
+
             # Add profile_id if enabled
             if show_profile_id:
                 node_formated_parts.append(f"profile_id={node.memory_id}")
-            
+
             # Always add profile_content
             node_formated_parts.append(f"profile_content={node.content}")
-            
+
             # Add conversation_time if available
             if "conversation_time" in node.metadata and node.metadata["conversation_time"]:
                 node_formated_parts.append(f"conversation_time={node.metadata['conversation_time']}")
-            
+
             # Add history_id if enabled and available
             if show_history_id and node.ref_memory_id:
                 node_formated_parts.append(f"history_id={node.ref_memory_id}")
-            
+
             node_formated = " ".join(node_formated_parts)
             memory_formated.append(node_formated.strip())
 

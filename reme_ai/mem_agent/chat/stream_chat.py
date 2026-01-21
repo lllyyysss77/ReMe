@@ -2,10 +2,10 @@
 
 from loguru import logger
 
-from ...core_old.context import C
-from ...core_old.enumeration import Role, ChunkEnum
-from ...core_old.op import BaseOp
-from ...core_old.schema import Message, ToolCall
+from ...core.context import C
+from ...core.enumeration import Role, ChunkEnum
+from ...core.op import BaseOp
+from ...core.schema import Message, ToolCall
 
 
 @C.register_op()

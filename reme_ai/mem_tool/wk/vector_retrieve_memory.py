@@ -1,9 +1,9 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core_old.enumeration import MemoryType
-from ...core_old.schema import MemoryNode, VectorNode
-from ...core_old.utils import deduplicate_memories
+from ...core.enumeration import MemoryType
+from ...core.schema import MemoryNode, VectorNode
+from ...core.utils import deduplicate_memories
 
 
 class VectorRetrieveMemory(BaseMemoryTool):

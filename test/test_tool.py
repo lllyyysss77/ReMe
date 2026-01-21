@@ -169,8 +169,8 @@ async def test_stream_chat():
     process and stream responses in real-time using async operations.
     """
     from reme_ai.mem_agent.chat import StreamChat
-    from reme_ai.core_old.utils import execute_stream_task
-    from reme_ai.core_old.context import RuntimeContext
+    from reme_ai.core.utils import execute_stream_task
+    from reme_ai.core.context import RuntimeContext
     from asyncio import Queue
 
     op = StreamChat()

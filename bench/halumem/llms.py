@@ -5,8 +5,8 @@ import re
 
 from tenacity import retry, stop_after_attempt, wait_random_exponential, before_sleep_log
 
-from reme_ai.core_old.schema import Message
-from reme_ai.core_old.utils import load_env
+from reme_ai.core.schema import Message
+from reme_ai.core.utils import load_env
 from reme_ai.reme import ReMe
 
 logger = logging.getLogger(__name__)

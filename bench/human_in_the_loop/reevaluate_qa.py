@@ -16,8 +16,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from reme_ai.core_old.schema import Message
-from reme_ai.core_old.utils import load_env
+from reme_ai.core.schema import Message
+from reme_ai.core.utils import load_env
 from reme_ai.reme import ReMe
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 

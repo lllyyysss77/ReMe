@@ -35,8 +35,8 @@ from eval_tools import (
     evaluation_for_update_memory,
 )
 from llms import llm_request
-from reme_ai.core_old.enumeration import MemoryType
-from reme_ai.core_old.schema import MemoryNode
+from reme_ai.core.enumeration import MemoryType
+from reme_ai.core.schema import MemoryNode
 from reme_ai.reme import ReMe
 
 # Template for formatting memories (from shared YAML config)

@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 
 from tqdm import tqdm
 
-from reme_ai.core_old.enumeration import Role
-from reme_ai.core_old.schema import Message, MemoryNode
+from reme_ai.core.enumeration import Role
+from reme_ai.core.schema import Message, MemoryNode
 from reme_ai.reme import ReMe
 
 TEMPLATE_REME = """Memories for user {user_id}:

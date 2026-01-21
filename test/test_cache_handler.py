@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from reme_ai.core_old.utils.cache_handler import CacheHandler
+from reme_ai.core.utils.cache_handler import CacheHandler
 
 
 def run_tests():

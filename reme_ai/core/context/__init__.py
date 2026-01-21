@@ -2,10 +2,15 @@
 
 from .base_context import BaseContext
 from .prompt_handler import PromptHandler
-from .registry_factory import R
+from .registry import Registry
+from .runtime_context import RuntimeContext
+from .service_context import ServiceContext, C
 
 __all__ = [
     "BaseContext",
     "PromptHandler",
-    "R",
+    "Registry",
+    "RuntimeContext",
+    "ServiceContext",
+    "C",
 ]

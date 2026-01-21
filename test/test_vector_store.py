@@ -23,9 +23,9 @@ from typing import List
 
 from loguru import logger
 
-from reme_ai.core_old.embedding import OpenAIEmbeddingModel
-from reme_ai.core_old.schema import VectorNode
-from reme_ai.core_old.vector_store import (
+from reme_ai.core.embedding import OpenAIEmbeddingModel
+from reme_ai.core.schema import VectorNode
+from reme_ai.core.vector_store import (
     BaseVectorStore,
     ChromaVectorStore,
     LocalVectorStore,
@@ -1453,8 +1453,8 @@ async def test_sql_injection_protection(store: BaseVectorStore, store_name: str)
 
     # Test 1: Invalid collection name (SQL injection attempt)
     try:
-        from reme_ai.core_old.vector_store import PGVectorStore
-        from reme_ai.core_old.embedding import OpenAIEmbeddingModel
+        from reme_ai.core.vector_store import PGVectorStore
+        from reme_ai.core.embedding import OpenAIEmbeddingModel
 
         embedding_model = OpenAIEmbeddingModel()
 

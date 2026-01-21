@@ -101,7 +101,7 @@ class ServiceConfig(BaseModel):
     init_logger: bool = Field(default=True)
     disabled_flows: List[str] = Field(default_factory=list)
     enabled_flows: List[str] = Field(default_factory=list)
-    mcp_servers: Dict[str, dict] = Field(default_factory=dict)
+    mcp_servers: Dict[str, dict] = Field(default_factory=dict, description="External MCP Server configuration")
 
     mcp: MCPConfig = Field(default_factory=MCPConfig)
     http: HttpConfig = Field(default_factory=HttpConfig)

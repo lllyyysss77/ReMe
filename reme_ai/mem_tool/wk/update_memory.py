@@ -1,7 +1,7 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core_old.schema import MemoryNode
+from ...core.schema import MemoryNode
 
 
 class UpdateMemory(BaseMemoryTool):

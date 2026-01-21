@@ -1,4 +1,6 @@
-"""MCP Tool Schema definitions for recursive JSON Schema representation."""
+"""
+MCP Tool Schema definitions for recursive JSON Schema representation.
+"""
 
 import json
 from typing import Any, Dict, List, Optional, Union
@@ -145,17 +147,23 @@ class ToolCall(BaseModel):
             },
         }
 
-    def simple_output_dump(self) -> dict:
-        """Convert ToolCall to output format dictionary for API responses."""
-        return {
-            "index": self.index,
-            "id": self.id,
-            self.type: {
-                "arguments": self.arguments,
-                "name": self.name,
-            },
-            "type": self.type,
-        }
+    @classmethod
+    def from_mcp_tool(cls, tool: Tool) -> "ToolCall":
+        """Creates a ToolCall instance from an MCP Tool object."""
+        # MCP Tool inputSchema maps directly to our parameters ToolAttr
+        return cls(
+            name=tool.name,
+            description=tool.description or "",
+            parameters=ToolAttr(**tool.inputSchema),
+        )
+
+    def to_mcp_tool(self) -> Tool:
+        """Converts the instance back into an MCP Tool object."""
+        return Tool(
+            name=self.name,
+            description=self.description,
+            inputSchema=self.parameters.simple_input_dump(),
+        )
 
     @property
     def argument_dict(self) -> dict:
@@ -200,27 +208,21 @@ class ToolCall(BaseModel):
                 return True
             except json.JSONDecodeError:
                 # Try removing last character
-                if sanitized[-1] in "]}":
+                if sanitized[-1] in ']}':
                     sanitized = sanitized[:-1].rstrip()
                 else:
                     break
 
         return False
 
-    @classmethod
-    def from_mcp_tool(cls, tool: Tool) -> "ToolCall":
-        """Creates a ToolCall instance from an MCP Tool object."""
-        # MCP Tool inputSchema maps directly to our parameters ToolAttr
-        return cls(
-            name=tool.name,
-            description=tool.description or "",
-            parameters=ToolAttr(**tool.inputSchema),
-        )
-
-    def to_mcp_tool(self) -> Tool:
-        """Converts the instance back into an MCP Tool object."""
-        return Tool(
-            name=self.name,
-            description=self.description,
-            inputSchema=self.parameters.simple_input_dump(),
-        )
+    def simple_output_dump(self) -> dict:
+        """Convert ToolCall to output format dictionary for API responses."""
+        return {
+            "index": self.index,
+            "id": self.id,
+            self.type: {
+                "arguments": self.arguments,
+                "name": self.name,
+            },
+            "type": self.type,
+        }

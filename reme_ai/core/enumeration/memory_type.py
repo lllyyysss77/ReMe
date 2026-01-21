@@ -1,33 +1,25 @@
-"""Defines the high-level categories of memory managed by ReMe.
-
-This enumeration is used across the system to tag, route, and store different
-kinds of memories (identity, personal context, procedures, tools, etc.).
-"""
+"""Memory type enumeration for the three-layer memory architecture."""
 
 from enum import Enum
 
 
 class MemoryType(str, Enum):
-    """Enumeration of memory categories used by the memory subsystem.
+    """
+    Three-layer memory architecture for agent memory management.
 
-    These types describe *what* a piece of memory is about, which guides
-    storage, retrieval, and summarization strategies.
+    Layer 1 - High-level Abstraction Memory:
+        - IDENTITY: Self-cognition (identity, personality, current state)
+        - PERSONAL: Person-specific memory (preferences and context about specific individuals)
+        - PROCEDURAL: Procedural memory (how-to knowledge, e.g., 4 steps to write financial reports)
+        - TOOL: Tool memory (tool usage patterns, success rates, token consumption, latency)
+
+    Layer 2 - Summary Memory (Compressed): Summarized digest of raw message history
+    Layer 3 - History Memory (Raw): Raw message history
     """
 
-    # Long‑term, relatively stable attributes about the user (name, roles, etc.)
     IDENTITY = "identity"
-
-    # User-specific preferences, habits, and evolving personal context
     PERSONAL = "personal"
-
-    # How‑to knowledge, workflows, and step‑by‑step instructions
     PROCEDURAL = "procedural"
-
-    # Information learned about tools, APIs, and their usage patterns
     TOOL = "tool"
-
-    # Condensed representation of larger memory collections
     SUMMARY = "summary"
-
-    # Raw chronological interaction history, typically before summarization
     HISTORY = "history"

@@ -3,7 +3,7 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ...core_old.context import C
+from ...core.context import C
 
 
 @C.register_op()

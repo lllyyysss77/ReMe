@@ -27,8 +27,8 @@ from typing import Any
 from loguru import logger
 
 from eval_tools import evaluation_for_question2
-from reme_ai.core_old.enumeration import MemoryType
-from reme_ai.core_old.schema import MemoryNode
+from reme_ai.core.enumeration import MemoryType
+from reme_ai.core.schema import MemoryNode
 from reme_ai.reme import ReMe
 
 

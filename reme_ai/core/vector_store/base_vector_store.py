@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
 
-from reme_ai.core_old.context import C
-from reme_ai.core_old.embedding import BaseEmbeddingModel
-from reme_ai.core_old.schema import VectorNode
+from reme_ai.core.context import C
+from reme_ai.core.embedding import BaseEmbeddingModel
+from reme_ai.core.schema import VectorNode
 
 
 class BaseVectorStore(ABC):

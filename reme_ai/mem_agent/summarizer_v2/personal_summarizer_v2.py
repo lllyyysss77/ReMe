@@ -1,10 +1,10 @@
 """Simplified personal memory summarizer using v2 memory tools."""
 
 from ..base_memory_agent import BaseMemoryAgent
-from ...core_old.context import C
-from ...core_old.enumeration import Role, MemoryType
-from ...core_old.schema import Message, ToolCall
-from ...core_old.utils import format_messages
+from ...core.context import C
+from ...core.enumeration import Role, MemoryType
+from ...core.schema import Message, ToolCall
+from ...core.utils import format_messages
 
 
 @C.register_op()

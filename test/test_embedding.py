@@ -18,12 +18,12 @@ import asyncio
 import argparse
 from typing import Type, List
 
-from reme_ai.core_old.utils import load_env
+from reme_ai.core.utils import load_env
 
 load_env()
 
-from reme_ai.core_old.embedding import OpenAIEmbeddingModel, BaseEmbeddingModel
-from reme_ai.core_old.schema import VectorNode
+from reme_ai.core.embedding import OpenAIEmbeddingModel, BaseEmbeddingModel
+from reme_ai.core.schema import VectorNode
 
 
 def get_embedding_model(model_class: Type[BaseEmbeddingModel]) -> BaseEmbeddingModel:

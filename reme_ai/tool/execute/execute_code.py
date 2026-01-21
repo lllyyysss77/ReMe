@@ -4,11 +4,11 @@ This module provides an operation that can execute Python code strings
 and return the output or error messages.
 """
 
-from ...core_old.context import C
-from ...core_old.op import BaseOp
-from ...core_old.schema import ToolCall
+from ...core.context import C
+from ...core.op import BaseOp
+from ...core.schema import ToolCall
 
-from ...core_old.utils import exec_code
+from ...core.utils import exec_code
 
 
 @C.register_op()

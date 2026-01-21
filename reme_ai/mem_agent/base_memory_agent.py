@@ -6,9 +6,9 @@ from abc import ABCMeta
 
 from loguru import logger
 
-from ..core_old.enumeration import Role, MemoryType
-from ..core_old.op import BaseOp
-from ..core_old.schema import Message, ToolCall, MemoryNode
+from ..core.enumeration import Role, MemoryType
+from ..core.op import BaseOp
+from ..core.schema import Message, ToolCall, MemoryNode
 from ..mem_tool import BaseMemoryTool, ThinkTool
 
 

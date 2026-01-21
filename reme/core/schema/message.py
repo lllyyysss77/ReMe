@@ -132,7 +132,7 @@ class Message(BaseModel):
 
         def strip_md_func(line):
             if strip_markdown_headers:
-                line = re.sub(r'\n##+ +', '\n', line)
+                line = re.sub(r"\n##+ +", "\n", line)
             return line
 
         if add_reasoning and self.reasoning_content:
@@ -143,8 +143,9 @@ class Message(BaseModel):
 
         elif isinstance(self.content, list):
             for block in self.content:
-                text = block.content if isinstance(block.content, str) else \
-                    json.dumps(block.content, ensure_ascii=False)
+                text = (
+                    block.content if isinstance(block.content, str) else json.dumps(block.content, ensure_ascii=False)
+                )
                 text = str(text)
                 lines.append(strip_md_func(text))
 

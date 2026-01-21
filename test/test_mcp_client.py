@@ -5,7 +5,7 @@
 import asyncio
 import json
 
-from reme_ai.core_old.utils import MCPClient
+from reme_ai.core.utils import MCPClient
 
 
 async def main():

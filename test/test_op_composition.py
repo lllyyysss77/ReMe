@@ -5,8 +5,8 @@ Tests asynchronous execution mode.
 
 import asyncio
 
-from reme_ai.core_old.op import BaseOp
-from reme_ai.core_old.schema import ToolCall, ToolAttr
+from reme_ai.core.op import BaseOp
+from reme_ai.core.schema import ToolCall, ToolAttr
 
 
 class AddOp(BaseOp):

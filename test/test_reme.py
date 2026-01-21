@@ -2,7 +2,7 @@
 
 import asyncio
 
-from reme_ai.core_old.schema import VectorNode, MemoryNode
+from reme_ai.core.schema import VectorNode, MemoryNode
 from reme_ai.reme import ReMe
 
 reme = ReMe(

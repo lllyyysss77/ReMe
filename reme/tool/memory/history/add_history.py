@@ -2,10 +2,10 @@
 
 from loguru import logger
 
-from .base_memory_tool import BaseMemoryTool
-from ...core.enumeration import MemoryType
-from ...core.schema import ToolCall, MemoryNode, Message
-from ...core.utils import format_messages
+from ..base_memory_tool import BaseMemoryTool
+from ....core.enumeration import MemoryType
+from ....core.schema import ToolCall, MemoryNode, Message
+from ....core.utils import format_messages
 
 
 class AddHistory(BaseMemoryTool):
@@ -25,7 +25,7 @@ class AddHistory(BaseMemoryTool):
                     "properties": {},
                     "required": [],
                 },
-            }
+            },
         )
 
     async def execute(self):

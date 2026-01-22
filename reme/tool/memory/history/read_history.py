@@ -2,8 +2,8 @@
 
 from loguru import logger
 
-from .base_memory_tool import BaseMemoryTool
-from ...core.schema import MemoryNode, ToolCall
+from ..base_memory_tool import BaseMemoryTool
+from ....core.schema import MemoryNode, ToolCall
 
 
 class ReadHistory(BaseMemoryTool):

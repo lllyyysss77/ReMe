@@ -4,9 +4,9 @@ from typing import Literal
 
 from loguru import logger
 
-from .base_memory_tool import BaseMemoryTool
-from ...core.schema import ToolCall
-from ...core.schema.memory_node import MemoryNode
+from ..base_memory_tool import BaseMemoryTool
+from ....core.schema import ToolCall
+from ....core.schema.memory_node import MemoryNode
 
 
 class ReadUserProfile(BaseMemoryTool):

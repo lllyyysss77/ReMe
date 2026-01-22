@@ -76,6 +76,11 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
         return self.context.get("memory_target", "")
 
     @property
+    def memory_cache_key(self) -> str:
+        """Get the memory cache key from context."""
+        return f"{self.memory_type.value}_{self.memory_target}".replace(" ", "_").lower()
+
+    @property
     def history_node(self) -> MemoryNode:
         """Get the history node from context."""
         return self.context.get("history_node")

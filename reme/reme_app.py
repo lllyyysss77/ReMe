@@ -3,11 +3,11 @@
 import asyncio
 import sys
 
-from reme.core.utils import execute_stream_task
 from .config import ReMeConfigParser
 from .core.context import ServiceContext
 from .core.flow import BaseFlow
 from .core.schema import Response
+from .core.utils import execute_stream_task
 
 
 class ReMeApp:

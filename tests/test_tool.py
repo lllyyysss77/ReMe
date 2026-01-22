@@ -43,7 +43,7 @@ def test_execute():
     including successful execution, syntax errors, runtime errors, and
     invalid commands to verify error handling.
     """
-    from reme.tool.execute import ExecuteCode, ExecuteShell
+    from reme.tool.gallery import ExecuteCode, ExecuteShell
 
     # Test ExecuteCode
     print("\n" + "=" * 60)

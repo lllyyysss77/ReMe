@@ -1,9 +1,9 @@
 """Tool"""
 
-from . import execute
+from . import gallery
 from . import search
 
 __all__ = [
-    "execute",
+    "gallery",
     "search",
 ]

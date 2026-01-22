@@ -4,29 +4,15 @@ This module provides a tool that prompts the model for explicit reflection
 before taking actions, helping agents reason about their next steps.
 """
 
-from .base_memory_tool import BaseMemoryTool
-from ..core.context import C
-from ..core.schema import ToolCall
+from ...core.op import BaseTool
+from ...core.schema import ToolCall
 
 
-@C.register_op()
-class ThinkTool(BaseMemoryTool):
-    """Utility that prompts the model for explicit reflection text.
-
-    This tool provides a thinking mechanism for agents to reflect on:
-    1. Whether current context is sufficient to answer
-    2. What information is missing
-    3. Which tool and parameters to use next
-    """
+class ThinkTool(BaseTool):
+    """Utility that prompts the model for explicit reflection text."""
 
     def __init__(self, add_output_reflection: bool = False, **kwargs):
-        """Initialize the think tool.
-
-        Args:
-            add_output_reflection: If True, outputs the reflection content;
-                                 if False, outputs a confirmation message
-            **kwargs: Additional arguments passed to BaseOp
-        """
+        """Initialize the think tool."""
         super().__init__(**kwargs)
         self.add_output_reflection: bool = add_output_reflection
 
@@ -51,6 +37,6 @@ class ThinkTool(BaseMemoryTool):
     async def execute(self):
         """Execute the think tool by processing reflection input."""
         if self.add_output_reflection:
-            self.output = self.context["reflection"]
+            return self.context["reflection"]
         else:
-            self.output = self.get_prompt("reflection_output")
+            return self.get_prompt("reflection_output")

@@ -25,13 +25,10 @@ class BaseTool(BaseOp, metaclass=ABCMeta):
             self.context.validate_required_keys(required_keys, self.name)
 
     @property
-    def tool_call(self) -> ToolCall | None:
+    def tool_call(self) -> ToolCall:
         """Get the tool call schema."""
         if self._tool_call is None:
             self._tool_call = self._build_tool_call()
-            if self._tool_call is None:
-                return None
-
             self._tool_call.name = self._tool_call.name or self.name
         return self._tool_call
 

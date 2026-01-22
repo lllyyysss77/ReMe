@@ -1,5 +1,6 @@
 """ChromaDB vector store implementation for the ReMe framework."""
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from loguru import logger
@@ -26,6 +27,7 @@ class ChromaVectorStore(BaseVectorStore):
         self,
         collection_name: str,
         embedding_model: BaseEmbeddingModel,
+        thread_pool: ThreadPoolExecutor,
         client: chromadb.ClientAPI | None = None,
         host: str | None = None,
         port: int | None = None,
@@ -44,6 +46,7 @@ class ChromaVectorStore(BaseVectorStore):
         super().__init__(
             collection_name=collection_name,
             embedding_model=embedding_model,
+            thread_pool=thread_pool,
             **kwargs,
         )
 

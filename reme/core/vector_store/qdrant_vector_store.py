@@ -1,5 +1,6 @@
 """Qdrant vector store implementation for the ReMe project."""
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from loguru import logger
@@ -42,6 +43,7 @@ class QdrantVectorStore(BaseVectorStore):
         self,
         collection_name: str,
         embedding_model: BaseEmbeddingModel,
+        thread_pool: ThreadPoolExecutor,
         host: str | None = None,
         port: int = 6333,
         path: str | None = None,
@@ -59,6 +61,7 @@ class QdrantVectorStore(BaseVectorStore):
         Args:
             collection_name: Name of the collection.
             embedding_model: Model used for generating vector embeddings.
+            thread_pool: ThreadPoolExecutor for running synchronous operations.
             host: Server host address.
             port: HTTP port for the server.
             path: Local storage path for on-disk/in-memory mode.
@@ -76,7 +79,14 @@ class QdrantVectorStore(BaseVectorStore):
                 "Qdrant requires extra dependencies. Install with `pip install qdrant-client`",
             ) from _QDRANT_IMPORT_ERROR
 
-        super().__init__(collection_name=collection_name, embedding_model=embedding_model, **kwargs)
+        super().__init__(
+            collection_name=collection_name,
+            embedding_model=embedding_model,
+            thread_pool=thread_pool,
+            **kwargs,
+        )
+
+        client_kwargs = {k: v for k, v in kwargs.items() if k != "thread_pool"}
 
         self.client = AsyncQdrantClient(
             host=host,
@@ -87,7 +97,7 @@ class QdrantVectorStore(BaseVectorStore):
             https=https,
             grpc_port=grpc_port,
             prefer_grpc=prefer_grpc,
-            **kwargs,
+            **client_kwargs,
         )
 
         self.is_local = path is not None

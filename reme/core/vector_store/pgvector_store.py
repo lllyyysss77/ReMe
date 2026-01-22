@@ -2,6 +2,7 @@
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from loguru import logger
@@ -47,6 +48,7 @@ class PGVectorStore(BaseVectorStore):
         self,
         collection_name: str,
         embedding_model: BaseEmbeddingModel,
+        thread_pool: ThreadPoolExecutor,
         host: str = "localhost",
         port: int = 5432,
         database: str = "postgres",
@@ -68,7 +70,12 @@ class PGVectorStore(BaseVectorStore):
         # Validate collection name to prevent SQL injection
         self._validate_table_name(collection_name)
 
-        super().__init__(collection_name=collection_name, embedding_model=embedding_model, **kwargs)
+        super().__init__(
+            collection_name=collection_name,
+            embedding_model=embedding_model,
+            thread_pool=thread_pool,
+            **kwargs,
+        )
 
         self.dsn = dsn
         self.host = host

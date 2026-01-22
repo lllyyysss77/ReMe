@@ -4,6 +4,7 @@ This module provides an Elasticsearch-based vector store that implements the Bas
 interface for high-performance dense vector storage and retrieval.
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from loguru import logger
@@ -30,6 +31,7 @@ class ESVectorStore(BaseVectorStore):
         self,
         collection_name: str,
         embedding_model: BaseEmbeddingModel,
+        thread_pool: ThreadPoolExecutor,
         hosts: str | list[str] | None = None,
         basic_auth: tuple[str, str] | None = None,
         cloud_id: str | None = None,
@@ -43,6 +45,7 @@ class ESVectorStore(BaseVectorStore):
         Args:
             collection_name: Name of the Elasticsearch index (converted to lowercase).
             embedding_model: Model instance used to generate vector embeddings.
+            thread_pool: ThreadPoolExecutor for running synchronous operations.
             hosts: Connection host(s) for the Elasticsearch cluster.
             basic_auth: Credentials for basic authentication.
             cloud_id: Deployment ID for Elastic Cloud.
@@ -59,7 +62,12 @@ class ESVectorStore(BaseVectorStore):
         # Elasticsearch requires lowercase index names
         collection_name = collection_name.lower()
 
-        super().__init__(collection_name=collection_name, embedding_model=embedding_model, **kwargs)
+        super().__init__(
+            collection_name=collection_name,
+            embedding_model=embedding_model,
+            thread_pool=thread_pool,
+            **kwargs,
+        )
 
         # Initialize AsyncElasticsearch client
         self.client = AsyncElasticsearch(

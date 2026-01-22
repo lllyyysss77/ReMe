@@ -2,8 +2,9 @@
 
 import asyncio
 
-from reme_ai.core.schema import VectorNode, MemoryNode
-from reme_ai.reme import ReMe
+from reme.reme import ReMe
+
+from reme.core.schema import VectorNode, MemoryNode
 
 reme = ReMe(
     vector_store={"collection_name": "reme"},

@@ -96,7 +96,7 @@ When context grows too large, model performance degrades significantly—a pheno
 
 ### Usage Pattern
 For complete working examples of how to use MessageOffloadOp in practice, please refer to:
-[test_message_offload_op.py](../../test_op/test_message_offload_op.py)
+[test_message_offload_op.py](../../test/test_message_offload_op.py)
 
 This test file demonstrates:
 - **Compact mode**: How to configure and use compaction-only strategy

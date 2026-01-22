@@ -30,7 +30,8 @@ class RuntimeContext(BaseContext):
         if context is None:
             return cls(**kwargs)
         else:
-            context.update(kwargs)
+            if kwargs:
+                context.update(kwargs)
             return context
 
     async def _enqueue(self, chunk: StreamChunk) -> None:

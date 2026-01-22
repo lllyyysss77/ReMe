@@ -1,6 +1,7 @@
 """Local file system vector store implementation for ReMe."""
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from loguru import logger
@@ -17,11 +18,17 @@ class LocalVectorStore(BaseVectorStore):
         self,
         collection_name: str,
         embedding_model: BaseEmbeddingModel,
+        thread_pool: ThreadPoolExecutor,
         root_path: str = "./local_vector_store",
         **kwargs,
     ):
         """Initialize the local vector store with a root path and collection name."""
-        super().__init__(collection_name=collection_name, embedding_model=embedding_model, **kwargs)
+        super().__init__(
+            collection_name=collection_name,
+            embedding_model=embedding_model,
+            thread_pool=thread_pool,
+            **kwargs,
+        )
         self.root_path = Path(root_path)
         self.collection_path = self.root_path / collection_name
         self.root_path.mkdir(parents=True, exist_ok=True)

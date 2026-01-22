@@ -11,6 +11,6 @@ __all__ = [
     "ThinkTool",
 ]
 
-R.op.register()(ExecuteCode)
-R.op.register()(ExecuteShell)
-R.op.register()(ThinkTool)
+for name in __all__:
+    tool_class = globals()[name]
+    R.op.register()(tool_class)

@@ -11,6 +11,6 @@ __all__ = [
     "TavilySearch",
 ]
 
-R.op.register()(DashscopeSearch)
-R.op.register()(MockSearch)
-R.op.register()(TavilySearch)
+for name in __all__:
+    tool_class = globals()[name]
+    R.op.register()(tool_class)

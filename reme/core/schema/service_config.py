@@ -1,7 +1,6 @@
 """Configuration schemas for service components using Pydantic models."""
 
 import os
-from typing import Dict, List
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -99,15 +98,15 @@ class ServiceConfig(BaseModel):
     thread_pool_max_workers: int = Field(default=16)
     ray_max_workers: int = Field(default=-1)
     init_logger: bool = Field(default=True)
-    disabled_flows: List[str] = Field(default_factory=list)
-    enabled_flows: List[str] = Field(default_factory=list)
-    mcp_servers: Dict[str, dict] = Field(default_factory=dict)
+    disabled_flows: list[str] = Field(default_factory=list)
+    enabled_flows: list[str] = Field(default_factory=list)
+    mcp_servers: dict[str, dict] = Field(default_factory=dict)
 
     mcp: MCPConfig = Field(default_factory=MCPConfig)
     http: HttpConfig = Field(default_factory=HttpConfig)
     cmd: CmdConfig = Field(default_factory=CmdConfig)
-    flow: Dict[str, FlowConfig] = Field(default_factory=dict)
-    llm: Dict[str, LLMConfig] = Field(default_factory=dict)
-    embedding_model: Dict[str, EmbeddingModelConfig] = Field(default_factory=dict)
-    vector_store: Dict[str, VectorStoreConfig] = Field(default_factory=dict)
-    token_counter: Dict[str, TokenCounterConfig] = Field(default_factory=dict)
+    flow: dict[str, FlowConfig] = Field(default_factory=dict)
+    llm: dict[str, LLMConfig] = Field(default_factory=dict)
+    embedding_model: dict[str, EmbeddingModelConfig] = Field(default_factory=dict)
+    vector_store: dict[str, VectorStoreConfig] = Field(default_factory=dict)
+    token_counter: dict[str, TokenCounterConfig] = Field(default_factory=dict)

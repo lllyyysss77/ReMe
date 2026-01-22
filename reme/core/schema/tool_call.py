@@ -103,11 +103,6 @@ class ToolCall(BaseModel):
         description="Specification for input parameters",
     )
 
-    output: ToolAttr = Field(
-        default_factory=lambda: ToolAttr(type="object", properties={}),
-        description="Specification for the execution result (Schema)",
-    )
-
     @model_validator(mode="before")
     @classmethod
     def init_tool_call(cls, data: dict) -> dict:

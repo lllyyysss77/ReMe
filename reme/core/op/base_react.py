@@ -1,24 +1,27 @@
 """Base memory agent for handling memory operations with tool-based reasoning."""
 
 import asyncio
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from . import BaseTool
 from ..enumeration import Role
 from ..op import BaseOp
 from ..schema import Message
+
+if TYPE_CHECKING:
+    from . import BaseTool
 
 
 class BaseReact(BaseOp):
     """ReAct agent that performs reasoning and acting cycles with tools."""
 
     def __init__(
-            self,
-            tools: list[BaseTool],
-            tool_call_interval: float = 0,
-            max_steps: int = 10,
-            **kwargs,
+        self,
+        tools: list[BaseTool],
+        tool_call_interval: float = 0,
+        max_steps: int = 10,
+        **kwargs,
     ):
         """Initialize ReAct agent with tools and execution parameters."""
         kwargs["sub_ops"] = tools or []
@@ -44,11 +47,12 @@ class BaseReact(BaseOp):
         return messages
 
     async def _reasoning_step(
-            self,
-            messages: list[Message],
-            step: int,
-            stage: str = "",
-            **kwargs) -> tuple[Message, bool]:
+        self,
+        messages: list[Message],
+        step: int,
+        stage: str = "",
+        **kwargs,
+    ) -> tuple[Message, bool]:
         """Execute one reasoning step where LLM decides whether to use tools."""
         # Get tool definitions for LLM
         tool_calls = [t.tool_call for t in self.tools]
@@ -62,11 +66,11 @@ class BaseReact(BaseOp):
         return assistant_message, should_act
 
     async def _acting_step(
-            self,
-            assistant_message: Message,
-            step: int,
-            stage: str = "",
-            **kwargs
+        self,
+        assistant_message: Message,
+        step: int,
+        stage: str = "",
+        **kwargs,
     ) -> tuple[list[BaseTool], list[Message]]:
         """Execute tool calls requested by the assistant and collect results."""
         tool_list: list[BaseTool] = []
@@ -101,11 +105,13 @@ class BaseReact(BaseOp):
 
         # Collect tool results as messages
         for j, tool in enumerate(tool_list):
-            tool_messages.append(Message(
-                role=Role.TOOL,
-                content=tool.response.answer,
-                tool_call_id=tool.tool_call.id,
-            ))
+            tool_messages.append(
+                Message(
+                    role=Role.TOOL,
+                    content=tool.response.answer,
+                    tool_call_id=tool.tool_call.id,
+                ),
+            )
             prefix: str = f"[{self.__class__.__name__} {stage or ''} step{step + 1}.{j}]"
             logger.info(f"{prefix} join tool={tool.name} result={tool.response.answer}")
         return tool_list, tool_messages

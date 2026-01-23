@@ -21,6 +21,7 @@ from ..vector_store import BaseVectorStore
 
 class BaseOp(metaclass=ABCMeta):
     """Base operator class for LLM workflow execution and composition."""
+
     __alias_name__: str = ""
 
     def __new__(cls, *args, **kwargs):

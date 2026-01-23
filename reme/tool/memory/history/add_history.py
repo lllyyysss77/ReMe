@@ -38,6 +38,7 @@ class AddHistory(BaseMemoryTool):
             content=history_content,
             author=self.author,
         )
+        self.context.history_node = history_node
         logger.info(f"Adding history node: {history_node.model_dump_json(indent=2, exclude={'content'})}")
 
         vector_node = history_node.to_vector_node()

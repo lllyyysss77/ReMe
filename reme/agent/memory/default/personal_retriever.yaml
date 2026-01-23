@@ -1,0 +1,16 @@
+tool: |
+  Retrieve personal memories via vector search and history reading to answer user questions.
+
+user_message: |
+  You manage **{memory_type}** memories about **{memory_target}**.
+
+  ## Profile
+  {user_profile}
+
+  ## Question
+  {context}
+
+  ## Task
+  1. Vector search (`retrieve_memory`): Try 3-5 queries with different phrasings, entities, keywords, and time ranges [start, end] in YYYYMMDD
+  2. Read context (`read_history`): Use history_id from results to get full conversations
+  3. Respond: `<MEMORY_FOUND>` if found, `<MEMORY_NOT_FOUND>` if not found after thorough search

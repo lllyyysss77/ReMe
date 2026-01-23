@@ -1,0 +1,26 @@
+user_message_phase1: |
+  You manage **{memory_type}** memories about **{memory_target}**.
+
+  ## Conversation
+  {context}
+
+  Format: `round<index> [<timestamp>] <role/name>: <content>` (timestamp: YYYY-MM-DD HH:MM:SS).
+
+  ## Task
+  Extract memories with `add_memory`. Set `conversation_time` (YYYY-MM-DD HH:MM:SS, use 0000-00-00 00:00:00 if unavailable). Extract ONLY explicit information, no inference.
+
+user_message_phase2: |
+  You manage **{memory_type}** memories about **{memory_target}**.
+
+  ## Conversation
+  {context}
+
+  ## Profile
+  {user_profile}
+
+  ## Task
+  Update profile with `UpdateUserProfile`:
+  - `profile_ids_to_delete`: Remove conflicting/redundant entries
+  - `profiles_to_add`: Add new entries with `conversation_time` and `profile_content` (complete, self-contained, mutually exclusive)
+
+  Extract ONLY explicit information, no inference.

@@ -33,6 +33,20 @@ class ReadMetaMemory(BaseMemoryTool):
             },
         )
 
+    def format_memory_metadata(self, memories: list[dict[str, str]]) -> str:
+        """Format memory metadata into a readable string."""
+        if not memories:
+            return ""
+
+        lines = []
+        for memory in memories:
+            memory_type = memory["memory_type"]
+            memory_target = memory["memory_target"]
+            description = self.TYPE_DESC_DICT[memory_type]
+            lines.append(f"- {memory_type}({memory_target}): {description}")
+
+        return "\n".join(lines)
+
     async def execute(self):
         # Load and filter meta memories
         result = self.local_memory.load("meta_memories")
@@ -51,13 +65,8 @@ class ReadMetaMemory(BaseMemoryTool):
             )
 
         # Format output
-        if memories:
-            lines = [
-                f"- {m['memory_type']}({m['memory_target']}): {self.TYPE_DESC_DICT.get(m['memory_type'], '')}"
-                for m in memories
-            ]
-
-            output = "\n".join(lines)
+        output = self.format_memory_metadata(memories)
+        if output:
             logger.info(f"Retrieved {len(memories)} meta memory entries")
         else:
             output = "No memory metadata found."

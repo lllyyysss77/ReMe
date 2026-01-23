@@ -131,7 +131,7 @@ class ToolCall(BaseModel):
 
     def simple_input_dump(self, as_dict: bool = True) -> dict | str:
         """Returns a standardized tool definition dictionary or JSON string.
-        
+
         Args:
             as_dict: If True, returns dict; if False, returns JSON string.
         """
@@ -147,7 +147,7 @@ class ToolCall(BaseModel):
 
     def simple_output_dump(self, as_dict: bool = True) -> dict | str:
         """Convert ToolCall to output format dictionary or JSON string for API responses.
-        
+
         Args:
             as_dict: If True, returns dict; if False, returns JSON string.
         """

@@ -143,7 +143,7 @@ class ToolCall(BaseModel):
                 "parameters": self.parameters.simple_input_dump(),
             },
         }
-        return result if as_dict else json.dumps(result)
+        return result if as_dict else json.dumps(result, ensure_ascii=False)
 
     def simple_output_dump(self, as_dict: bool = True) -> dict | str:
         """Convert ToolCall to output format dictionary or JSON string for API responses.
@@ -160,7 +160,7 @@ class ToolCall(BaseModel):
             },
             "type": self.type,
         }
-        return result if as_dict else json.dumps(result)
+        return result if as_dict else json.dumps(result, ensure_ascii=False)
 
     @property
     def argument_dict(self) -> dict:

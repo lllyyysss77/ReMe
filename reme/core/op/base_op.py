@@ -21,6 +21,7 @@ from ..vector_store import BaseVectorStore
 
 class BaseOp(metaclass=ABCMeta):
     """Base operator class for LLM workflow execution and composition."""
+    __alias_name__: str = ""
 
     def __new__(cls, *args, **kwargs):
         """Capture initialization arguments for object cloning."""
@@ -52,7 +53,7 @@ class BaseOp(metaclass=ABCMeta):
         **kwargs,
     ):
         """Initialize operator configurations and internal state."""
-        self.name = name or camel_to_snake(self.__class__.__name__)
+        self.name = name or self.__alias_name__ or camel_to_snake(self.__class__.__name__)
         self.async_mode = async_mode
         self.language = language
         self.prompt = self._get_prompt_handler(prompt_name, prompt_path)

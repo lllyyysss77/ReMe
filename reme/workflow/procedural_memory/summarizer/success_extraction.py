@@ -6,14 +6,17 @@ trajectories, identifying patterns and strategies that lead to success.
 
 from typing import List
 
+from loguru import logger
 
-from ....core.enumeration import Role
+from ....core.enumeration import MemoryType, Role
 from ....core.op import BaseOp
-from ....core.enumeration import MemoryType
 from ....core.schema.memory_node import MemoryNode
 from ....core.schema.message import Message, Trajectory
-from ....core.utils.llm_utils import merge_messages_content, parse_json_experience_response, get_trajectory_context
-from loguru import logger
+from ....core.utils.llm_utils import (
+    get_trajectory_context,
+    merge_messages_content,
+    parse_json_experience_response,
+)
 
 
 class SuccessExtraction(BaseOp):
@@ -71,7 +74,7 @@ class SuccessExtraction(BaseOp):
         )
 
         def parse_task_memories(message: Message) -> list[MemoryNode]:
-            task_memories_data = parse_json_experience_response(message.content) # extract content
+            task_memories_data = parse_json_experience_response(message.content)  # extract content
             task_memories = []
 
             for tm_data in task_memories_data:

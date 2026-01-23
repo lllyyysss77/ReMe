@@ -4,11 +4,12 @@ This module provides operations to preprocess and classify trajectories
 into success and failure categories based on score thresholds.
 """
 
-from typing import List, Dict
+from typing import Dict, List
+
+from loguru import logger
 
 from ....core.op import BaseOp
 from ....core.schema.message import Trajectory
-from loguru import logger
 
 
 class TrajectoryPreprocess(BaseOp):

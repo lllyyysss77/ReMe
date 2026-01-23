@@ -18,19 +18,19 @@ class ReMeSummarizer(BaseMemoryAgent):
         super().__init__(**kwargs)
         self.enable_identity_memory = enable_identity_memory
         self.meta_memories: list[dict] = meta_memories or []
-        
+
         # Check if AddMetaMemory is in tools
         self.enable_add_meta_memory = self._check_add_meta_memory_in_tools()
 
     def _check_add_meta_memory_in_tools(self) -> bool:
         """Check if AddMetaMemory tool is present in the tools list."""
         from ...mem_tool import AddMetaMemory
-        
+
         for tool in self.tools:
             if isinstance(tool, AddMetaMemory):
                 return True
         return False
-    
+
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
             **{

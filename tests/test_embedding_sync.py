@@ -17,12 +17,12 @@ Usage:
 import argparse
 from typing import Type, List
 
-from reme_ai.core.utils import load_env
+from reme.core.utils import load_env
 
 load_env()
 
-from reme_ai.core.embedding import OpenAIEmbeddingModelSync, BaseEmbeddingModel
-from reme_ai.core.schema import VectorNode
+from reme.core.embedding import OpenAIEmbeddingModelSync, BaseEmbeddingModel
+from reme.core.schema import VectorNode
 
 
 def get_embedding_model(model_class: Type[BaseEmbeddingModel]) -> BaseEmbeddingModel:

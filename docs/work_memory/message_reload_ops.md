@@ -114,7 +114,7 @@ Example: Reading `/workspace/context_store/tool_call_123.txt` with `offset=0` an
 ## Usage Pattern: Combining Grep and ReadFile
 
 For a complete working example of how to use these operations in practice, please refer to:
-[test_agentic_retrieve_op.py](../../test_op/test_agentic_retrieve_op.py)
+[test_agentic_retrieve_op.py](../../test/test_agentic_retrieve_op.py)
 
 This test file demonstrates:
 - How to configure the system prompt to guide AI in using Grep and ReadFile operations

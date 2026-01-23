@@ -12,7 +12,7 @@ from ...core.utils import format_messages
 @C.register_op()
 class ReMeRetrieverV2(BaseMemoryAgent):
     """Memory agent that autonomously retrieves memories from multiple angles.
-    
+
     This retriever:
     - Directly queries memories based on user questions without time constraints
     - Tries multiple retrieval strategies: direct vector search, metadata filtering, partial filtering
@@ -24,13 +24,13 @@ class ReMeRetrieverV2(BaseMemoryAgent):
         # Check if ReadHistory tool is available in the tools list
         tools = kwargs.get('tools', [])
         has_read_history = any(tool.__class__.__name__ == 'ReadHistory' for tool in tools)
-        
+
         # Use simple prompt if ReadHistory is not available
         if not has_read_history:
             super().__init__(prompt_name="reme_retriever_v2_simple", **kwargs)
         else:
             super().__init__(**kwargs)
-        
+
         self.meta_memories: list[dict] = meta_memories or []
 
     async def _read_meta_memories(self) -> str:

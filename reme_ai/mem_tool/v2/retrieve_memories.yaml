@@ -9,7 +9,7 @@ tool_multiple: |
   This prevents redundant information in subsequent retrievals.
 
 memory_type: |
-  The type of memory to search for. 
+  The type of memory to search for.
   You MUST select one of the memory_type values that are explicitly provided in the Available Meta-Memories.
 
 memory_target: |

@@ -10,13 +10,13 @@ from ...core.schema import MemoryNode
 @C.register_op()
 class ReadHistory(BaseMemoryTool):
     """Read original history dialogue by reference memory ID.
-    
+
     Only supports single memory read (enable_multiple=False).
     """
 
     def __init__(self, **kwargs):
         """Initialize ReadHistory.
-        
+
         Args:
             **kwargs: Additional args for BaseMemoryTool.
         """

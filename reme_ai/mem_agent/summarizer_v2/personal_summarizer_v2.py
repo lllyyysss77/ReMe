@@ -12,7 +12,7 @@ class PersonalSummarizerV2(BaseMemoryAgent):
     memory_type: MemoryType = MemoryType.PERSONAL
 
     """Simplified personal memory summarizer that uses v2 memory tools.
-    
+
     This summarizer follows a three-step workflow:
     1. AddMemoryDrafts: Generate initial memory drafts from context
     2. RetrieveRecentAndSimilarMemories: Retrieve similar and recent memories

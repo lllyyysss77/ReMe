@@ -8,9 +8,9 @@ search tools (Dashscope, Mock, Tavily) and execution tools (Code, Shell).
 
 import asyncio
 
-from reme_ai.reme import ReMe
+from reme.reme_app import ReMeApp
 
-ReMe()
+app = ReMeApp()
 
 
 def test_search():
@@ -19,7 +19,7 @@ def test_search():
     Tests DashscopeSearch, MockSearch, and TavilySearch operations
     with a sample query to verify they work correctly.
     """
-    from reme_ai.tool.search import DashscopeSearch, MockSearch, TavilySearch
+    from reme.tool.search import DashscopeSearch, MockSearch, TavilySearch
 
     query = "今天杭州的天气如何？"
 
@@ -32,8 +32,8 @@ def test_search():
         print(f"Testing {op.__class__.__name__}")
         print("=" * 60)
         print(f"Query: {query}")
-        asyncio.run(op.call(query=query))
-        print(f"Output:\n{op.output}")
+        output = asyncio.run(op.call(query=query, service_context=app.service_context))
+        print(f"Output:\n{output}")
 
 
 def test_execute():
@@ -43,7 +43,7 @@ def test_execute():
     including successful execution, syntax errors, runtime errors, and
     invalid commands to verify error handling.
     """
-    from reme_ai.tool.execute import ExecuteCode, ExecuteShell
+    from reme.tool.gallery import ExecuteCode, ExecuteShell
 
     # Test ExecuteCode
     print("\n" + "=" * 60)
@@ -53,8 +53,8 @@ def test_execute():
     op = ExecuteCode()
     code_to_execute = "print('hello world')"
     print(f"Executing Python code: {code_to_execute}")
-    asyncio.run(op.call(code=code_to_execute))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(code=code_to_execute))
+    print(f"Output:\n{output}")
 
     # Test ExecuteCode with more complex code
     print("\n" + "=" * 60)
@@ -64,8 +64,8 @@ def test_execute():
     op = ExecuteCode()
     code_to_execute = "result = sum(range(1, 11))\nprint(f'Sum of 1-10: {result}')"
     print(f"Executing Python code:\n{code_to_execute}")
-    asyncio.run(op.call(code=code_to_execute))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(code=code_to_execute))
+    print(f"Output:\n{output}")
 
     # Test ExecuteShell
     print("\n" + "=" * 60)
@@ -75,8 +75,8 @@ def test_execute():
     op = ExecuteShell()
     command = "ls"
     print(f"Executing shell command: {command}")
-    asyncio.run(op.call(command=command))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(command=command))
+    print(f"Output:\n{output}")
 
     # Test ExecuteShell with echo
     print("\n" + "=" * 60)
@@ -86,8 +86,8 @@ def test_execute():
     op = ExecuteShell()
     command = "echo 'Hello from shell!'"
     print(f"Executing shell command: {command}")
-    asyncio.run(op.call(command=command))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(command=command))
+    print(f"Output:\n{output}")
 
     # Test ExecuteCode with error (syntax error)
     print("\n" + "=" * 60)
@@ -97,8 +97,8 @@ def test_execute():
     op = ExecuteCode()
     code_to_execute = "print('missing closing quote)"
     print(f"Executing Python code with syntax error:\n{code_to_execute}")
-    asyncio.run(op.call(code=code_to_execute))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(code=code_to_execute))
+    print(f"Output:\n{output}")
 
     # Test ExecuteCode with runtime error
     print("\n" + "=" * 60)
@@ -108,8 +108,8 @@ def test_execute():
     op = ExecuteCode()
     code_to_execute = "x = 1 / 0"
     print(f"Executing Python code with runtime error:\n{code_to_execute}")
-    asyncio.run(op.call(code=code_to_execute))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(code=code_to_execute))
+    print(f"Output:\n{output}")
 
     # Test ExecuteCode with undefined variable
     print("\n" + "=" * 60)
@@ -119,8 +119,8 @@ def test_execute():
     op = ExecuteCode()
     code_to_execute = "print(undefined_variable)"
     print(f"Executing Python code with undefined variable:\n{code_to_execute}")
-    asyncio.run(op.call(code=code_to_execute))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(code=code_to_execute))
+    print(f"Output:\n{output}")
 
     # Test ExecuteShell with invalid command
     print("\n" + "=" * 60)
@@ -130,8 +130,8 @@ def test_execute():
     op = ExecuteShell()
     command = "this_command_does_not_exist"
     print(f"Executing invalid shell command: {command}")
-    asyncio.run(op.call(command=command))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(command=command))
+    print(f"Output:\n{output}")
 
     # Test ExecuteShell with command that returns non-zero exit code
     print("\n" + "=" * 60)
@@ -141,8 +141,8 @@ def test_execute():
     op = ExecuteShell()
     command = "ls /nonexistent_directory_12345"
     print(f"Executing shell command that should fail: {command}")
-    asyncio.run(op.call(command=command))
-    print(f"Output:\n{op.output}")
+    output = asyncio.run(op.call(command=command))
+    print(f"Output:\n{output}")
 
     print("\n" + "=" * 60)
     print("All tests completed!")
@@ -155,11 +155,11 @@ def test_simple_chat():
     Tests the SimpleChat agent with a basic query to verify
     it can process and respond to user input.
     """
-    from reme_ai.mem_agent.chat import SimpleChat
+    from reme.agent.chat import SimpleChat
 
     op = SimpleChat()
-    asyncio.run(op.call(query="你好"))
-    print(op.output)
+    output = asyncio.run(op.call(query="你好", service_context=app.service_context))
+    print(output)
 
 
 async def test_stream_chat():
@@ -168,13 +168,13 @@ async def test_stream_chat():
     Tests the StreamChat agent with a query to verify it can
     process and stream responses in real-time using async operations.
     """
-    from reme_ai.mem_agent.chat import StreamChat
-    from reme_ai.core.utils import execute_stream_task
-    from reme_ai.core.context import RuntimeContext
+    from reme.agent.chat import StreamChat
+    from reme.core.utils import execute_stream_task
+    from reme.core.context import RuntimeContext
     from asyncio import Queue
 
     op = StreamChat()
-    context = RuntimeContext(query="你好，详细介绍一下自己", stream_queue=Queue())
+    context = RuntimeContext(query="你好，详细介绍一下自己", stream_queue=Queue(), service_context=app.service_context)
 
     async def task():
         await op.call(context)
@@ -192,5 +192,5 @@ async def test_stream_chat():
 if __name__ == "__main__":
     # test_search()
     # test_execute()
-    # test_simple_chat()
+    test_simple_chat()
     asyncio.run(test_stream_chat())

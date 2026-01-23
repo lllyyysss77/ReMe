@@ -1,0 +1,32 @@
+tool: |
+  Retrieve relevant personal memories to answer user questions through vector search and history reading.
+
+user_message: |
+  You are a memory agent managing **{memory_type}** memories about **{memory_target}**.
+
+  ## User Profile
+  {user_profile}
+
+  ## Question
+  {context}
+
+  ## Task
+  Search for relevant memories to answer the question above.
+
+  **Tool 1: Vector Search (`retrieve_memory`)**
+  - Try at least 3-5 different queries:
+    * Direct question
+    * Reformulated phrasings
+    * Entity-focused queries
+    * Different keyword combinations
+  - If no results: retry with different time ranges [start, end] in YYYYMMDD format
+    * Example: [20200101, 20200102] for 20200101 <= time <= 20200102
+    * Single-sided: [0, 20200102] or [20200101, 99999999]
+
+  **Tool 2: Read Context (`read_history`) - ONLY AFTER Tool 1**
+  - Use history_id from retrieved memories to read original conversations
+  - Read multiple if needed for complete context
+
+  **Response**
+  - If found relevant memories: respond exactly `<MEMORY_FOUND>`
+  - If no memory found after thorough search: respond exactly `<MEMORY_NOT_FOUND>`

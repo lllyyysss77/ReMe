@@ -17,13 +17,13 @@ Usage:
 import argparse
 from typing import Type
 
-from reme_ai.core.utils import load_env
+from reme.core.utils import load_env
 
 load_env()
 
-from reme_ai.core.llm import OpenAILLMSync, LiteLLMSync, BaseLLM
-from reme_ai.core.schema import Message, ToolCall
-from reme_ai.core.enumeration import Role, ChunkEnum
+from reme.core.llm import OpenAILLMSync, LiteLLMSync, BaseLLM
+from reme.core.schema import Message, ToolCall
+from reme.core.enumeration import Role, ChunkEnum
 
 
 def get_llm(llm_class: Type[BaseLLM]) -> BaseLLM:

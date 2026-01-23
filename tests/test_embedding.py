@@ -14,16 +14,16 @@ Usage:
 # flake8: noqa: E402
 # pylint: disable=C0413
 
-import asyncio
 import argparse
+import asyncio
 from typing import Type, List
 
-from reme_ai.core.utils import load_env
+from reme.core.utils import load_env
 
 load_env()
 
-from reme_ai.core.embedding import OpenAIEmbeddingModel, BaseEmbeddingModel
-from reme_ai.core.schema import VectorNode
+from reme.core.embedding import OpenAIEmbeddingModel, BaseEmbeddingModel
+from reme.core.schema import VectorNode
 
 
 def get_embedding_model(model_class: Type[BaseEmbeddingModel]) -> BaseEmbeddingModel:

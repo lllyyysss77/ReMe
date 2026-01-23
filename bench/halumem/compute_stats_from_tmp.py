@@ -9,7 +9,7 @@ are available in the tmp directory. It will:
 4. Aggregate results and compute metrics
 
 Usage:
-    python bench/halumem/compute_stats_from_tmp.py --tmp_dir bench_results/reme/tmp
+    python bench/halumem/compute_stats_from_tmp.py --tmp_dir bench_results/reme_simple_v4/tmp
 """
 
 import asyncio
@@ -358,7 +358,7 @@ async def main_async(tmp_dir: str):
     # Determine paths
     parent_dir = os.path.dirname(tmp_dir)
     frame = "reme"
-    
+
     output_file_stage1 = os.path.join(parent_dir, f"{frame}_eval_results.jsonl")
     output_file_stage2 = os.path.join(parent_dir, f"{frame}_eval_stat_result.json")
 
@@ -392,7 +392,7 @@ async def main_async(tmp_dir: str):
 
     # Load all users and process
     user_data_list = list(enumerate(iter_jsonl(output_file_stage1), 1))
-    
+
     for idx, user_data in user_data_list:
         uuid = user_data["uuid"]
         tmp_file = os.path.join(tmp_dir2, f"{uuid}.json")

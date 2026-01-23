@@ -28,12 +28,12 @@ reme = ReMe()
 )
 async def llm_request(prompt, model_name: str = "qwen3-max", **kwargs) -> str:
     """Make an LLM request using ReMe's LLM with optional model override.
-    
+
     Args:
         prompt: The prompt to send to the LLM
         model_name: Optional model name to override the default model (default: "qwen3-max")
         **kwargs: Additional arguments to pass to the chat method
-    
+
     Returns:
         The assistant's response content
     """
@@ -58,17 +58,18 @@ async def llm_request(prompt, model_name: str = "qwen3-max", **kwargs) -> str:
     reraise=True,
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-async def llm_request_for_json(prompt, model_name: str = "qwen3-max", **kwargs):
+async def llm_request_for_json(prompt, model_name: str = "qwen-flash", **kwargs):
+    # async def llm_request_for_json(prompt, model_name: str = "qwen3-max", **kwargs):
     """Make an LLM request expecting JSON response using ReMe's LLM.
-    
+
     Args:
         prompt: The prompt to send to the LLM
         model_name: Optional model name to override the default model (default: "qwen3-max")
         **kwargs: Additional arguments to pass to the chat method
-    
+
     Returns:
         Parsed JSON object from the LLM response
-        
+
     Raises:
         ValueError: If no JSON block is found in the model output
     """

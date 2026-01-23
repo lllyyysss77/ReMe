@@ -57,7 +57,7 @@ full = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["reme_ai*"]
+include = ["reme_ai*", "reme*"]
 exclude = ["test*", "cookbook*", "doc*", "library*", "dist*"]
 
 [tool.setuptools.package-data]

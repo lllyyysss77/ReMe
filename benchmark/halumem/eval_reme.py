@@ -42,6 +42,7 @@ class EvalConfig:
     max_concurrency: int = 2
     batch_size: int = 20
     output_dir: str = "bench_results/reme"
+    eval_model_name: str = "qwen3-max"
 
 
 # ==================== Utilities ====================
@@ -269,8 +270,9 @@ async def evaluation_for_question(
 class MemoryProcessor:
     """Handles ReMe memory operations."""
 
-    def __init__(self, reme: ReMe):
+    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max"):
         self.reme = reme
+        self.eval_model_name = eval_model_name
 
     async def add_memories(
             self,
@@ -303,12 +305,10 @@ class MemoryProcessor:
             duration_ms = (time.time() - start) * 1000
             total_duration_ms += duration_ms
 
-            memory_nodes: list[MemoryNode] = result["answer"]
-            messages: list[Message] = result["messages"]
-            extracted_memories.extend([m.model_dump_json(exclude_none=True) for m in memory_nodes])
-            summary_messages.extend([m.simple_dump() for m in messages])
+            extracted_memories.extend([m.model_dump_json(exclude_none=True) for m in result["answer"]])
+            summary_messages.extend([m.simple_dump() for m in result["messages"]])
 
-        return extracted_memories, messages, total_duration_ms
+        return extracted_memories, summary_messages, total_duration_ms
 
     async def search_memory(
             self,
@@ -336,7 +336,7 @@ class MemoryProcessor:
 
         # Extract memories from response
         memories = result["answer"]
-        messages = [x.model_dump_json(exclude_none=True) for x in result["messages"]]
+        agent_messages = [x.model_dump_json(exclude_none=True) for x in result["messages"]]
         retrieved_nodes = [x.model_dump_json(exclude_none=True) for x in result["retrieved_nodes"]]
 
         # Use LLM to generate structured answer from memories
@@ -344,7 +344,8 @@ class MemoryProcessor:
             reme=self.reme,
             question=query,
             memories=memories,
-            user_id=user_id
+            user_id=user_id,
+            model_name=self.eval_model_name
         )
 
         # Add original memories to the result
@@ -352,7 +353,7 @@ class MemoryProcessor:
         answer_result["retrieved_nodes"] = retrieved_nodes
 
         duration_ms = (time.time() - start) * 1000
-        return answer_result, messages, duration_ms
+        return answer_result, agent_messages, duration_ms
 
 
 # ==================== Evaluation ====================
@@ -360,10 +361,11 @@ class MemoryProcessor:
 class QuestionAnsweringEvaluator:
     """Evaluates question answering performance."""
 
-    def __init__(self, memory_processor: MemoryProcessor, reme: ReMe, top_k: int):
+    def __init__(self, memory_processor: MemoryProcessor, reme: ReMe, top_k: int, eval_model_name: str = "qwen3-max"):
         self.memory_processor = memory_processor
         self.reme = reme
         self.top_k = top_k
+        self.eval_model_name = eval_model_name
 
     async def evaluate_questions(
             self,
@@ -397,7 +399,8 @@ class QuestionAnsweringEvaluator:
                 reference_answer=qa["answer"],
                 key_memory_points=evidence_text,
                 response=system_answer,
-                dialogue=formatted_dialogue
+                dialogue=formatted_dialogue,
+                model_name=self.eval_model_name
             )
 
             # Build result record
@@ -519,11 +522,12 @@ class HaluMemEvaluator:
         self.reme.prompt_handler.load_prompt_by_file(prompts_yaml_path)
 
         self.file_manager = FileManager(config.output_dir)
-        self.memory_processor = MemoryProcessor(self.reme)
+        self.memory_processor = MemoryProcessor(self.reme, config.eval_model_name)
         self.qa_evaluator = QuestionAnsweringEvaluator(
             self.memory_processor,
             self.reme,
-            config.top_k
+            config.top_k,
+            config.eval_model_name
         )
         self.data_loader = DataLoader()
 
@@ -758,14 +762,16 @@ async def main_async(
         data_path: str,
         top_k: int,
         user_num: int,
-        max_concurrency: int
+        max_concurrency: int,
+        eval_model_name: str = "qwen3-max"
 ):
     """Main async entry point for ReMe evaluation with proper resource cleanup."""
     config = EvalConfig(
         data_path=data_path,
         top_k=top_k,
         user_num=user_num,
-        max_concurrency=max_concurrency
+        max_concurrency=max_concurrency,
+        eval_model_name=eval_model_name
     )
 
     # Use async context manager for automatic cleanup
@@ -777,14 +783,16 @@ def main(
         data_path: str,
         top_k: int,
         user_num: int,
-        max_concurrency: int
+        max_concurrency: int,
+        eval_model_name: str = "qwen3-max"
 ):
     """Main entry point for ReMe evaluation."""
     asyncio.run(main_async(
         data_path=data_path,
         top_k=top_k,
         user_num=user_num,
-        max_concurrency=max_concurrency
+        max_concurrency=max_concurrency,
+        eval_model_name=eval_model_name
     ))
 
 
@@ -816,7 +824,14 @@ if __name__ == "__main__":
         "--max_concurrency",
         type=int,
         default=100,
-        help="Maximum concurrent user processing (default: 2)"
+        help="Maximum concurrent user processing (default: 100)"
+    )
+    parser.add_argument(
+        "--eval_model_name",
+        type=str,
+        # default="qwen3-max",
+        default="qwen3-235b-a22b-instruct-2507",
+        help="Model name for evaluation (default: qwen3-max)"
     )
 
     args = parser.parse_args()
@@ -825,5 +840,6 @@ if __name__ == "__main__":
         data_path=args.data_path,
         top_k=args.top_k,
         user_num=args.user_num,
-        max_concurrency=args.max_concurrency
+        max_concurrency=args.max_concurrency,
+        eval_model_name=args.eval_model_name
     )

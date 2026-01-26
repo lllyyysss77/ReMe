@@ -5,8 +5,8 @@ from typing import Literal
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ....core.schema import ToolCall
-from ....core.schema.memory_node import MemoryNode
+from ....core.enumeration import MemoryType
+from ....core.schema import ToolCall, MemoryNode
 
 
 class ReadUserProfile(BaseMemoryTool):
@@ -30,6 +30,7 @@ class ReadUserProfile(BaseMemoryTool):
         )
 
     async def execute(self):
+        self.context.memory_type = MemoryType.PERSONAL
         cached_data = self.local_memory.load(self.memory_cache_key, auto_clean=False)
 
         if not cached_data:

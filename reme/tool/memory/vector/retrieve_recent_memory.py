@@ -7,7 +7,7 @@ from ....core.schema import ToolCall, MemoryNode, VectorNode
 from ....core.utils import deduplicate_memories
 
 
-class VectorRetrieveRecentMemory(BaseMemoryTool):
+class RetrieveRecentMemory(BaseMemoryTool):
     """Tool to retrieve most recent memories sorted by conversation time"""
 
     def __init__(self, top_k: int = 20, **kwargs):

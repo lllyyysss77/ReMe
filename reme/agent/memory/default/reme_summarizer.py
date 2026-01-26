@@ -1,4 +1,4 @@
-from loguru import logger
+"""ReMe summarizer agent that orchestrates multiple memory agents to summarize information."""
 
 from ..base_memory_agent import BaseMemoryAgent
 from ....core.enumeration import Role
@@ -7,31 +7,21 @@ from ....core.schema import Message
 
 
 class ReMeSummarizer(BaseMemoryAgent):
+    """Orchestrates multiple memory agents to summarize and store information across different memory types."""
 
     def __init__(self, meta_memories: list[dict] | None = None, **kwargs):
         super().__init__(**kwargs)
         self.meta_memories: list[dict] = meta_memories or []
 
-    async def _read_meta_memories(self) -> str:
-        from ....tool.memory import ReadMetaMemory
-
-        meta_memory_info = ReadMetaMemory().format_memory_metadata(self.meta_memories)
-        logger.info(f"meta_memory_info={meta_memory_info}")
-        return meta_memory_info
-
     async def build_messages(self) -> list[Message]:
-        from ....tool.memory import AddHistory
-
-        add_history_tool = AddHistory()
-        await add_history_tool.call()
-        self.context.history_node = add_history_tool.context.add_history
+        self.context.history_node = await self.read_history_node()
 
         messages = [
             Message(
                 role=Role.SYSTEM,
                 content=self.prompt_format(
                     prompt_name="system_prompt",
-                    meta_memory_info=await self._read_meta_memories(),
+                    meta_memory_info=await self.read_meta_memories(self.meta_memories),
                     context=self.context.history_node.content,
                 ),
             ),
@@ -46,16 +36,42 @@ class ReMeSummarizer(BaseMemoryAgent):
     async def _acting_step(
         self,
         assistant_message: Message,
+        tools: list[BaseTool],
         step: int,
         stage: str = "",
         **kwargs,
     ) -> tuple[list[BaseTool], list[Message]]:
         return await super()._acting_step(
             assistant_message,
+            tools,
             step,
             description=self.description,
-            messages=self.context.messages,
-            history_node=self.context.history_node,
+            messages=self.messages,
+            history_node=self.history_node,
             author=self.author,
             **kwargs,
         )
+
+    async def execute(self):
+        await super().execute()
+
+        tools: list[BaseTool] = self.response.metadata["tools"]
+        hands_off_tool = tools[0]
+        agents: list[BaseMemoryAgent] = hands_off_tool.response.metadata["agents"]
+
+        answer = ""
+        success = True
+        messages = []
+        tools = []
+        for agent in agents:
+            answer += "\n" + agent.response.answer
+            success = success and agent.response.metadata["success"]
+            messages += agent.response.metadata["messages"]
+            tools += agent.response.metadata["tools"]
+
+        return {
+            "answer": answer.strip(),
+            "success": True,
+            "messages": self.messages,
+            "tools": tools,
+        }

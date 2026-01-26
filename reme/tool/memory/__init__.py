@@ -11,10 +11,10 @@ from .meta.read_meta_memory import ReadMetaMemory
 from .user_profile.read_user_profile import ReadUserProfile
 from .user_profile.update_user_profile import UpdateUserProfile
 from .vector.add_memory import AddMemory
-from .vector.update_memory import UpdateMemory
-from .vector.retrieve_memory import VectorRetrieveMemory
-from .vector.retrieve_recent_memory import VectorRetrieveRecentMemory
 from .vector.delete_memory import DeleteMemory
+from .vector.retrieve_memory import RetrieveMemory
+from .vector.retrieve_recent_memory import RetrieveRecentMemory
+from .vector.update_memory import UpdateMemory
 from ...core import R
 
 __all__ = [
@@ -29,10 +29,10 @@ __all__ = [
     "ReadUserProfile",
     "UpdateUserProfile",
     "AddMemory",
-    "UpdateMemory",
-    "VectorRetrieveMemory",
-    "VectorRetrieveRecentMemory",
     "DeleteMemory",
+    "RetrieveMemory",
+    "RetrieveRecentMemory",
+    "UpdateMemory",
 ]
 
 for name in __all__:

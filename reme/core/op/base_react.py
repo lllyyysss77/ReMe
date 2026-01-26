@@ -18,7 +18,7 @@ class BaseReact(BaseOp):
 
     def __init__(
         self,
-        tools: list[BaseTool],
+        tools: list["BaseTool"],
         tool_call_interval: float = 0,
         max_steps: int = 10,
         **kwargs,
@@ -27,12 +27,14 @@ class BaseReact(BaseOp):
         kwargs["sub_ops"] = tools or []
         super().__init__(**kwargs)
         # Filter only BaseTool instances from sub_ops
+        from . import BaseTool
+
         self.sub_ops: list[BaseTool] = [t for t in self.sub_ops if isinstance(t, BaseTool)]
         self.tool_call_interval: float = tool_call_interval
         self.max_steps: int = max_steps
 
     @property
-    def tools(self) -> list[BaseTool]:
+    def tools(self) -> list["BaseTool"]:
         """Return available tools for the agent."""
         return self.sub_ops
 
@@ -49,18 +51,21 @@ class BaseReact(BaseOp):
     async def _reasoning_step(
         self,
         messages: list[Message],
+        tools: list["BaseTool"],
         step: int,
         stage: str = "",
         **kwargs,
     ) -> tuple[Message, bool]:
         """Execute one reasoning step where LLM decides whether to use tools."""
         # Get tool definitions for LLM
-        tool_calls = [t.tool_call for t in self.tools]
+        tool_calls = [t.tool_call for t in tools]
+
         # Generate assistant response with potential tool calls
         assistant_message: Message = await self.llm.chat(messages=messages, tools=tool_calls, **kwargs)
         messages.append(assistant_message)
         assistant_content: str = assistant_message.simple_dump(as_dict=False)
         logger.info(f"[{self.__class__.__name__} {stage or ''} step{step + 1}] assistant={assistant_content}")
+
         # Determine if tools should be called
         should_act = bool(assistant_message.tool_calls)
         return assistant_message, should_act
@@ -68,19 +73,20 @@ class BaseReact(BaseOp):
     async def _acting_step(
         self,
         assistant_message: Message,
+        tools: list["BaseTool"],
         step: int,
         stage: str = "",
         **kwargs,
-    ) -> tuple[list[BaseTool], list[Message]]:
+    ) -> tuple[list["BaseTool"], list[Message]]:
         """Execute tool calls requested by the assistant and collect results."""
-        tool_list: list[BaseTool] = []
+        tool_list: list["BaseTool"] = []
         tool_messages: list[Message] = []
 
         if not assistant_message.tool_calls:
             return tool_list, tool_messages
 
         # Create tool name to tool instance mapping
-        tool_dict = {t.tool_call.name: t for t in self.tools}
+        tool_dict = {t.tool_call.name: t for t in tools}
         for j, tool_call in enumerate(assistant_message.tool_calls):
             prefix: str = f"[{self.__class__.__name__} {stage or ''} step{step + 1}.{j}]"
             if tool_call.name not in tool_dict:
@@ -116,13 +122,13 @@ class BaseReact(BaseOp):
             logger.info(f"{prefix} join tool={tool.name} result={tool.response.answer}")
         return tool_list, tool_messages
 
-    async def react(self, messages: list[Message], stage: str = ""):
+    async def react(self, messages: list[Message], tools: list["BaseTool"], stage: str = ""):
         """Run ReAct loop alternating between reasoning and acting until completion."""
         success: bool = False
-        tools: list[BaseTool] = []
+        used_tools: list[BaseTool] = []
         for step in range(self.max_steps):
             # Reasoning: LLM decides next action
-            assistant_message, should_act = await self._reasoning_step(messages, step=step, stage=stage)
+            assistant_message, should_act = await self._reasoning_step(messages, tools, step=step, stage=stage)
 
             if not should_act:
                 # No tools requested, task complete
@@ -130,17 +136,17 @@ class BaseReact(BaseOp):
                 break
 
             # Acting: execute tools and collect results
-            t_tools, tool_messages = await self._acting_step(assistant_message, step=step, stage=stage)
-            tools.extend(t_tools)
+            t_tools, tool_messages = await self._acting_step(assistant_message, tools, step=step, stage=stage)
+            used_tools.extend(t_tools)
             messages.extend(tool_messages)
 
-        return tools, messages, success
+        return used_tools, messages, success
 
     async def execute(self):
         """Execute the ReAct agent and return final results."""
         # Log available tools
         for i, tool in enumerate(self.tools):
-            logger.info(f"[{self.__class__.__name__}] tool_call={tool.tool_call.simple_input_dump(as_dict=False)}")
+            logger.info(f"[{self.__class__.__name__}] tool_call[{i}]={tool.tool_call.simple_input_dump(as_dict=False)}")
 
         # Build and log initial messages
         messages = await self.build_messages()
@@ -149,7 +155,7 @@ class BaseReact(BaseOp):
             logger.info(f"[{self.__class__.__name__}] role={role} {message.simple_dump(as_dict=False)}")
 
         # Run ReAct loop
-        t_tools, messages, success = await self.react(messages)
+        t_tools, messages, success = await self.react(messages, self.tools)
         return {
             "answer": messages[-1].content if success else "",
             "success": success,

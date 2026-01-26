@@ -1,5 +1,8 @@
+"""Personal memory retriever agent for retrieving personal memories through vector search."""
+
 from ..base_memory_agent import BaseMemoryAgent
 from ....core.enumeration import Role, MemoryType
+from ....core.op import BaseTool
 from ....core.schema import Message
 from ....core.utils import format_messages
 
@@ -10,53 +13,44 @@ class PersonalRetriever(BaseMemoryAgent):
     memory_type: MemoryType = MemoryType.PERSONAL
 
     async def build_messages(self) -> list[Message]:
-        from ....tool.memory.vector import ReadUserProfile
-
-        # Get context from query or messages
-        context = (
-            self.context.query
-            if self.context.get("query")
-            else format_messages(self.context.messages) if self.context.get("messages") else None
-        )
-        if not context:
+        if self.context.get("query"):
+            context = self.context.query
+        elif self.context.get("messages"):
+            context = self.description + "\n" + format_messages(self.context.messages)
+        else:
             raise ValueError("input must have either `query` or `messages`")
-
-        # Read user profile with history IDs
-        read_profile_tool = ReadUserProfile(show_ids="history")
-        await read_profile_tool.call(memory_type=self.memory_type.value, memory_target=self.memory_target)
-        self.context.user_profile = user_profile = read_profile_tool.output
 
         return [
             Message(
-                role=Role.USER,
+                role=Role.SYSTEM,
                 content=self.prompt_format(
-                    prompt_name="user_message",
+                    prompt_name="system_prompt",
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
-                    user_profile=user_profile,
-                    context=context,
+                    user_profile=await self.read_user_profile(show_id="history"),
+                    context=context.strip(),
                 ),
+            ),
+            Message(
+                role=Role.USER,
+                content=self.get_prompt("user_message"),
             ),
         ]
 
-    async def _acting_step(self, assistant_message: Message, step: int, **kwargs) -> list[Message]:
+    async def _acting_step(
+        self,
+        assistant_message: Message,
+        tools: list[BaseTool],
+        step: int,
+        stage: str = "",
+        **kwargs,
+    ) -> tuple[list[BaseTool], list[Message]]:
+        """Execute tool calls with memory context."""
         return await super()._acting_step(
             assistant_message,
+            tools,
             step,
             memory_type=self.memory_type.value,
             memory_target=self.memory_target,
             **kwargs,
         )
-
-    async def execute(self):
-        """Execute retriever and check for memory found markers."""
-        await super().execute()
-
-        # Check output markers
-        if self.output:
-            if "<MEMORY_FOUND>" in self.output:
-                self.success = True
-            elif "<MEMORY_NOT_FOUND>" in self.output:
-                self.success = False
-
-        self.meta_info = self.context.user_profile + "\n" + self.meta_info

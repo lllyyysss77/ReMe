@@ -102,4 +102,7 @@ class HandsOff(BaseMemoryTool):
             results.append(f"{memory_type.value}({memory_target}): {agent.response.answer}")
 
         logger.info(f"Completed {len(results)} task(s)")
-        return "\n".join(results)
+        return {
+            "answer": "\n".join(results),
+            "agents": agent_list,
+        }

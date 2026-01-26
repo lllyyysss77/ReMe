@@ -3,12 +3,11 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ....core.enumeration import MemoryType
 from ....core.schema import ToolCall, MemoryNode, VectorNode
 from ....core.utils import deduplicate_memories
 
 
-class VectorRetrieveMemory(BaseMemoryTool):
+class RetrieveMemory(BaseMemoryTool):
     """Tool to retrieve memories from vector store using similarity search"""
 
     def __init__(self, top_k: int = 20, **kwargs):

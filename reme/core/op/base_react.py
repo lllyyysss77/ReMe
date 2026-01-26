@@ -93,7 +93,7 @@ class BaseReact(BaseOp):
                 logger.warning(f"{prefix} unknown tool_call={tool_call.name}")
                 continue
 
-            logger.info(f"{prefix} submit tool_calls={tool_call.simple_output_dump(as_dict=False)}")
+            logger.info(f"{prefix} submit tool_call[{tool_call.name}] arguments={tool_call.arguments}")
 
             # Create independent tool copy with unique ID
             tool_copy: BaseTool = tool_dict[tool_call.name].copy()

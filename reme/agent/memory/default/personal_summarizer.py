@@ -85,19 +85,26 @@ class PersonalSummarizer(BaseMemoryAgent):
         messages_phase1 = await self._build_phase1_messages()
         for i, message in enumerate(messages_phase1):
             role = message.name or message.role
-            logger.info(f"[{self.__class__.__name__}-S1] role={role} {message.simple_dump(as_dict=False)}")
+            logger.info(f"[{self.__class__.__name__} S1] role={role} {message.simple_dump(as_dict=False)}")
         tools_phase1, messages_phase1, success_phase1 = await self.react(messages_phase1, tools[:-1], stage="S1")
 
         messages_phase2 = await self._build_phase2_messages()
         for i, message in enumerate(messages_phase2):
             role = message.name or message.role
-            logger.info(f"[{self.__class__.__name__}-S2] role={role} {message.simple_dump(as_dict=False)}")
+            logger.info(f"[{self.__class__.__name__} S2] role={role} {message.simple_dump(as_dict=False)}")
         tools_phase2, messages_phase2, success_phase2 = await self.react(messages_phase2, tools[-1:], stage="S2")
 
+        success = success_phase1 and success_phase2
+        messages = messages_phase1 + messages_phase2
+        tools = tools_phase1 + tools_phase2
+        memory_nodes = []
+        for tool in tools:
+            if tool.memory_nodes:
+                memory_nodes.extend(tool.memory_nodes)
+
         return {
-            "answer": (messages_phase1[-1].content if success_phase1 else "")
-            + (messages_phase2[-1].content if success_phase2 else ""),
-            "success": success_phase1 and success_phase2,
-            "messages": messages_phase1 + messages_phase2,
-            "tools": tools_phase1 + tools_phase2,
+            "answer": memory_nodes,
+            "success": success,
+            "messages": messages,
+            "tools": tools,
         }

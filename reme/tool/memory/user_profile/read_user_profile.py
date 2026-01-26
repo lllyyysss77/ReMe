@@ -38,7 +38,8 @@ class ReadUserProfile(BaseMemoryTool):
             return ""
 
         nodes = [MemoryNode(**data) for data in cached_data]
-        nodes.sort(key=lambda n: n.metadata.get("conversation_time", ""))
+        self.memory_nodes = nodes
+        nodes.sort(key=lambda n: n.metadata.get("update_time", ""))
 
         formatted_profiles = []
         for node in nodes:
@@ -46,8 +47,8 @@ class ReadUserProfile(BaseMemoryTool):
             if self.show_id == "profile":
                 parts.append(f"profile_id={node.memory_id}")
 
-            if conv_time := node.metadata.get("conversation_time"):
-                parts.append(f"conversation_time={conv_time}")
+            if update_time := node.metadata.get("update_time"):
+                parts.append(f"update_time={update_time}")
 
             parts.append(f"{node.when_to_use}: {node.content}")
 
@@ -58,4 +59,4 @@ class ReadUserProfile(BaseMemoryTool):
 
         logger.info(f"Read {len(formatted_profiles)} profiles from cache key: {self.memory_cache_key}")
 
-        return "### User Profile\n" + "\n".join(formatted_profiles).strip()
+        return "\n".join(formatted_profiles).strip()

@@ -73,3 +73,10 @@ class BaseMemoryAgent(BaseReact, metaclass=ABCMeta):
     def author(self) -> str:
         """Returns the LLM model name as the author identifier."""
         return self.llm.model_name
+
+    @property
+    def retrieved_nodes(self) -> list[MemoryNode]:
+        """Returns the retrieved nodes."""
+        if "retrieved_nodes" not in self.context:
+            self.context.retrieved_nodes = []
+        return self.context.retrieved_nodes

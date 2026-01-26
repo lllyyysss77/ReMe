@@ -3,8 +3,8 @@
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
-from ....core.schema import ToolCall
-from ....core.schema.memory_node import MemoryNode
+from ....core.enumeration import MemoryType
+from ....core.schema import ToolCall, MemoryNode
 from ....core.utils import deduplicate_memories
 
 
@@ -34,9 +34,9 @@ class UpdateUserProfile(BaseMemoryTool):
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "conversation_time": {
+                                    "update_time": {
                                         "type": "string",
-                                        "description": "Conversation time, e.g. '2020-01-01 00:00:00'",
+                                        "description": "Update time, e.g. '2020-01-01 00:00:00'",
                                     },
                                     "profile_key": {
                                         "type": "string",
@@ -47,7 +47,7 @@ class UpdateUserProfile(BaseMemoryTool):
                                         "description": "Profile value or content, e.g. 'John Smith'",
                                     },
                                 },
-                                "required": ["conversation_time", "profile_key", "profile_value"],
+                                "required": ["update_time", "profile_key", "profile_value"],
                             },
                         },
                     },
@@ -58,6 +58,8 @@ class UpdateUserProfile(BaseMemoryTool):
 
     async def execute(self):
         # Get and deduplicate profile IDs to delete
+        self.context.memory_type = MemoryType.PERSONAL
+
         profile_ids_to_delete = self.context.get("profile_ids_to_delete", [])
         profile_ids_to_delete = list(dict.fromkeys([pid for pid in profile_ids_to_delete if pid]))
         profiles_to_add = self.context.get("profiles_to_add", [])
@@ -88,12 +90,13 @@ class UpdateUserProfile(BaseMemoryTool):
                     content=profile.get("profile_value", ""),
                     ref_memory_id=self.history_node.memory_id,
                     author=self.author,
-                    metadata={"conversation_time": profile.get("conversation_time", "")},
+                    metadata={"update_time": profile.get("update_time", "")},
                 )
                 new_nodes.append(node)
             logger.info(f"Added {len(new_nodes)} new profiles.")
 
         # Deduplicate and save updated profiles
+        self.memory_nodes.extend(new_nodes)
         updated_nodes = deduplicate_memories(existing_nodes + new_nodes)
         nodes_data = [node.model_dump(exclude_none=True) for node in updated_nodes]
         self.local_memory.save(self.memory_cache_key, nodes_data)

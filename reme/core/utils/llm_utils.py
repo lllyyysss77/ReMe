@@ -2,6 +2,7 @@
 
 import json
 import re
+
 from loguru import logger
 
 from ..enumeration import Role
@@ -170,18 +171,18 @@ def extract_content(text: str, language_tag: str = "json", greedy: bool = False)
     pattern = rf"```\s*{re.escape(language_tag)}\s*({quantifier})\s*```"
     match = re.search(pattern, text, re.DOTALL)
 
-    if match:
-        result = match.group(1).strip()
-    else:
-        result = text
+    if not match:
+        return None
+
+    content = match.group(1).strip()
 
     if language_tag == "json":
         try:
-            result = json.loads(result)
+            return json.loads(content)
         except json.JSONDecodeError:
-            result = None
-
-    return result
+            return None
+    else:
+        return content
 
 
 def deduplicate_memories(memories: list[MemoryNode]) -> list[MemoryNode]:

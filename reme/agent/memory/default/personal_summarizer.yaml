@@ -16,7 +16,7 @@ system_prompt_phase1: |
   ### Step 2: Add New Memories
   Use `add_memory` to add new memories:
   - Extract and summarize important information about **{memory_target}**
-  - Set `conversation_time` (format: 2020-01-01 00:00:00; use 0000-00-00 00:00:00 if unavailable)
+  - Set `update_time` (format: 2020-01-01 00:00:00; use 0000-00-00 00:00:00 if unavailable)
   - If the information is completely identical to existing memory, skip adding
 
 user_message_phase1: |
@@ -30,15 +30,15 @@ system_prompt_phase2: |
   {context}
 
   ## Current User Profile:
-  UserProfile format: `profile_id=<id> conversation_time=<timestamp> <content>`.
+  UserProfile format: `profile_id=<id> update_time=<timestamp> <content>`.
   {user_profile}
 
   ## Task: Update Profile with `UpdateUserProfile`
   **CRITICAL**: Extract ONLY explicitly stated information. DO NOT infer, assume, or fabricate.
 
   Synchronize profile/memories with new information from the conversation, including **{memory_target}**' current status:
-  - `profile_ids_to_delete`: Remove outdated, conflicting, or redundant entries.
-  - `profiles_to_add`: Add new profiles/memories with `conversation_time`, e.g. `YYYY-MM-DD HH:MM:SS`, {memory_target} did something.
+  - `profile_ids_to_delete`: Remove conflicting, or redundant entries.
+  - `profiles_to_add`: Add new profiles/memories with `update_time`, e.g. `YYYY-MM-DD HH:MM:SS`, {memory_target} did something.
   - Maintain profiles that are concise, mutually exclusive, and collectively comprehensive with no information loss.
 
 user_message_phase2: |

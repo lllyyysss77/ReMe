@@ -102,7 +102,7 @@ class AddMemory(BaseMemoryTool):
 
         await self.vector_store.delete(vector_ids=vector_ids)
         await self.vector_store.insert(nodes=vector_nodes)
-        self.memory_nodes = memory_nodes
+        self.memory_nodes.extend(memory_nodes)
 
         output = f"Successfully added {len(memory_nodes)} memories to vector_store."
         logger.info(output)

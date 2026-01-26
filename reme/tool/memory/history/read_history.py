@@ -40,7 +40,8 @@ class ReadHistory(BaseMemoryTool):
             logger.warning(output)
             return output
 
-        memory = MemoryNode.from_vector_node(nodes[0])
-        output = f"Historical Dialogue[{history_id}]\n{memory.content}"
-        logger.info(f"Successfully read history memory: {history_id}")
+        memory_node: MemoryNode = MemoryNode.from_vector_node(nodes[0])
+        self.retrieved_nodes.append(memory_node)
+        output = f"Historical Dialogue[{history_id}]\n{memory_node.content}"
+        logger.info(f"Successfully read history memory_node: {history_id}")
         return output

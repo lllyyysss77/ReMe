@@ -58,19 +58,19 @@ class ReMeSummarizer(BaseMemoryAgent):
         hands_off_tool = tools[0]
         agents: list[BaseMemoryAgent] = hands_off_tool.response.metadata["agents"]
 
-        answer = ""
         success = True
         messages = []
         tools = []
+        memory_nodes = []
         for agent in agents:
-            answer += "\n" + agent.response.answer
             success = success and agent.response.success
-            messages += agent.response.metadata["messages"]
-            tools += agent.response.metadata["tools"]
+            messages.extend(agent.response.metadata["messages"])
+            tools.extend(agent.response.metadata["tools"])
+            memory_nodes.extend(agent.response.answer)
 
         return {
-            "answer": answer.strip(),
+            "answer": memory_nodes,
             "success": True,
-            "messages": self.messages,
+            "messages": messages,
             "tools": tools,
         }

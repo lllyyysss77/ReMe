@@ -62,19 +62,23 @@ class ReMeRetriever(BaseMemoryAgent):
         hands_off_tool = tools[0]
         agents: list[BaseMemoryAgent] = hands_off_tool.response.metadata["agents"]
 
-        answer = ""
+        answer = []
         success = True
         messages = []
         tools = []
+        retrieved_nodes = []
+
         for agent in agents:
-            answer += "\n" + agent.response.answer
+            answer.append(agent.response.answer)
             success = success and agent.response.success
-            messages += agent.response.metadata["messages"]
-            tools += agent.response.metadata["tools"]
+            messages.extend(agent.response.metadata["messages"])
+            tools.extend(agent.response.metadata["tools"])
+            retrieved_nodes.extend(agent.response.metadata["retrieved_nodes"])
 
         return {
-            "answer": answer.strip(),
+            "answer": "\n".join(answer),
             "success": True,
             "messages": self.messages,
             "tools": tools,
+            "retrieved_nodes": retrieved_nodes,
         }

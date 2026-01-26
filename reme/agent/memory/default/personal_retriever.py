@@ -3,7 +3,7 @@
 from ..base_memory_agent import BaseMemoryAgent
 from ....core.enumeration import Role, MemoryType
 from ....core.op import BaseTool
-from ....core.schema import Message, MemoryNode
+from ....core.schema import Message
 from ....core.utils import format_messages
 
 
@@ -11,10 +11,6 @@ class PersonalRetriever(BaseMemoryAgent):
     """Retrieve personal memories through vector search and history reading."""
 
     memory_type: MemoryType = MemoryType.PERSONAL
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.retrieved_nodes: list[MemoryNode] = []
 
     async def build_messages(self) -> list[Message]:
         if self.context.get("query"):
@@ -59,3 +55,9 @@ class PersonalRetriever(BaseMemoryAgent):
             retrieved_nodes=self.retrieved_nodes,
             **kwargs,
         )
+
+    async def execute(self):
+        result = await super().execute()
+        result["retrieved_nodes"] = self.retrieved_nodes
+
+        return result

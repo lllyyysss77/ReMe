@@ -23,7 +23,6 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
         self.enable_multiple: bool = enable_multiple
         self.enable_thinking_params: bool = enable_thinking_params
         self.local_memory_path: str = local_memory_path
-        self.memory_nodes: list[MemoryNode | str] = []
 
     def _build_tool_call(self) -> ToolCall:
         """Build and return the tool call schema"""
@@ -88,9 +87,16 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
     @property
     def retrieved_nodes(self) -> list[MemoryNode]:
         """Get the retrieved nodes from context."""
-        return self.context.get("retrieved_nodes")
+        return self.context["retrieved_nodes"]
 
     @property
     def author(self) -> str:
         """Get the author from context."""
         return self.context.get("author", "")
+
+    @property
+    def memory_nodes(self) -> list[MemoryNode | str]:
+        """Get the memory nodes from context."""
+        if "memory_nodes" not in self.context:
+            self.context.memory_nodes = []
+        return self.context["memory_nodes"]

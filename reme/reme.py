@@ -108,13 +108,13 @@ class ReMe:
     ):
         """Summarize messages and store them in memory for the specified user(s)."""
         if user_name:
-            for message in messages and isinstance(user_name, str):
-                if isinstance(message, dict) and not message.get("name"):
-                    message["name"] = user_name
-                elif isinstance(message, Message) and not message.name:
-                    message.name = user_name
 
             if isinstance(user_name, str):
+                for message in messages:
+                    if isinstance(message, dict) and not message.get("name"):
+                        message["name"] = user_name
+                    elif isinstance(message, Message) and not message.name:
+                        message.name = user_name
                 user_name = [user_name]
 
             if not meta_memories:
@@ -147,7 +147,12 @@ class ReMe:
             else:
                 raise NotImplementedError
 
-            return await reme_summarizer.call(messages=messages, description=description, **kwargs)
+            return await reme_summarizer.call(
+                messages=messages,
+                description=description,
+                service_context=self.service_context,
+                **kwargs,
+            )
 
         else:
             raise NotImplementedError
@@ -166,14 +171,13 @@ class ReMe:
     ):
         """Retrieve relevant memories for the specified user(s) based on query or messages."""
         if user_name:
-            if messages:
-                for message in messages and isinstance(user_name, str):
-                    if isinstance(message, dict) and not message.get("name"):
-                        message["name"] = user_name
-                    elif isinstance(message, Message) and not message.name:
-                        message.name = user_name
-
             if isinstance(user_name, str):
+                if messages:
+                    for message in messages:
+                        if isinstance(message, dict) and not message.get("name"):
+                            message["name"] = user_name
+                        elif isinstance(message, Message) and not message.name:
+                            message.name = user_name
                 user_name = [user_name]
 
             if not meta_memories:
@@ -206,7 +210,13 @@ class ReMe:
             else:
                 raise NotImplementedError
 
-            return await reme_retriever.call(query=query, messages=messages, description=description, **kwargs)
+            return await reme_retriever.call(
+                query=query,
+                messages=messages,
+                description=description,
+                service_context=self.service_context,
+                **kwargs,
+            )
 
         else:
             raise NotImplementedError

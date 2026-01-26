@@ -91,6 +91,16 @@ class BaseVectorStore(ABC):
     async def get(self, vector_ids: str | list[str]) -> VectorNode | list[VectorNode]:
         """Fetch specific vector nodes from the collection by their IDs."""
 
+    async def dump(self) -> list[VectorNode]:
+        """Dump the vector store to a list of vector nodes."""
+        return await self.list()
+
+    async def load(self, nodes: list[VectorNode]):
+        """Load the vector store from a list of vector nodes."""
+        await self.delete_all()
+        if nodes:
+            await self.insert(nodes)
+
     @abstractmethod
     async def list(
         self,

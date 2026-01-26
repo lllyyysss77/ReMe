@@ -122,7 +122,16 @@ class RetrieveMemory(BaseMemoryTool):
         if not new_memory_nodes:
             output = "No new memory_nodes found matching the query (duplicates removed)."
         else:
-            output = "\n".join([m.format_memory() for m in new_memory_nodes])
+            outputs = []
+            for node in new_memory_nodes:
+                line = ""
+                if "conversation_time" in node.metadata and node.metadata["conversation_time"]:
+                    line += f"conversation_time={node.metadata['conversation_time']} "
+                line += node.content.strip() + " "
+                if node.ref_memory_id:
+                    line += f"history_id={node.ref_memory_id} "
+                outputs.append(line.strip())
+            output = "\n".join(outputs)
 
         logger.info(f"Retrieved {len(memory_nodes)} memory_nodes, {len(new_memory_nodes)} new after deduplication")
         return output

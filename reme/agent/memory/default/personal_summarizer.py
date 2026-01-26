@@ -5,13 +5,17 @@ from loguru import logger
 from ..base_memory_agent import BaseMemoryAgent
 from ....core.enumeration import Role, MemoryType
 from ....core.op import BaseTool
-from ....core.schema import Message
+from ....core.schema import Message, MemoryNode
 
 
 class PersonalSummarizer(BaseMemoryAgent):
     """Two-phase personal memory processor: retrieve/add memories then update profile."""
 
     memory_type: MemoryType = MemoryType.PERSONAL
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.retrieved_nodes: list[MemoryNode] = []
 
     async def _build_phase1_messages(self) -> list[Message]:
         """Build messages for phase 1: retrieve and add memory."""
@@ -68,6 +72,7 @@ class PersonalSummarizer(BaseMemoryAgent):
             memory_target=self.memory_target,
             history_node=self.history_node,
             author=self.author,
+            retrieved_nodes=self.retrieved_nodes,
             **kwargs,
         )
 
@@ -75,7 +80,7 @@ class PersonalSummarizer(BaseMemoryAgent):
         """Execute two-phase memory processing: retrieve/add -> update profile."""
         tools = self.tools
         for i, tool in enumerate(tools):
-            logger.info(f"[{self.__class__.__name__}] tool_call[{i}]={tool.tool_call.name}")
+            logger.info(f"[{self.__class__.__name__}] tool_call[{i}]={tool.tool_call.simple_input_dump(as_dict=False)}")
 
         messages_phase1 = await self._build_phase1_messages()
         for i, message in enumerate(messages_phase1):

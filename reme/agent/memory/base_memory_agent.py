@@ -29,16 +29,19 @@ class BaseMemoryAgent(BaseReact, metaclass=ABCMeta):
         from ...tool.memory import ReadUserProfile
 
         read_tool = ReadUserProfile(show_id=show_id)
-        await read_tool.call(memory_target=self.memory_target)
+        await read_tool.call(memory_target=self.memory_target, service_context=self.service_context)
         return str(read_tool.response.answer)
 
-    @staticmethod
-    async def read_history_node() -> MemoryNode:
-        """Read and return the current history node from the context."""
+    async def add_history_node(self) -> MemoryNode:
+        """Add history node"""
         from ...tool.memory import AddHistory
 
         add_history_tool = AddHistory()
-        await add_history_tool.call()
+        await add_history_tool.call(
+            messages=self.messages,
+            description=self.description,
+            service_context=self.service_context,
+        )
         return add_history_tool.context.history_node
 
     @property

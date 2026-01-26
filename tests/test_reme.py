@@ -2,12 +2,10 @@
 
 import asyncio
 
+from reme import ReMe
 from reme.core.schema import VectorNode, MemoryNode
-from reme.reme import ReMe
 
-reme = ReMe(
-    vector_store={"collection_name": "reme"},
-)
+reme = ReMe(vector_store={"collection_name": "reme"})
 
 
 async def test_reme():
@@ -71,7 +69,7 @@ async def test_reme():
     nodes: list[VectorNode] = await reme.default_vector_store.list()
     for i, node in enumerate(nodes, 1):
         memory_node = MemoryNode.from_vector_node(node)
-        print(f"{i} {memory_node.memory_type} {memory_node.memory_target} {memory_node.format_memory()}")
+        print(f"{i} {memory_node.model_dump_json()}")
 
     print("\n" + "=" * 60)
     print("步骤3: 测试记忆检索 - 验证个人信息")

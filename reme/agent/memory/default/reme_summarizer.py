@@ -14,7 +14,7 @@ class ReMeSummarizer(BaseMemoryAgent):
         self.meta_memories: list[dict] = meta_memories or []
 
     async def build_messages(self) -> list[Message]:
-        self.context.history_node = await self.read_history_node()
+        self.context.history_node = await self.add_history_node()
 
         messages = [
             Message(
@@ -53,9 +53,8 @@ class ReMeSummarizer(BaseMemoryAgent):
         )
 
     async def execute(self):
-        await super().execute()
-
-        tools: list[BaseTool] = self.response.metadata["tools"]
+        result = await super().execute()
+        tools: list[BaseTool] = result["tools"]
         hands_off_tool = tools[0]
         agents: list[BaseMemoryAgent] = hands_off_tool.response.metadata["agents"]
 
@@ -65,7 +64,7 @@ class ReMeSummarizer(BaseMemoryAgent):
         tools = []
         for agent in agents:
             answer += "\n" + agent.response.answer
-            success = success and agent.response.metadata["success"]
+            success = success and agent.response.success
             messages += agent.response.metadata["messages"]
             tools += agent.response.metadata["tools"]
 

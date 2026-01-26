@@ -90,7 +90,7 @@ class HandsOff(BaseMemoryTool):
             for k in ["query", "messages", "description", "history_node"]:
                 if k in self.context:
                     task_kwargs[k] = self.context[k]
-            self.submit_async_task(agent.call, **task_kwargs)
+            self.submit_async_task(agent.call, service_context=self.service_context, **task_kwargs)
 
         await self.join_async_tasks()
 

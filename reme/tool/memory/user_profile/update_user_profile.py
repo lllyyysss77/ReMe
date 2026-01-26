@@ -106,4 +106,4 @@ class UpdateUserProfile(BaseMemoryTool):
             operations.append(f"added {len(new_nodes)} new profiles.")
         operations.append("Operation completed.")
         logger.info("\n".join(operations))
-        return operations
+        return "\n".join(operations)

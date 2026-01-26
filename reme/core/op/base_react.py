@@ -102,7 +102,7 @@ class BaseReact(BaseOp):
 
             # Create isolated kwargs for each tool call to avoid parameter conflicts
             tool_kwargs = {**kwargs, **tool_call.argument_dict}
-            self.submit_async_task(tool_copy.call, **tool_kwargs)
+            self.submit_async_task(tool_copy.call, service_context=self.service_context, **tool_kwargs)
             if self.tool_call_interval > 0:
                 await asyncio.sleep(self.tool_call_interval)
 

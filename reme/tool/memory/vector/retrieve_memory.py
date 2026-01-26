@@ -128,7 +128,7 @@ class RetrieveMemory(BaseMemoryTool):
                     line += f"conversation_time={node.metadata['conversation_time']} "
                 line += node.content.strip() + " "
                 if node.ref_memory_id:
-                    line += f"history_id={node.ref_memory_id} "
+                    line += f"history_id={node.ref_memory_id}"
                 outputs.append(line.strip())
             output = "\n".join(outputs)
 

@@ -5,17 +5,13 @@ from loguru import logger
 from ..base_memory_agent import BaseMemoryAgent
 from ....core.enumeration import Role, MemoryType
 from ....core.op import BaseTool
-from ....core.schema import Message, MemoryNode
+from ....core.schema import Message
 
 
 class PersonalSummarizer(BaseMemoryAgent):
     """Two-phase personal memory processor: retrieve/add memories then update profile."""
 
     memory_type: MemoryType = MemoryType.PERSONAL
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.retrieved_nodes: list[MemoryNode] = []
 
     async def _build_phase1_messages(self) -> list[Message]:
         """Build messages for phase 1: retrieve and add memory."""

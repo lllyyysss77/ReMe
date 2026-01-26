@@ -78,7 +78,7 @@ class ReMeRetriever(BaseMemoryAgent):
         return {
             "answer": "\n".join(answer),
             "success": True,
-            "messages": self.messages,
+            "messages": messages,
             "tools": tools,
             "retrieved_nodes": retrieved_nodes,
         }

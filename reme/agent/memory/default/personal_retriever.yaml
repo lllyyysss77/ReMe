@@ -37,9 +37,7 @@ system_prompt: |
 
   ## Output Format
   When answering, structure your response as follows:
-
-  - [timestamp][Relevant memory content from search results]
-  - [timestamp][Relevant user profile information]
+  - [timestamp][Relevant history/memory/profile from context]
 
   If no relevant information found after thorough search (5+ queries), state:
   "No relevant information found after thorough search using multiple query strategies."

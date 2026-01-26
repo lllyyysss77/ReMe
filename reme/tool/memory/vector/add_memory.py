@@ -79,6 +79,7 @@ class AddMemory(BaseMemoryTool):
             memory_target=self.memory_target,
             content=memory_content,
             author=self.author,
+            ref_memory_id=self.history_node.memory_id,
             metadata=metadata,
         )
 

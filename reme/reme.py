@@ -199,7 +199,6 @@ class ReMe:
                 ]
 
             if version == "default":
-
                 reme_retriever = ReMeRetriever(
                     meta_memories=meta_memories,
                     tools=[
@@ -342,17 +341,18 @@ class ReMe:
         """Retrieve all memories from the vector store."""
         return [node.to_memory_node() for node in await self.vector_store.list()]
 
-    @staticmethod
-    async def get_profiles(user_name: str | list[str]) -> str | list[str]:
+    async def get_profiles(self, user_name: str | list[str]) -> str | list[str]:
         """Retrieve user profile(s) from the system for the specified user(s)."""
         read_profile = ReadUserProfile(show_id="profile")
         if isinstance(user_name, str):
-            return await read_profile.call(memory_target=user_name)
+            return await read_profile.call(memory_target=user_name, service_context=self.service_context)
         else:
-            return [await read_profile.call(memory_target=name) for name in user_name]
+            return [
+                await read_profile.call(memory_target=name, service_context=self.service_context) for name in user_name
+            ]
 
-    @staticmethod
     async def add_profile(
+        self,
         profile_key: str,
         profile_value: str,
         user_name: str,
@@ -373,11 +373,12 @@ class ReMe:
                 },
             ],
             memory_target=user_name,
+            service_context=self.service_context,
         )
         return update_user_profile.memory_nodes[0]
 
-    @staticmethod
     async def update_profile(
+        self,
         profile_id: str,
         profile_key: str,
         profile_value: str,
@@ -399,11 +400,11 @@ class ReMe:
                 },
             ],
             memory_target=user_name,
+            service_context=self.service_context,
         )
         return update_user_profile.memory_nodes[0]
 
-    @staticmethod
-    async def delete_all_profiles(user_name: str | list[str]):
+    async def delete_all_profiles(self, user_name: str | list[str]):
         """Delete all user profiles from ReMe system."""
         if isinstance(user_name, str):
             user_name = [user_name]
@@ -411,9 +412,13 @@ class ReMe:
         read_profile = ReadUserProfile(show_id="profile")
         update_profile = UpdateUserProfile()
         for memory_target in user_name:
-            await read_profile.call(memory_target=memory_target)
+            await read_profile.call(memory_target=memory_target, service_context=self.service_context)
             profile_ids = [profile.memory_id for profile in read_profile.memory_nodes]
-            await update_profile.call(profile_ids_to_delete=profile_ids, memory_target=memory_target)
+            await update_profile.call(
+                profile_ids_to_delete=profile_ids,
+                memory_target=memory_target,
+                service_context=self.service_context,
+            )
 
     async def context_offload(self):
         """working memory summary"""

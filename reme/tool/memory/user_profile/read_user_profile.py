@@ -38,7 +38,8 @@ class ReadUserProfile(BaseMemoryTool):
             return ""
 
         nodes = [MemoryNode(**data) for data in cached_data]
-        self.memory_nodes = nodes
+        self.memory_nodes.clear()
+        self.memory_nodes.extend(nodes)
         nodes.sort(key=lambda n: n.metadata.get("update_time", ""))
 
         formatted_profiles = []

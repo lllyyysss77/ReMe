@@ -51,7 +51,7 @@ class RetrieveRecentMemory(BaseMemoryTool):
         retrieved_memory_ids = {node.memory_id for node in self.retrieved_nodes if node.memory_id}
         new_memory_nodes = [node for node in memory_nodes if node.memory_id not in retrieved_memory_ids]
         self.retrieved_nodes.extend(new_memory_nodes)
-        self.memory_nodes = new_memory_nodes
+        self.memory_nodes.extend(new_memory_nodes)
 
         if not new_memory_nodes:
             output = "No new memory_nodes found (duplicates removed)."

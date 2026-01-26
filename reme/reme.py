@@ -314,7 +314,7 @@ class ReMe:
             metadata=metadata,
         )
         vector_node = memory_node.to_vector_node()
-        await self.vector_store.delete([memory_id, vector_node.vector_id])
+        await self.vector_store.delete(list(set([memory_id, vector_node.vector_id])))
         await self.vector_store.insert([vector_node])
 
         return memory_node
@@ -322,7 +322,7 @@ class ReMe:
     async def delete_memory(self, memory_id: str | list[str]):
         """Delete one or more memories from the vector store by their IDs."""
         vector_ids = [memory_id] if isinstance(memory_id, str) else memory_id
-        await self.vector_store.delete(vector_ids)
+        await self.vector_store.delete(list(set(vector_ids)))
 
     async def delete_all_memories(self):
         """Delete all memories from the vector store."""

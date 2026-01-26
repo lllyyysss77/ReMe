@@ -101,7 +101,7 @@ class AddMemory(BaseMemoryTool):
         vector_nodes = [node.to_vector_node() for node in memory_nodes]
         vector_ids: list[str] = [node.vector_id for node in vector_nodes]
 
-        await self.vector_store.delete(vector_ids=vector_ids)
+        await self.vector_store.delete(vector_ids=list(set(vector_ids)))
         await self.vector_store.insert(nodes=vector_nodes)
         self.memory_nodes.extend(memory_nodes)
 

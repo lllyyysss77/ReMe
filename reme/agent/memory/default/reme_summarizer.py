@@ -52,6 +52,26 @@ class ReMeSummarizer(BaseMemoryAgent):
             **kwargs,
         )
 
+    async def react(self, messages: list[Message], tools: list["BaseTool"], stage: str = ""):
+        """Run single ReAct step - only one tool call iteration."""
+        success: bool = False
+        used_tools: list[BaseTool] = []
+
+        # Reasoning: LLM decides next action
+        assistant_message, should_act = await self._reasoning_step(messages, tools, step=0, stage=stage)
+
+        if should_act:
+            # Acting: execute tools and collect results (only once)
+            t_tools, tool_messages = await self._acting_step(assistant_message, tools, step=0, stage=stage)
+            used_tools.extend(t_tools)
+            messages.extend(tool_messages)
+            success = True
+        else:
+            # No tools requested
+            success = True
+
+        return used_tools, messages, success
+
     async def execute(self):
         result = await super().execute()
         tools: list[BaseTool] = result["tools"]

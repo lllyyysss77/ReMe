@@ -249,7 +249,7 @@ async def evaluation_for_question(
         dict with 'reasoning' and 'evaluation_result' fields
     """
     prompt = reme.prompt_handler.prompt_format(
-        "EVALUATION_PROMPT_FOR_QUESTION",
+        "EVALUATION_PROMPT_FOR_QUESTION2",
         question=question,
         reference_answer=reference_answer,
         key_memory_points=key_memory_points,
@@ -305,7 +305,7 @@ class MemoryProcessor:
             duration_ms = (time.time() - start) * 1000
             total_duration_ms += duration_ms
 
-            extracted_memories.extend([m.model_dump_json(exclude_none=True) for m in result["answer"]])
+            extracted_memories.extend([m.model_dump(exclude_none=True) for m in result["answer"]])
             summary_messages.extend([m.simple_dump() for m in result["messages"]])
 
         return extracted_memories, summary_messages, total_duration_ms
@@ -336,8 +336,8 @@ class MemoryProcessor:
 
         # Extract memories from response
         memories = result["answer"]
-        agent_messages = [x.model_dump_json(exclude_none=True) for x in result["messages"]]
-        retrieved_nodes = [x.model_dump_json(exclude_none=True) for x in result["retrieved_nodes"]]
+        agent_messages = [x.model_dump(exclude_none=True) for x in result["messages"]]
+        retrieved_nodes = [x.model_dump(exclude_none=True) for x in result["retrieved_nodes"]]
 
         # Use LLM to generate structured answer from memories
         answer_result = await answer_question_with_memories(

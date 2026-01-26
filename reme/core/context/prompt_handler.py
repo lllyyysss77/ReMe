@@ -101,7 +101,6 @@ class PromptHandler(BaseContext):
             prompt_file_path = Path(prompt_file_path)
 
         if not prompt_file_path.exists():
-            logger.warning(f"Prompt file not found: {prompt_file_path}")
             return self
 
         suffix = prompt_file_path.suffix.lower()
@@ -117,7 +116,6 @@ class PromptHandler(BaseContext):
                         f"Unsupported file format: {suffix}. " f"Supported formats: .yaml, .yml, .json",
                     )
 
-            logger.info(f"Loaded {len(prompt_dict or {})} prompts from {prompt_file_path}")
             self.load_prompt_dict(prompt_dict, overwrite=overwrite)
 
         except (yaml.YAMLError, json.JSONDecodeError) as e:

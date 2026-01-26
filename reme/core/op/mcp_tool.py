@@ -1,7 +1,5 @@
 """MCP (Model Context Protocol) tool integration for remote tool execution."""
 
-from typing import List
-
 from mcp.types import CallToolResult, TextContent
 
 from .base_tool import BaseTool
@@ -16,9 +14,9 @@ class MCPTool(BaseTool):
         self,
         mcp_server: str = "",
         tool_name: str = "",
-        parameter_required: List[str] | None = None,
-        parameter_optional: List[str] | None = None,
-        parameter_deleted: List[str] | None = None,
+        parameter_required: list[str] | None = None,
+        parameter_optional: list[str] | None = None,
+        parameter_deleted: list[str] | None = None,
         max_retries: int = 3,
         timeout: float | None = None,
         raise_exception: bool = False,
@@ -28,9 +26,9 @@ class MCPTool(BaseTool):
 
         self.mcp_server: str = mcp_server
         self.tool_name: str = tool_name
-        self.parameter_required: List[str] | None = parameter_required
-        self.parameter_optional: List[str] | None = parameter_optional
-        self.parameter_deleted: List[str] | None = parameter_deleted
+        self.parameter_required: list[str] | None = parameter_required
+        self.parameter_optional: list[str] | None = parameter_optional
+        self.parameter_deleted: list[str] | None = parameter_deleted
         self.timeout: float | None = timeout
 
         # Example MCP marketplace: https://bailian.console.aliyun.com/?tab=mcp#/mcp-market

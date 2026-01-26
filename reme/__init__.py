@@ -5,7 +5,7 @@ from . import config
 from . import core
 from . import tool
 from . import workflow
-from .reme_app import ReMeApp
+from .reme import ReMe
 
 __all__ = [
     "agent",
@@ -13,7 +13,7 @@ __all__ = [
     "core",
     "tool",
     "workflow",
-    "ReMeApp",
+    "ReMe",
 ]
 
 __version__ = "0.3.0.0a1"

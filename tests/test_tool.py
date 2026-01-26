@@ -8,9 +8,9 @@ search tools (Dashscope, Mock, Tavily) and execution tools (Code, Shell).
 
 import asyncio
 
-from reme.reme_app import ReMeApp
+from reme import ReMe
 
-app = ReMeApp()
+app = ReMe()
 
 
 def test_search():
@@ -21,7 +21,7 @@ def test_search():
     """
     from reme.tool.search import DashscopeSearch, MockSearch, TavilySearch
 
-    query = "今天杭州的天气如何？"
+    query = "美股DFDV是做什么的？"
 
     for op in [
         DashscopeSearch(),
@@ -190,7 +190,7 @@ async def test_stream_chat():
 
 
 if __name__ == "__main__":
-    # test_search()
+    test_search()
     # test_execute()
-    test_simple_chat()
-    asyncio.run(test_stream_chat())
+    # test_simple_chat()
+    # asyncio.run(test_stream_chat())

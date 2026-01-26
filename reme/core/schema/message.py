@@ -84,7 +84,7 @@ class Message(BaseModel):
         add_reasoning: bool = True,
         add_time_created: bool = False,
         add_metadata: bool = False,
-        enable_json_dump: bool = False,
+        as_dict: bool = True,
     ) -> dict | str:
         """Transforms the message into a simplified dictionary for standard APIs."""
         result = {}
@@ -109,10 +109,7 @@ class Message(BaseModel):
         if add_metadata:
             result["metadata"] = self.metadata
 
-        if enable_json_dump:
-            return json.dumps(result, ensure_ascii=False)
-        else:
-            return result
+        return result if as_dict else json.dumps(result, ensure_ascii=False)
 
     def format_message(
         self,

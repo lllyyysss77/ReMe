@@ -1,7 +1,7 @@
 """MCP Tool Schema definitions for recursive JSON Schema representation."""
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Union, Optional
 
 from mcp.types import Tool
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
@@ -16,10 +16,10 @@ class ToolAttr(BaseModel):
 
     type: str = Field(default=str(JsonSchemaEnum.STRING), description="The data type of the attribute")
     description: Optional[str] = Field(default=None, description="Description of the attribute")
-    required: Optional[List[str]] = Field(default=None, description="Required property names for object types")
-    properties: Optional[Dict[str, "ToolAttr"]] = Field(default=None, description="Child properties for objects")
-    items: Optional[Union[Dict[str, Any], "ToolAttr"]] = Field(default=None, description="Schema for array items")
-    enum: Optional[List[str]] = Field(default=None, description="Allowed values for the attribute")
+    required: Optional[list[str]] = Field(default=None, description="Required property names for object types")
+    properties: Optional[dict[str, "ToolAttr"]] = Field(default=None, description="Child properties for objects")
+    items: Optional[Union[dict[str, Any], "ToolAttr"]] = Field(default=None, description="Schema for array items")
+    enum: Optional[list[str]] = Field(default=None, description="Allowed values for the attribute")
 
     @field_validator("type")
     @classmethod
@@ -129,9 +129,13 @@ class ToolCall(BaseModel):
 
         return data
 
-    def simple_input_dump(self) -> dict:
-        """Returns a standardized tool definition dictionary."""
-        return {
+    def simple_input_dump(self, as_dict: bool = True) -> dict | str:
+        """Returns a standardized tool definition dictionary or JSON string.
+
+        Args:
+            as_dict: If True, returns dict; if False, returns JSON string.
+        """
+        result = {
             "type": self.type,
             self.type: {
                 "name": self.name,
@@ -139,10 +143,15 @@ class ToolCall(BaseModel):
                 "parameters": self.parameters.simple_input_dump(),
             },
         }
+        return result if as_dict else json.dumps(result, ensure_ascii=False)
 
-    def simple_output_dump(self) -> dict:
-        """Convert ToolCall to output format dictionary for API responses."""
-        return {
+    def simple_output_dump(self, as_dict: bool = True) -> dict | str:
+        """Convert ToolCall to output format dictionary or JSON string for API responses.
+
+        Args:
+            as_dict: If True, returns dict; if False, returns JSON string.
+        """
+        result = {
             "index": self.index,
             "id": self.id,
             self.type: {
@@ -151,6 +160,7 @@ class ToolCall(BaseModel):
             },
             "type": self.type,
         }
+        return result if as_dict else json.dumps(result, ensure_ascii=False)
 
     @property
     def argument_dict(self) -> dict:

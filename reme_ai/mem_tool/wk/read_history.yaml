@@ -1,5 +1,0 @@
-tool: |
-  Read original history dialogue by memory ID.
-
-ref_memory_id: |
-  Memory ID to query the original history.

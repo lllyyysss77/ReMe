@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import AsyncIterator
-from typing import Optional
 
 import httpx
 from loguru import logger
@@ -45,7 +44,7 @@ class HttpClient:
         response.raise_for_status()
         return response.json()
 
-    async def execute_flow(self, flow_name: str, **kwargs) -> Optional[Response]:
+    async def execute_flow(self, flow_name: str, **kwargs) -> Response | None:
         """Execute a flow with automated retry logic."""
         endpoint = f"{self.base_url}/{flow_name}"
 

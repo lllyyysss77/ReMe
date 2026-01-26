@@ -38,10 +38,11 @@ class AddHistory(BaseMemoryTool):
             content=history_content,
             author=self.author,
         )
-        logger.info(f"Adding history node: {history_node.model_dump_json(indent=2, exclude={'content'})}")
+        self.context.history_node = history_node
+        logger.info(f"Adding history node: {history_node.model_dump_json(indent=2)}")
 
         vector_node = history_node.to_vector_node()
-        await self.vector_store.delete(vector_node.memory_id)
+        await self.vector_store.delete(vector_node.vector_id)
         await self.vector_store.insert([vector_node])
 
         return f"Successfully added history: {history_node.memory_id}"

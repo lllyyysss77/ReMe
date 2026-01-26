@@ -22,6 +22,8 @@ from ..vector_store import BaseVectorStore
 class BaseOp(metaclass=ABCMeta):
     """Base operator class for LLM workflow execution and composition."""
 
+    __alias_name__: str = ""
+
     def __new__(cls, *args, **kwargs):
         """Capture initialization arguments for object cloning."""
         instance = super().__new__(cls)
@@ -52,7 +54,7 @@ class BaseOp(metaclass=ABCMeta):
         **kwargs,
     ):
         """Initialize operator configurations and internal state."""
-        self.name = name or camel_to_snake(self.__class__.__name__)
+        self.name = name or self.__alias_name__ or camel_to_snake(self.__class__.__name__)
         self.async_mode = async_mode
         self.language = language
         self.prompt = self._get_prompt_handler(prompt_name, prompt_path)
@@ -92,12 +94,12 @@ class BaseOp(metaclass=ABCMeta):
 
     def _handle_failure(self, e: Exception, attempt: int) -> str | None:
         """Log failures and handle final retry logic."""
-        message = f"[{self.__class__.__name__}] {self.name} failed (attempt {attempt + 1}): {e}"
+        message = f"[{self.__class__.__name__}] failed (attempt {attempt + 1}): {e}"
         if attempt == self.max_retries - 1:
             logger.exception(message)
             if self.raise_exception:
                 raise e
-            return f"{self.name} failed: {e}"
+            return f"[{self.__class__.__name__}] failed: {e}"
         else:
             logger.warning(message)
             return None
@@ -176,7 +178,7 @@ class BaseOp(metaclass=ABCMeta):
                     if k == "answer":
                         self.response.answer = v
                     elif k == "success":
-                        self.response.success = v.lower() == "true"
+                        self.response.success = v if isinstance(v, bool) else v.lower() == "true"
                     else:
                         self.response.metadata[k] = v
             else:
@@ -260,7 +262,7 @@ class BaseOp(metaclass=ABCMeta):
                 if isinstance(result, list):
                     results.extend(result)
                 else:
-                    result.append(result)
+                    results.append(result)
         self._pending_tasks.clear()
         return results
 

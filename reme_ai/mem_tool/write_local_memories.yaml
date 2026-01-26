@@ -1,5 +1,0 @@
-tool_multiple: |
-  Write memory nodes to local memory files.
-
-memory_nodes: |
-  List of memory nodes to write to local files.

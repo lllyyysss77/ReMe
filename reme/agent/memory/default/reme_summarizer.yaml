@@ -10,7 +10,7 @@ system_prompt: |
   {meta_memory_info}
 
   ## Your Task
-  Use the `hands_off` tool to distribute memory tasks to specialized agents:
+  Use the `delegate_task` tool to distribute memory tasks to specialized agents:
   1. Analyze the context and identify which memory dimensions require updates
   2. Specify `memory_type` and `memory_target` for each task
      - The `memory_type` and `memory_target` must **exactly match** existing entries in the "Available Memory Agents" listed above

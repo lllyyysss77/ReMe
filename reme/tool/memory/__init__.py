@@ -1,38 +1,32 @@
 """memory tools"""
 
+from .add_history import AddHistory
+from .add_memory import AddMemory
 from .base_memory_tool import BaseMemoryTool
-from .hands_off.hands_off import HandsOff
-from .history.add_history import AddHistory
-from .history.read_history import ReadHistory
-from .identity.add_identity import AddIdentity
-from .identity.read_identity import ReadIdentity
-from .meta.add_meta_memory import AddMetaMemory
-from .meta.read_meta_memory import ReadMetaMemory
-from .user_profile.read_user_profile import ReadUserProfile
-from .user_profile.update_user_profile import UpdateUserProfile
-from .vector.add_memory import AddMemory
-from .vector.delete_memory import DeleteMemory
-from .vector.retrieve_memory import RetrieveMemory
-from .vector.retrieve_recent_memory import RetrieveRecentMemory
-from .vector.update_memory import UpdateMemory
+from .delegate_task import DelegateTask
+from .delete_memory import DeleteMemory
+from .profile_handler import ProfileHandler
+from .read_history import ReadHistory
+from .read_profile import ReadProfile
+from .retrieve_memory import RetrieveMemory
+from .retrieve_recent_memory import RetrieveRecentMemory
+from .update_memory import UpdateMemory
+from .update_profile import UpdateProfile
 from ...core import R
 
 __all__ = [
-    "BaseMemoryTool",
-    "HandsOff",
     "AddHistory",
-    "ReadHistory",
-    "AddIdentity",
-    "ReadIdentity",
-    "AddMetaMemory",
-    "ReadMetaMemory",
-    "ReadUserProfile",
-    "UpdateUserProfile",
     "AddMemory",
+    "BaseMemoryTool",
+    "DelegateTask",
     "DeleteMemory",
+    "ProfileHandler",
+    "ReadHistory",
+    "ReadProfile",
     "RetrieveMemory",
     "RetrieveRecentMemory",
     "UpdateMemory",
+    "UpdateProfile",
 ]
 
 for name in __all__:

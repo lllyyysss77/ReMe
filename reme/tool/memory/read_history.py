@@ -2,8 +2,8 @@
 
 from loguru import logger
 
-from ..base_memory_tool import BaseMemoryTool
-from ....core.schema import MemoryNode, ToolCall
+from .base_memory_tool import BaseMemoryTool
+from ...core.schema import MemoryNode, ToolCall
 
 
 class ReadHistory(BaseMemoryTool):
@@ -36,7 +36,7 @@ class ReadHistory(BaseMemoryTool):
         nodes = await self.vector_store.get(vector_ids=[history_id])
 
         if not nodes:
-            output = f"No history: {history_id}"
+            output = f"No history_id={history_id} data."
             logger.warning(output)
             return output
 

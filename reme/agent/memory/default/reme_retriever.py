@@ -79,8 +79,8 @@ class ReMeRetriever(BaseMemoryAgent):
     async def execute(self):
         result = await super().execute()
         tools: list[BaseTool] = result["tools"]
-        hands_off_tool = tools[0]
-        agents: list[BaseMemoryAgent] = hands_off_tool.response.metadata["agents"]
+        delegate_task_tool = tools[0]
+        agents: list[BaseMemoryAgent] = delegate_task_tool.response.metadata["agents"]
 
         answer = []
         success = True

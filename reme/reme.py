@@ -2,6 +2,9 @@
 
 import asyncio
 import sys
+from pathlib import Path
+
+from loguru import logger
 
 from .agent.memory.default import ReMeSummarizer, PersonalSummarizer, PersonalRetriever, ReMeRetriever
 from .config import ReMeConfigParser
@@ -14,7 +17,8 @@ from .core.schema import Response, Message, MemoryNode, VectorNode
 from .core.token_counter import BaseTokenCounter
 from .core.utils import execute_stream_task, get_now_time
 from .core.vector_store import BaseVectorStore
-from .tool.memory import UpdateUserProfile, RetrieveMemory, AddMemory, HandsOff, ReadHistory, ReadUserProfile
+from .tool.memory import UpdateUserProfile, RetrieveMemory, AddMemory, DelegateTask, ReadHistory, ReadUserProfile, \
+    ProfileHandler
 
 
 class ReMe:
@@ -32,8 +36,38 @@ class ReMe:
         embedding_model: dict | None = None,
         vector_store: dict | None = None,
         token_counter: dict | None = None,
+            personal_memory_target: list[str] | None = None,
+            procedural_memory_target: list[str] | None = None,
+            tool_memory_target: list[str] | None = None,
+            profile_path: str = "reme_profile",
+            main_summary_version: str = "default",
+            personal_summary_version: str = "default",
+            procedural_summary_version: str = "default",
+            tool_summary_version: str = "default",
+            main_retrieve_version: str = "default",
+            personal_retrieve_version: str = "default",
+            procedural_retrieve_version: str = "default",
+            tool_retrieve_version: str = "default",
         **kwargs,
     ):
+        # MemoryTarget -> MemoryType
+        memory_target_type_mapping: dict[str, MemoryType] = {}
+        if personal_memory_target:
+            for name in personal_memory_target:
+                assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
+                memory_target_type_mapping[name] = MemoryType.PERSONAL
+
+        if procedural_memory_target:
+            for name in procedural_memory_target:
+                assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
+                memory_target_type_mapping[name] = MemoryType.PROCEDURAL
+
+        if tool_memory_target:
+            for name in tool_memory_target:
+                assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
+                memory_target_type_mapping[name] = MemoryType.TOOL
+
+        # ServiceContext
         self.service_context = ServiceContext(
             *args,
             llm_api_key=llm_api_key,
@@ -48,64 +82,73 @@ class ReMe:
             embedding_model=embedding_model,
             vector_store=vector_store,
             token_counter=token_counter,
+            memory_target_type_mapping=memory_target_type_mapping,
             **kwargs,
         )
 
+        self.profile_path: str = profile_path
+
+        # PromptHandler
         self.prompt_handler = PromptHandler(language=self.service_context.language)
 
-    async def __aenter__(self):
-        """Async context manager entry."""
-        return self
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-    async def close(self):
-        """Close"""
-        return await self.service_context.close()
-
-    def close_sync(self):
-        """Close synchronously"""
-        self.service_context.close_sync()
-
-    async def __aexit__(self, exc_type=None, exc_val=None, exc_tb=None):
-        """Async context manager exit."""
-        await self.close()
-        return False
-
-    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
-        """Context manager exit."""
-        self.close_sync()
-        return False
+        # LLM & EmbeddingModel & VectorStore & TokenCounter
+        self.llm: BaseLLM | None = self.service_context.llms.get("default", None)
+        self.embedding_model: BaseEmbeddingModel | None = self.service_context.embedding_models.get("default", None)
+        self.vector_store: BaseVectorStore | None = self.service_context.vector_stores.get("default", None)
+        self.token_counter: BaseTokenCounter | None = self.service_context.token_counters.get("default", None)
 
     @property
-    def llm(self) -> BaseLLM:
-        """Return the default LLM instance from the service context."""
-        return self.service_context.llms["default"]
+    def memory_target_type_mapping(self) -> dict[str, MemoryType]:
+        mapping = {}
+        if self.service_context.personal_memory_target:
+            for name in self.service_context.personal_memory_target:
+                assert name not in mapping, f"Memory target name {name} is already used."
+                mapping[name] = MemoryType.PERSONAL
 
-    @property
-    def embedding_model(self) -> BaseEmbeddingModel:
-        """Return the default embedding model instance from the service context."""
-        return self.service_context.embedding_models["default"]
+        if self.service_context.procedural_memory_target:
+            for name in self.service_context.procedural_memory_target:
+                assert name not in mapping, f"Memory target name {name} is already used."
+                mapping[name] = MemoryType.PROCEDURAL
 
-    @property
-    def vector_store(self) -> BaseVectorStore:
-        """Return the default vector store instance from the service context."""
-        return self.service_context.vector_stores["default"]
+        if self.service_context.tool_memory_target:
+            for name in self.service_context.tool_memory_target:
+                assert name not in mapping, f"Memory target name {name} is already used."
+                mapping[name] = MemoryType.TOOL
+        return mapping
 
-    @property
-    def token_counter(self) -> BaseTokenCounter:
-        """Return the default token counter instance from the service context."""
-        return self.service_context.token_counters["default"]
+    def add_meta_memory(self, memory_type: str | MemoryType, memory_target: str):
+        memory_type = MemoryType(memory_type)
+        if memory_type is MemoryType.PERSONAL:
+            personal_memory_target = self.service_context.personal_memory_target
+            if memory_target not in personal_memory_target:
+                personal_memory_target.append(memory_target)
+            else:
+                logger.warning(f"Memory target {memory_target} is already added.")
+
+        elif memory_type is MemoryType.PROCEDURAL:
+            procedural_memory_target = self.service_context.procedural_memory_target
+            if memory_target not in procedural_memory_target:
+                procedural_memory_target.append(memory_target)
+            else:
+                logger.warning(f"Memory target {memory_target} is already added.")
+
+        elif memory_type is MemoryType.TOOL:
+            tool_memory_target = self.service_context.tool_memory_target
+            if memory_target not in tool_memory_target:
+                tool_memory_target.append(memory_target)
+            else:
+                logger.warning(f"Memory target {memory_target} is already added.")
+
+
 
     async def summary_memory(
         self,
         messages: list[Message | dict],
         description: str = "",
-        user_name: str | list[str] = "",
+            user_name: str = "",
+            task_name: str = "",
+            tool_name: str = "",
         enable_thinking_params: bool = False,
-        meta_memories: list[dict] = None,
         version: str = "default",
         return_dict: bool = False,
         **kwargs,
@@ -133,7 +176,7 @@ class ReMe:
                 reme_summarizer = ReMeSummarizer(
                     meta_memories=meta_memories,
                     tools=[
-                        HandsOff(
+                        DelegateTask(
                             memory_agents=[
                                 PersonalSummarizer(
                                     tools=[
@@ -202,7 +245,7 @@ class ReMe:
                 reme_retriever = ReMeRetriever(
                     meta_memories=meta_memories,
                     tools=[
-                        HandsOff(
+                        DelegateTask(
                             memory_agents=[
                                 PersonalRetriever(
                                     tools=[
@@ -341,84 +384,10 @@ class ReMe:
         """Retrieve all memories from the vector store."""
         return [node.to_memory_node() for node in await self.vector_store.list()]
 
-    async def get_profiles(self, user_name: str | list[str]) -> str | list[str]:
-        """Retrieve user profile(s) from the system for the specified user(s)."""
-        read_profile = ReadUserProfile(show_id="profile")
-        if isinstance(user_name, str):
-            return await read_profile.call(memory_target=user_name, service_context=self.service_context)
-        else:
-            return [
-                await read_profile.call(memory_target=name, service_context=self.service_context) for name in user_name
-            ]
-
-    async def add_profile(
-        self,
-        profile_key: str,
-        profile_value: str,
-        user_name: str,
-        update_time: str | None = None,
-    ) -> MemoryNode:
-        """Add user profile to ReMe system."""
-        update_user_profile = UpdateUserProfile()
-        if update_time is None:
-            update_time = get_now_time()
-
-        await update_user_profile.call(
-            profile_ids_to_delete=[],
-            profiles_to_add=[
-                {
-                    "update_time": update_time,
-                    "profile_key": profile_key,
-                    "profile_value": profile_value,
-                },
-            ],
-            memory_target=user_name,
-            service_context=self.service_context,
-        )
-        return update_user_profile.memory_nodes[0]
-
-    async def update_profile(
-        self,
-        profile_id: str,
-        profile_key: str,
-        profile_value: str,
-        user_name: str,
-        update_time: str | None = None,
-    ) -> MemoryNode:
-        """Add user profile to ReMe system."""
-        update_user_profile = UpdateUserProfile()
-        if update_time is None:
-            update_time = get_now_time()
-
-        await update_user_profile.call(
-            profile_ids_to_delete=[profile_id],
-            profiles_to_add=[
-                {
-                    "update_time": update_time,
-                    "profile_key": profile_key,
-                    "profile_value": profile_value,
-                },
-            ],
-            memory_target=user_name,
-            service_context=self.service_context,
-        )
-        return update_user_profile.memory_nodes[0]
-
-    async def delete_all_profiles(self, user_name: str | list[str]):
-        """Delete all user profiles from ReMe system."""
-        if isinstance(user_name, str):
-            user_name = [user_name]
-
-        read_profile = ReadUserProfile(show_id="profile")
-        update_profile = UpdateUserProfile()
-        for memory_target in user_name:
-            await read_profile.call(memory_target=memory_target, service_context=self.service_context)
-            profile_ids = [profile.memory_id for profile in read_profile.memory_nodes]
-            await update_profile.call(
-                profile_ids_to_delete=profile_ids,
-                memory_target=memory_target,
-                service_context=self.service_context,
-            )
+    def get_profile_handler(self, user_name: str) -> ProfileHandler:
+        """Get the profile handler for the specified user."""
+        profile_path = Path(self.profile_path) / self.vector_store.collection_name
+        return ProfileHandler(memory_target=user_name, profile_path=profile_path)
 
     async def context_offload(self):
         """working memory summary"""
@@ -450,6 +419,32 @@ class ReMe:
     def run_service(self):
         """Run the configured service (HTTP, MCP, or CMD)."""
         self.service_context.service.run()
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    async def close(self):
+        """Close"""
+        return await self.service_context.close()
+
+    def close_sync(self):
+        """Close synchronously"""
+        self.service_context.close_sync()
+
+    async def __aexit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        """Async context manager exit."""
+        await self.close()
+        return False
+
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        """Context manager exit."""
+        self.close_sync()
+        return False
 
 
 def main():

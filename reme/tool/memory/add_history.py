@@ -2,10 +2,10 @@
 
 from loguru import logger
 
-from ..base_memory_tool import BaseMemoryTool
-from ....core.enumeration import MemoryType
-from ....core.schema import ToolCall, MemoryNode, Message
-from ....core.utils import format_messages
+from .base_memory_tool import BaseMemoryTool
+from ...core.enumeration import MemoryType
+from ...core.schema import ToolCall, MemoryNode, Message
+from ...core.utils import format_messages
 
 
 class AddHistory(BaseMemoryTool):
@@ -31,10 +31,11 @@ class AddHistory(BaseMemoryTool):
     async def execute(self):
         """Execute the add history operation"""
         self.context.messages = [Message(**m) if isinstance(m, dict) else m for m in self.context.messages]
-        history_content: str = (self.context.description + "\n" + format_messages(self.context.messages)).strip()
+        history_content: str = self.context.description + "\n" + format_messages(self.context.messages)
+        history_content = history_content.strip()
         history_node = MemoryNode(
             memory_type=MemoryType.HISTORY,
-            when_to_use=history_content[:100],
+            when_to_use=history_content[:1024],
             content=history_content,
             author=self.author,
         )

@@ -115,6 +115,7 @@ class BaseOp(metaclass=ABCMeta):
     @property
     def service_context(self) -> ServiceContext:
         """Access the service context."""
+        assert self.context, "Service context is not initialized!"
         return self.context.service_context
 
     @property

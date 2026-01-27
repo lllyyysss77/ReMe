@@ -10,10 +10,6 @@ from ....core.utils import format_messages
 class ReMeRetriever(BaseMemoryAgent):
     """Orchestrate multiple memory agents to retrieve information."""
 
-    def __init__(self, meta_memories: list[dict] | None = None, **kwargs):
-        super().__init__(**kwargs)
-        self.meta_memories: list[dict] = meta_memories or []
-
     async def build_messages(self) -> list[Message]:
         if self.context.get("query"):
             context = self.context.query
@@ -27,7 +23,7 @@ class ReMeRetriever(BaseMemoryAgent):
                 role=Role.SYSTEM,
                 content=self.prompt_format(
                     prompt_name="system_prompt",
-                    meta_memory_info=await self.read_meta_memories(self.meta_memories),
+                    meta_memory_info=self.meta_memory_info,
                     context=context.strip(),
                 ),
             ),
@@ -58,21 +54,14 @@ class ReMeRetriever(BaseMemoryAgent):
 
     async def react(self, messages: list[Message], tools: list["BaseTool"], stage: str = ""):
         """Run single ReAct step - only one tool call iteration."""
-        success: bool = False
         used_tools: list[BaseTool] = []
-
-        # Reasoning: LLM decides next action
         assistant_message, should_act = await self._reasoning_step(messages, tools, step=0, stage=stage)
+        success = True
 
         if should_act:
-            # Acting: execute tools and collect results (only once)
             t_tools, tool_messages = await self._acting_step(assistant_message, tools, step=0, stage=stage)
             used_tools.extend(t_tools)
             messages.extend(tool_messages)
-            success = True
-        else:
-            # No tools requested
-            success = True
 
         return used_tools, messages, success
 
@@ -87,7 +76,6 @@ class ReMeRetriever(BaseMemoryAgent):
         messages = []
         tools = []
         retrieved_nodes = []
-
         for agent in agents:
             answer.append(agent.response.answer)
             success = success and agent.response.success

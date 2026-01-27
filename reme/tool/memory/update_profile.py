@@ -82,7 +82,7 @@ class UpdateProfile(BaseMemoryTool):
         # Add new profiles using ProfileHandler (batch mode)
         added_count = 0
         if profiles_to_add:
-            new_nodes = profile_handler.add_batch(profiles=profiles_to_add, ref_memory_id=self.history_node.memory_id)
+            new_nodes = profile_handler.add_batch(profiles=profiles_to_add, ref_memory_id=self.history_id)
             self.memory_nodes.extend(new_nodes)
             added_count = len(new_nodes)
 

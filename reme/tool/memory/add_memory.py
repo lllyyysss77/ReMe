@@ -116,7 +116,7 @@ class AddMemory(BaseMemoryTool):
                     "content": memory_content,
                     "when_to_use": when_to_use,
                     "message_time": message_time,
-                    "ref_memory_id": self.history_node.memory_id,
+                    "ref_memory_id": self.history_id,
                     "author": self.author,
                     "metadata": metadata,
                 })

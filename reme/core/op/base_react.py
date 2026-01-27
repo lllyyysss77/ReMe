@@ -38,6 +38,13 @@ class BaseReact(BaseOp):
         """Return available tools for the agent."""
         return self.sub_ops
 
+    def pop_tool(self, name: str) -> "BaseTool | None":
+        """Remove and return a tool from self.tools by name."""
+        for i, tool in enumerate(self.sub_ops):
+            if tool.tool_call.name == name:
+                return self.sub_ops.pop(i)
+        return None
+
     async def build_messages(self) -> list[Message]:
         """Build initial message list from context query or messages."""
         if self.context.get("query"):

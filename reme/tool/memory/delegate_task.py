@@ -33,16 +33,10 @@ class DelegateTask(BaseMemoryTool):
                     "properties": {
                         "tasks": {
                             "type": "array",
-                            "description": "tasks to delegate to specific agents",
+                            "description": "tasks to delegate to specific agents, each task is a memory_target",
                             "items": {
-                                "type": "object",
-                                "properties": {
-                                    "task_name": {
-                                        "type": "string",
-                                        "description": "task_name",
-                                    },
-                                },
-                                "required": ["task_name"],
+                                "type": "string",
+                                "description": "memory_target to delegate to specific agents",
                             },
                         },
                     },
@@ -58,13 +52,13 @@ class DelegateTask(BaseMemoryTool):
 
         # Submit tasks to agents
         agent_list: list[BaseMemoryAgent] = []
-        for i, task in enumerate(tasks):
-            memory_type = self.memory_target_type_mapping[task]
+        for i, memory_target in enumerate(tasks):
+            memory_type = self.memory_target_type_mapping[memory_target]
             agent = self.memory_agent_dict[memory_type].copy()
             agent_list.append(agent)
 
-            logger.info(f"Task {i}: {memory_type.value} agent for {task}")
-            task_kwargs = {"memory_target": task}
+            logger.info(f"Task {i}: {memory_type.value} agent for {memory_target}")
+            task_kwargs = {"memory_target": memory_target}
             for k in ["query", "messages", "description", "history_node"]:
                 if k in self.context:
                     task_kwargs[k] = self.context[k]
@@ -76,7 +70,7 @@ class DelegateTask(BaseMemoryTool):
         for agent in agent_list:
             results.append(f"Task: {agent.memory_target}\n{agent.response.answer}")
 
-        logger.info(f"Completed {len(results)} task(s)")
+        logger.info(f"Completed {len(results)} memory_target(s)")
         return {
             "answer": "\n\n".join(results),
             "agents": agent_list,

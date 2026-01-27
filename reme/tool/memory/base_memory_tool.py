@@ -71,9 +71,11 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
             raise ValueError("memory_target is not specified in context or memory_target_type_mapping!")
 
     @property
-    def history_node(self) -> MemoryNode:
+    def history_id(self) -> str:
         """Get the history node from context."""
-        return self.context.history_node
+        if "history_node" in self.context:
+            return self.context.history_node.memory_id
+        return ""
 
     @property
     def retrieved_nodes(self) -> list[MemoryNode]:

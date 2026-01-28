@@ -105,7 +105,7 @@ class FileManager:
 
     def __init__(self, base_dir: str):
         self.base_dir = Path(base_dir)
-        self.tmp_dir = self.base_dir / "tmp"
+        self.tmp_dir = self.base_dir
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
 
     def get_user_dir(self, user_name: str) -> Path:
@@ -829,8 +829,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--eval_model_name",
         type=str,
-        # default="qwen3-max",
-        default="qwen3-235b-a22b-instruct-2507",
+        default="qwen3-max",
+        # default="qwen3-235b-a22b-instruct-2507",
         help="Model name for evaluation (default: qwen3-max)"
     )
 

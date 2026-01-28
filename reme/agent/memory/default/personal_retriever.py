@@ -79,7 +79,7 @@ class PersonalRetriever(BaseMemoryAgent):
                         ref_memory_id_key="",
                     )
                     for n in self.retrieved_nodes
-                ]
+                ],
             )
 
         result["retrieved_nodes"] = self.retrieved_nodes

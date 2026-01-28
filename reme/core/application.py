@@ -1,3 +1,5 @@
+"""High-level entry point for configuring and running ReMe services and flows."""
+
 import asyncio
 
 from .context import PromptHandler, ServiceContext
@@ -11,21 +13,22 @@ from .vector_store import BaseVectorStore
 
 
 class Application:
+    """Application wrapper that wires together service context, flows, and runtimes."""
 
     def __init__(
-            self,
-            *args,
-            llm_api_key: str | None = None,
-            llm_api_base: str | None = None,
-            embedding_api_key: str | None = None,
-            embedding_api_base: str | None = None,
-            enable_logo: bool = True,
-            parser: type[PydanticConfigParser] | None = None,
-            llm: dict | None = None,
-            embedding_model: dict | None = None,
-            vector_store: dict | None = None,
-            token_counter: dict | None = None,
-            **kwargs,
+        self,
+        *args,
+        llm_api_key: str | None = None,
+        llm_api_base: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_api_base: str | None = None,
+        enable_logo: bool = True,
+        parser: type[PydanticConfigParser] | None = None,
+        llm: dict | None = None,
+        embedding_model: dict | None = None,
+        vector_store: dict | None = None,
+        token_counter: dict | None = None,
+        **kwargs,
     ):
         # ServiceContext
         self.service_context = ServiceContext(
@@ -94,10 +97,10 @@ class Application:
         stream_queue = asyncio.Queue()
         task = asyncio.create_task(flow.call(stream_queue=stream_queue, **kwargs))
         async for chunk in execute_stream_task(
-                stream_queue=stream_queue,
-                task=task,
-                task_name=name,
-                as_bytes=False,
+            stream_queue=stream_queue,
+            task=task,
+            task_name=name,
+            as_bytes=False,
         ):
             yield chunk
 

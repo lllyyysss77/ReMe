@@ -1,25 +1,36 @@
 """ReMe classes for simplified configuration and execution."""
 
-import asyncio
 import sys
 from pathlib import Path
 
-from loguru import logger
-
-from .core import Application
-from .agent.memory.default import ReMeSummarizer, PersonalSummarizer, PersonalRetriever, ReMeRetriever
+from reme.agent.memory import BaseMemoryAgent
+from .agent.memory.default import (
+    ReMeSummarizer,
+    PersonalSummarizer,
+    PersonalRetriever,
+    ReMeRetriever,
+    ProceduralSummarizer,
+    ToolSummarizer,
+    ProceduralRetriever,
+    ToolRetriever,
+)
 from .config import ReMeConfigParser
-from .core.context import PromptHandler, ServiceContext
-from .core.embedding import BaseEmbeddingModel
+from .core import Application
 from .core.enumeration import MemoryType
-from .core.flow import BaseFlow
-from .core.llm import BaseLLM
-from .core.schema import Response, Message, MemoryNode, VectorNode
-from .core.token_counter import BaseTokenCounter
-from .core.utils import execute_stream_task, get_now_time
-from .core.vector_store import BaseVectorStore
-from .tool.memory import UpdateUserProfile, RetrieveMemory, AddMemory, DelegateTask, ReadHistory, ReadUserProfile, \
-    ProfileHandler
+from .core.schema import Message
+from .tool.memory import (
+    RetrieveMemory,
+    DelegateTask,
+    ReadHistory,
+    ProfileHandler,
+    MemoryHandler,
+    AddDraftAndRetrieveSimilarMemory,
+    UpdateMemoryV2,
+    AddDraftAndReadAllProfiles,
+    UpdateProfile,
+    AddHistory,
+    ReadAllProfiles,
+)
 
 
 class ReMe(Application):
@@ -37,18 +48,10 @@ class ReMe(Application):
         embedding_model: dict | None = None,
         vector_store: dict | None = None,
         token_counter: dict | None = None,
-            personal_memory_target: list[str] | None = None,
-            procedural_memory_target: list[str] | None = None,
-            tool_memory_target: list[str] | None = None,
-            profile_path: str = "reme_profile",
-            main_summary_version: str = "default",
-            personal_summary_version: str = "default",
-            procedural_summary_version: str = "default",
-            tool_summary_version: str = "default",
-            main_retrieve_version: str = "default",
-            personal_retrieve_version: str = "default",
-            procedural_retrieve_version: str = "default",
-            tool_retrieve_version: str = "default",
+        personal_memory_target: list[str] | None = None,
+        procedural_memory_target: list[str] | None = None,
+        tool_memory_target: list[str] | None = None,
+        profile_dir: str = "reme_profile",
         **kwargs,
     ):
         super().__init__(
@@ -80,300 +83,239 @@ class ReMe(Application):
             for name in tool_memory_target:
                 assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
                 memory_target_type_mapping[name] = MemoryType.TOOL
+
         self.service_context.memory_target_type_mapping = memory_target_type_mapping
-        self.profile_path: str = profile_path
-
-    @property
-    def memory_target_type_mapping(self) -> dict[str, MemoryType]:
-        mapping = {}
-        if self.service_context.personal_memory_target:
-            for name in self.service_context.personal_memory_target:
-                assert name not in mapping, f"Memory target name {name} is already used."
-                mapping[name] = MemoryType.PERSONAL
-
-        if self.service_context.procedural_memory_target:
-            for name in self.service_context.procedural_memory_target:
-                assert name not in mapping, f"Memory target name {name} is already used."
-                mapping[name] = MemoryType.PROCEDURAL
-
-        if self.service_context.tool_memory_target:
-            for name in self.service_context.tool_memory_target:
-                assert name not in mapping, f"Memory target name {name} is already used."
-                mapping[name] = MemoryType.TOOL
-        return mapping
+        self.profile_dir: str = profile_dir
 
     def add_meta_memory(self, memory_type: str | MemoryType, memory_target: str):
-        memory_type = MemoryType(memory_type)
-        if memory_type is MemoryType.PERSONAL:
-            personal_memory_target = self.service_context.personal_memory_target
-            if memory_target not in personal_memory_target:
-                personal_memory_target.append(memory_target)
-            else:
-                logger.warning(f"Memory target {memory_target} is already added.")
-
-        elif memory_type is MemoryType.PROCEDURAL:
-            procedural_memory_target = self.service_context.procedural_memory_target
-            if memory_target not in procedural_memory_target:
-                procedural_memory_target.append(memory_target)
-            else:
-                logger.warning(f"Memory target {memory_target} is already added.")
-
-        elif memory_type is MemoryType.TOOL:
-            tool_memory_target = self.service_context.tool_memory_target
-            if memory_target not in tool_memory_target:
-                tool_memory_target.append(memory_target)
-            else:
-                logger.warning(f"Memory target {memory_target} is already added.")
-
-
+        """Register or validate a memory target with the given memory type."""
+        if memory_target in self.service_context.memory_target_type_mapping:
+            assert self.service_context.memory_target_type_mapping[memory_target] is memory_type
+        else:
+            self.service_context.memory_target_type_mapping[memory_target] = MemoryType(memory_type)
 
     async def summary_memory(
         self,
         messages: list[Message | dict],
         description: str = "",
-            user_name: str = "",
-            task_name: str = "",
-            tool_name: str = "",
+        user_name: str | list[str] = "",
+        task_name: str | list[str] = "",
+        tool_name: str | list[str] = "",
         enable_thinking_params: bool = False,
         version: str = "default",
+        retrieve_top_k: int = 20,
         return_dict: bool = False,
         **kwargs,
     ) -> str | dict:
-        """Summarize messages and store them in memory for the specified user(s)."""
-        if user_name:
-            if isinstance(user_name, str):
-                for message in messages:
-                    if isinstance(message, dict) and not message.get("name"):
-                        message["name"] = user_name
-                    elif isinstance(message, Message) and not message.name:
-                        message.name = user_name
-                user_name = [user_name]
+        """Summarize personal, procedural and tool memories for the given context."""
+        format_messages: list[Message] = []
+        for message in messages:
+            if isinstance(message, dict):
+                assert message.get("time_created"), "message must have time_created field."
+            message = Message(**message)
+            format_messages.append(message)
 
-            if not meta_memories:
-                meta_memories = [
-                    {
-                        "memory_type": "personal",
-                        "memory_target": name,
-                    }
-                    for name in user_name
-                ]
-
-            if version == "default":
-                reme_summarizer = ReMeSummarizer(
-                    meta_memories=meta_memories,
-                    tools=[
-                        DelegateTask(
-                            memory_agents=[
-                                PersonalSummarizer(
-                                    tools=[
-                                        RetrieveMemory(enable_thinking_params=enable_thinking_params),
-                                        AddMemory(enable_thinking_params=enable_thinking_params),
-                                        UpdateUserProfile(enable_thinking_params=enable_thinking_params),
-                                    ],
-                                ),
-                            ],
-                        ),
-                    ],
-                )
-
-            else:
-                raise NotImplementedError
-
-            result = await reme_summarizer.call(
-                messages=messages,
-                description=description,
-                service_context=self.service_context,
-                **kwargs,
+        personal_summarizer: BaseMemoryAgent
+        if version:
+            personal_summarizer = PersonalSummarizer(
+                tools=[
+                    AddDraftAndRetrieveSimilarMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        top_k=retrieve_top_k,
+                    ),
+                    UpdateMemoryV2(enable_thinking_params=enable_thinking_params),
+                    AddDraftAndReadAllProfiles(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                    UpdateProfile(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                ],
             )
-
-            if return_dict:
-                return result
-            else:
-                return result["answer"]
-
         else:
             raise NotImplementedError
+
+        procedural_summarizer: BaseMemoryAgent
+        if version == "default":
+            procedural_summarizer = ProceduralSummarizer(tools=[])
+        else:
+            raise NotImplementedError
+
+        tool_summarizer: BaseMemoryAgent
+        if version == "default":
+            tool_summarizer = ToolSummarizer(tools=[])
+        else:
+            raise NotImplementedError
+
+        memory_agents = []
+        if user_name:
+            if isinstance(user_name, str):
+                for message in format_messages:
+                    message.name = user_name
+                self.add_meta_memory(MemoryType.PERSONAL, user_name)
+            elif isinstance(user_name, list):
+                for name in user_name:
+                    self.add_meta_memory(MemoryType.PERSONAL, name)
+            else:
+                raise RuntimeError("user_name must be str or list[str]")
+            memory_agents.append(personal_summarizer)
+
+        if task_name:
+            if isinstance(task_name, str):
+                self.add_meta_memory(MemoryType.PROCEDURAL, task_name)
+            elif isinstance(task_name, list):
+                for name in task_name:
+                    self.add_meta_memory(MemoryType.PROCEDURAL, name)
+            else:
+                raise RuntimeError("task_name must be str or list[str]")
+            memory_agents.append(procedural_summarizer)
+
+        if tool_name:
+            if isinstance(tool_name, str):
+                self.add_meta_memory(MemoryType.TOOL, tool_name)
+            elif isinstance(tool_name, list):
+                for name in tool_name:
+                    self.add_meta_memory(MemoryType.TOOL, name)
+            else:
+                raise RuntimeError("tool_name must be str or list[str]")
+            memory_agents.append(tool_summarizer)
+
+        if not memory_agents:
+            memory_agents = [personal_summarizer, procedural_summarizer, tool_summarizer]
+
+        reme_summarizer: BaseMemoryAgent
+        if version == "default":
+            reme_summarizer = ReMeSummarizer(tools=[AddHistory(), DelegateTask(memory_agents=memory_agents)])
+        else:
+            raise NotImplementedError
+
+        result = await reme_summarizer.call(
+            messages=messages,
+            description=description,
+            service_context=self.service_context,
+            **kwargs,
+        )
+
+        if return_dict:
+            return result
+        else:
+            return result["answer"]
 
     async def retrieve_memory(
         self,
         query: str = "",
-        top_k: int = 20,
         description: str = "",
         messages: list[dict] | None = None,
         user_name: str | list[str] = "",
+        task_name: str | list[str] = "",
+        tool_name: str | list[str] = "",
         enable_thinking_params: bool = False,
-        meta_memories: list[dict] = None,
         version: str = "default",
+        retrieve_top_k: int = 20,
+        enable_memory_target: bool = True,
         return_dict: bool = False,
         **kwargs,
     ) -> str | dict:
-        """Retrieve relevant memories for the specified user(s) based on query or messages."""
-        if user_name:
-            if isinstance(user_name, str):
-                if messages:
-                    for message in messages:
-                        if isinstance(message, dict) and not message.get("name"):
-                            message["name"] = user_name
-                        elif isinstance(message, Message) and not message.name:
-                            message.name = user_name
-                user_name = [user_name]
+        """Retrieve relevant personal, procedural and tool memories for a query."""
 
-            if not meta_memories:
-                meta_memories = [
-                    {
-                        "memory_type": "personal",
-                        "memory_target": name,
-                    }
-                    for name in user_name
-                ]
-
-            if version == "default":
-                reme_retriever = ReMeRetriever(
-                    meta_memories=meta_memories,
-                    tools=[
-                        DelegateTask(
-                            memory_agents=[
-                                PersonalRetriever(
-                                    tools=[
-                                        RetrieveMemory(enable_thinking_params=enable_thinking_params, top_k=top_k),
-                                        ReadHistory(enable_thinking_params=enable_thinking_params),
-                                    ],
-                                ),
-                            ],
-                        ),
-                    ],
-                )
-
-            else:
-                raise NotImplementedError
-
-            result = await reme_retriever.call(
-                query=query,
-                messages=messages,
-                description=description,
-                service_context=self.service_context,
-                **kwargs,
+        personal_retriever: BaseMemoryAgent
+        if version:
+            personal_retriever = PersonalRetriever(
+                tools=[
+                    ReadAllProfiles(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                    RetrieveMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        top_k=retrieve_top_k,
+                        enable_memory_target=enable_memory_target,
+                    ),
+                    ReadHistory(enable_thinking_params=enable_thinking_params),
+                ],
             )
-
-            if return_dict:
-                return result
-            else:
-                return result["answer"]
-
         else:
             raise NotImplementedError
 
-    async def add_memory(
-        self,
-        memory_content: str,
-        user_name: str,
-        memory_type: str | MemoryType | None = None,
-        memory_target: str = "",
-        when_to_use: str = "",
-        ref_memory_id: str = "",
-        author: str = "",
-        score: float = 0,
-        conversation_time: str = "",
-        **kwargs,
-    ) -> MemoryNode:
-        """Add a new memory to the vector store for the specified user."""
+        procedural_retriever: BaseMemoryAgent
+        if version == "default":
+            procedural_retriever = ProceduralRetriever(tools=[])
+        else:
+            raise NotImplementedError
 
+        tool_retriever: BaseMemoryAgent
+        if version == "default":
+            tool_retriever = ToolRetriever(tools=[])
+        else:
+            raise NotImplementedError
+
+        memory_agents = []
         if user_name:
-            memory_type = MemoryType.PERSONAL
-            memory_target = user_name
+            if isinstance(user_name, str):
+                self.add_meta_memory(MemoryType.PERSONAL, user_name)
+            elif isinstance(user_name, list):
+                for name in user_name:
+                    self.add_meta_memory(MemoryType.PERSONAL, name)
+            else:
+                raise RuntimeError("user_name must be str or list[str]")
+            memory_agents.append(personal_retriever)
+
+        if task_name:
+            if isinstance(task_name, str):
+                self.add_meta_memory(MemoryType.PROCEDURAL, task_name)
+            elif isinstance(task_name, list):
+                for name in task_name:
+                    self.add_meta_memory(MemoryType.PROCEDURAL, name)
+            else:
+                raise RuntimeError("task_name must be str or list[str]")
+            memory_agents.append(procedural_retriever)
+
+        if tool_name:
+            if isinstance(tool_name, str):
+                self.add_meta_memory(MemoryType.TOOL, tool_name)
+            elif isinstance(tool_name, list):
+                for name in tool_name:
+                    self.add_meta_memory(MemoryType.TOOL, name)
+            else:
+                raise RuntimeError("tool_name must be str or list[str]")
+            memory_agents.append(tool_retriever)
+
+        if not memory_agents:
+            memory_agents = [personal_retriever, procedural_retriever, tool_retriever]
+
+        reme_retriever: BaseMemoryAgent
+        if version == "default":
+            reme_retriever = ReMeRetriever(tools=[DelegateTask(memory_agents=memory_agents)])
         else:
-            memory_type = MemoryType(memory_type)
-            assert memory_target, "memory_target is required"
+            raise NotImplementedError
 
-        metadata = kwargs.copy()
-        if conversation_time:
-            metadata["conversation_time"] = conversation_time
-
-        memory_node = MemoryNode(
-            memory_type=memory_type,
-            memory_target=memory_target,
-            when_to_use=when_to_use,
-            content=memory_content,
-            ref_memory_id=ref_memory_id,
-            author=author,
-            score=score,
-            metadata=metadata,
+        result = await reme_retriever.call(
+            query=query,
+            messages=messages,
+            description=description,
+            service_context=self.service_context,
+            **kwargs,
         )
-        vector_node = memory_node.to_vector_node()
-        await self.vector_store.delete([vector_node.vector_id])
-        await self.vector_store.insert([vector_node])
 
-        return memory_node
-
-    async def update_memory(
-        self,
-        memory_id: str,
-        memory_content: str,
-        user_name: str,
-        memory_type: str | MemoryType | None = None,
-        memory_target: str = "",
-        when_to_use: str = "",
-        ref_memory_id: str = "",
-        author: str = "",
-        score: float = 0,
-        conversation_time: str = "",
-        **kwargs,
-    ) -> MemoryNode:
-        """Update an existing memory in the vector store by its ID."""
-
-        if user_name:
-            memory_type = MemoryType.PERSONAL
-            memory_target = user_name
+        if return_dict:
+            return result
         else:
-            memory_type = MemoryType(memory_type)
-            assert memory_target, "memory_target is required"
+            return result["answer"]
 
-        metadata = kwargs.copy()
-        if conversation_time:
-            metadata["conversation_time"] = conversation_time
+    @property
+    def profile_path(self) -> Path:
+        """Get the path to the profile directory."""
+        return Path(self.profile_dir) / self.vector_store.collection_name
 
-        memory_node = MemoryNode(
-            memory_type=memory_type,
-            memory_target=memory_target,
-            when_to_use=when_to_use,
-            content=memory_content,
-            ref_memory_id=ref_memory_id,
-            author=author,
-            score=score,
-            metadata=metadata,
-        )
-        vector_node = memory_node.to_vector_node()
-        await self.vector_store.delete(list(set([memory_id, vector_node.vector_id])))
-        await self.vector_store.insert([vector_node])
-
-        return memory_node
-
-    async def delete_memory(self, memory_id: str | list[str]):
-        """Delete one or more memories from the vector store by their IDs."""
-        vector_ids = [memory_id] if isinstance(memory_id, str) else memory_id
-        await self.vector_store.delete(list(set(vector_ids)))
-
-    async def delete_all_memories(self):
-        """Delete all memories from the vector store."""
-        await self.vector_store.delete_all()
-
-    async def get_memory(self, memory_id: str | list[str]) -> MemoryNode | list[MemoryNode]:
-        """Retrieve one or more memories from the vector store by their IDs."""
-        vector_ids = [memory_id] if isinstance(memory_id, str) else memory_id
-        vector_nodes = await self.vector_store.get(vector_ids)
-        if isinstance(vector_nodes, VectorNode):
-            return vector_nodes.to_memory_node()
-        else:
-            return [node.to_memory_node() for node in vector_nodes]
-
-    async def get_all_memories(self) -> list[MemoryNode]:
-        """Retrieve all memories from the vector store."""
-        return [node.to_memory_node() for node in await self.vector_store.list()]
+    def get_memory_handler(self, memory_target: str) -> MemoryHandler:
+        """Get the memory handler for the specified memory target."""
+        return MemoryHandler(memory_target=memory_target, service_context=self.service_context)
 
     def get_profile_handler(self, user_name: str) -> ProfileHandler:
         """Get the profile handler for the specified user."""
-        profile_path = Path(self.profile_path) / self.vector_store.collection_name
-        return ProfileHandler(memory_target=user_name, profile_path=profile_path)
+        return ProfileHandler(memory_target=user_name, profile_path=self.profile_path)
 
     async def context_offload(self):
         """working memory summary"""

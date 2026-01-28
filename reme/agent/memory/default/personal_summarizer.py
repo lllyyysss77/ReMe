@@ -1,4 +1,5 @@
 """Personal memory summarizer agent for two-phase personal memory processing."""
+
 from loguru import logger
 
 from ..base_memory_agent import BaseMemoryAgent

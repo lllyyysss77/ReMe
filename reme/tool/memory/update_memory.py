@@ -11,10 +11,10 @@ class UpdateMemory(BaseMemoryTool):
     """Tool to update memories in vector store"""
 
     def __init__(
-            self,
-            enable_memory_target: bool = False,
-            enable_when_to_use: bool = False,
-            **kwargs,
+        self,
+        enable_memory_target: bool = False,
+        enable_when_to_use: bool = False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.enable_memory_target: bool = enable_memory_target
@@ -116,14 +116,16 @@ class UpdateMemory(BaseMemoryTool):
                 except Exception:
                     logger.warning(f"Invalid message time format: {message_time}")
 
-                update_dicts.append({
-                    "memory_id": mem.get("memory_id", ""),
-                    "content": memory_content,
-                    "when_to_use": when_to_use,
-                    "message_time": message_time,
-                    "author": self.author,
-                    "metadata": metadata,
-                })
+                update_dicts.append(
+                    {
+                        "memory_id": mem.get("memory_id", ""),
+                        "content": memory_content,
+                        "when_to_use": when_to_use,
+                        "message_time": message_time,
+                        "author": self.author,
+                        "metadata": metadata,
+                    },
+                )
 
             if update_dicts:
                 handler = MemoryHandler(target, self.service_context)

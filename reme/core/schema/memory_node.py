@@ -149,12 +149,12 @@ class MemoryNode(BaseModel):
         )
 
     def format(
-            self,
-            include_memory_id: bool = True,
-            include_when_to_use: bool = True,
-            include_content: bool = True,
-            include_message_time: bool = True,
-            ref_memory_id_key: str = "",
+        self,
+        include_memory_id: bool = True,
+        include_when_to_use: bool = True,
+        include_content: bool = True,
+        include_message_time: bool = True,
+        ref_memory_id_key: str = "",
     ) -> str:
         """Format memory node as string with configurable fields."""
         line = ""

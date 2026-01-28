@@ -80,11 +80,13 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
             if target not in queries_by_target:
                 queries_by_target[target] = []
 
-            queries_by_target[target].append({
-                "query": item["memory_draft"],
-                "limit": self.top_k,
-                "filters": {},
-            })
+            queries_by_target[target].append(
+                {
+                    "query": item["memory_draft"],
+                    "limit": self.top_k,
+                    "filters": {},
+                },
+            )
 
         # Execute batch searches for each target
         memory_nodes: list[MemoryNode] = []

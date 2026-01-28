@@ -11,10 +11,10 @@ class AddMemory(BaseMemoryTool):
     """Tool to add memories to vector store"""
 
     def __init__(
-            self,
-            enable_memory_target: bool = False,
-            enable_when_to_use: bool = False,
-            **kwargs,
+        self,
+        enable_memory_target: bool = False,
+        enable_when_to_use: bool = False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.enable_memory_target: bool = enable_memory_target
@@ -112,14 +112,16 @@ class AddMemory(BaseMemoryTool):
                 except Exception:
                     logger.warning(f"Invalid message time format: {message_time}")
 
-                memory_dicts.append({
-                    "content": memory_content,
-                    "when_to_use": when_to_use,
-                    "message_time": message_time,
-                    "ref_memory_id": self.history_id,
-                    "author": self.author,
-                    "metadata": metadata,
-                })
+                memory_dicts.append(
+                    {
+                        "content": memory_content,
+                        "when_to_use": when_to_use,
+                        "message_time": message_time,
+                        "ref_memory_id": self.history_id,
+                        "author": self.author,
+                        "metadata": metadata,
+                    },
+                )
 
             if memory_dicts:
                 handler = MemoryHandler(target, self.service_context)

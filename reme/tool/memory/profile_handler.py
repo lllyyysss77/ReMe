@@ -1,4 +1,5 @@
 """Profile Handler for managing user profiles in local memory"""
+
 from pathlib import Path
 
 from loguru import logger
@@ -36,7 +37,9 @@ class ProfileHandler:
                 removed_count = len(sorted_nodes) - self.max_capacity
                 nodes = sorted_nodes[removed_count:]
                 logger.info(
-                    f"Capacity limit reached: removed {removed_count} oldest profiles (kept {len(nodes)}/{self.max_capacity})")
+                    f"Capacity limit reached: removed {removed_count} oldest profiles "
+                    f"(kept {len(nodes)}/{self.max_capacity})",
+                )
 
         nodes_data = [node.model_dump(exclude_none=True) for node in nodes]
         self.cache_handler.save(self.cache_key, nodes_data)
@@ -191,9 +194,6 @@ class ProfileHandler:
     def read_all(self, add_profile_id: bool = False, add_history_id: bool = False) -> str:
         """Read all profiles and return formatted string"""
         nodes = self.get_all()
-        formatted_profiles = [
-            self._format_node(node, add_profile_id, add_history_id)
-            for node in nodes
-        ]
+        formatted_profiles = [self._format_node(node, add_profile_id, add_history_id) for node in nodes]
         logger.info(f"Read {len(formatted_profiles)} profiles from {self.cache_key}")
         return "\n".join(formatted_profiles).strip()

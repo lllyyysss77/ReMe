@@ -11,11 +11,11 @@ class UpdateMemoryV2(BaseMemoryTool):
     """Tool to update memories in vector store by deleting and adding memory entries"""
 
     def __init__(
-            self,
-            name="update_memory",
-            enable_memory_target: bool = False,
-            enable_when_to_use: bool = False,
-            **kwargs,
+        self,
+        name="update_memory",
+        enable_memory_target: bool = False,
+        enable_when_to_use: bool = False,
+        **kwargs,
     ):
         kwargs["enable_multiple"] = True
         super().__init__(name=name, **kwargs)
@@ -68,7 +68,7 @@ class UpdateMemoryV2(BaseMemoryTool):
                             "type": "array",
                             "description": "List of memory IDs to delete",
                             "items": {
-                                "type": "string"
+                                "type": "string",
                             },
                         },
                         "memories_to_add": {
@@ -85,7 +85,7 @@ class UpdateMemoryV2(BaseMemoryTool):
     async def execute(self):
         # Get parameters
         memory_ids_to_delete = self.context.get("memory_ids_to_delete", [])
-        memory_ids_to_delete = sorted(set([mid for mid in memory_ids_to_delete if mid]))
+        memory_ids_to_delete = sorted({mid for mid in memory_ids_to_delete if mid})
         memories_to_add = self.context.get("memories_to_add", [])
 
         if not memory_ids_to_delete and not memories_to_add:
@@ -126,14 +126,16 @@ class UpdateMemoryV2(BaseMemoryTool):
                 except Exception:
                     logger.warning(f"Invalid message time format: {message_time}")
 
-                add_dicts.append({
-                    "content": memory_content,
-                    "when_to_use": when_to_use,
-                    "message_time": message_time,
-                    "ref_memory_id": self.history_id,
-                    "author": self.author,
-                    "metadata": metadata,
-                })
+                add_dicts.append(
+                    {
+                        "content": memory_content,
+                        "when_to_use": when_to_use,
+                        "message_time": message_time,
+                        "ref_memory_id": self.history_id,
+                        "author": self.author,
+                        "metadata": metadata,
+                    },
+                )
 
             if add_dicts:
                 handler = MemoryHandler(target, self.service_context)

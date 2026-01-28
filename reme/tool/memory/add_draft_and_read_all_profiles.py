@@ -1,5 +1,4 @@
 """Add draft profile and read all profiles from local storage"""
-from pathlib import Path
 
 from loguru import logger
 
@@ -11,9 +10,8 @@ from ...core.schema import ToolCall
 class AddDraftAndReadAllProfiles(BaseMemoryTool):
     """Tool to add draft profile and read all profiles"""
 
-    def __init__(self, profile_path: str, enable_memory_target: bool = False, **kwargs):
+    def __init__(self, enable_memory_target: bool = False, **kwargs):
         super().__init__(**kwargs)
-        self.profile_path: str = profile_path
         self.enable_memory_target: bool = enable_memory_target
 
     def _build_query_parameters(self) -> dict:
@@ -86,10 +84,7 @@ class AddDraftAndReadAllProfiles(BaseMemoryTool):
                 continue
             targets_processed.add(target)
 
-            profile_handler = ProfileHandler(
-                profile_path=Path(self.profile_path) / self.vector_store.collection_name,
-                memory_target=target,
-            )
+            profile_handler = ProfileHandler(profile_path=self.profile_path, memory_target=target)
 
             profiles_str = profile_handler.read_all(add_profile_id=True)
             if profiles_str:

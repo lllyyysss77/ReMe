@@ -1,6 +1,7 @@
 """Base class for memory tool"""
 
 from abc import ABCMeta
+from pathlib import Path
 
 from ...core.enumeration import MemoryType
 from ...core.op import BaseTool
@@ -14,11 +15,13 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
         self,
         enable_multiple: bool = True,
         enable_thinking_params: bool = False,
+        profile_dir: str = "",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.enable_multiple: bool = enable_multiple
         self.enable_thinking_params: bool = enable_thinking_params
+        self.profile_dir: str = profile_dir
 
     def _build_tool_call(self) -> ToolCall:
         """Build and return the tool call schema"""
@@ -98,3 +101,8 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
     def memory_target_type_mapping(self) -> dict[str, MemoryType]:
         """Get the memory target type mapping from context."""
         return self.context.memory_target_type_mapping
+
+    @property
+    def profile_path(self) -> Path:
+        """Get the path to the profile directory for the current collection."""
+        return Path(self.profile_dir) / self.vector_store.collection_name

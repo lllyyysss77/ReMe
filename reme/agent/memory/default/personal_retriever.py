@@ -22,8 +22,10 @@ class PersonalRetriever(BaseMemoryAgent):
 
         read_all_profiles_tool: BaseTool | None = self.pop_tool("read_all_profiles")
         if read_all_profiles_tool is not None:
-            all_profiles = await read_all_profiles_tool.call(memory_target=self.memory_target,
-                                                             service_context=self.service_context)
+            all_profiles = await read_all_profiles_tool.call(
+                memory_target=self.memory_target,
+                service_context=self.service_context,
+            )
         else:
             all_profiles = ""
 

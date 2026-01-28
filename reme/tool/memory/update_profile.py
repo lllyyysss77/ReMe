@@ -1,5 +1,4 @@
 """Update user profile tool"""
-from pathlib import Path
 
 from loguru import logger
 
@@ -11,11 +10,9 @@ from ...core.schema import ToolCall
 class UpdateProfile(BaseMemoryTool):
     """Tool to update user profile by adding or removing profile entries"""
 
-    def __init__(self, profile_path: str, **kwargs):
+    def __init__(self, **kwargs):
         kwargs["enable_multiple"] = True
         super().__init__(**kwargs)
-
-        self.profile_path: str = profile_path
 
     def _build_multiple_tool_call(self) -> ToolCall:
         """Build and return the multiple tool call schema"""
@@ -29,7 +26,7 @@ class UpdateProfile(BaseMemoryTool):
                             "type": "array",
                             "description": "List of profile IDs to delete",
                             "items": {
-                                "type": "string"
+                                "type": "string",
                             },
                         },
                         "profiles_to_add": {
@@ -61,14 +58,11 @@ class UpdateProfile(BaseMemoryTool):
         )
 
     async def execute(self):
-        profile_handler = ProfileHandler(
-            profile_path=Path(self.profile_path) / self.vector_store.collection_name,
-            memory_target=self.memory_target,
-        )
+        profile_handler = ProfileHandler(profile_path=self.profile_path, memory_target=self.memory_target)
 
         # Get parameters
         profile_ids_to_delete = self.context.get("profile_ids_to_delete", [])
-        profile_ids_to_delete = sorted(set([pid for pid in profile_ids_to_delete if pid]))
+        profile_ids_to_delete = sorted({pid for pid in profile_ids_to_delete if pid})
         profiles_to_add = self.context.get("profiles_to_add", [])
 
         if not profile_ids_to_delete and not profiles_to_add:

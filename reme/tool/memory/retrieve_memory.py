@@ -31,8 +31,8 @@ class RetrieveMemory(BaseMemoryTool):
             properties["time_filter"] = {
                 "type": "string",
                 "description": "Optional time filter to narrow down search results by date. "
-                               "Format: single date '20200101' for exact date match, "
-                               "or date range '20200101,20200102' for inclusive range filtering.",
+                "Format: single date '20200101' for exact date match, "
+                "or date range '20200101,20200102' for inclusive range filtering.",
             }
 
         if self.enable_memory_target:
@@ -99,11 +99,13 @@ class RetrieveMemory(BaseMemoryTool):
                 else:
                     filters = {"time_int": [int(time_filter), int(time_filter)]}
 
-            queries_by_target[target].append({
-                "query": item["query"],
-                "limit": self.top_k,
-                "filters": filters,
-            })
+            queries_by_target[target].append(
+                {
+                    "query": item["query"],
+                    "limit": self.top_k,
+                    "filters": filters,
+                },
+            )
 
         # Execute batch searches for each target
         memory_nodes: list[MemoryNode] = []

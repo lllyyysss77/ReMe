@@ -11,25 +11,43 @@ from ...core.utils import deduplicate_memories
 class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
     """Tool to add draft memory and retrieve similar memories"""
 
-    def __init__(self, top_k: int = 20, enable_memory_target: bool = False, **kwargs):
+    def __init__(
+        self,
+        top_k: int = 20,
+        enable_memory_target: bool = False,
+        enable_when_to_use: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.top_k: int = top_k
         self.enable_memory_target: bool = enable_memory_target
+        self.enable_when_to_use: bool = enable_when_to_use
 
     def _build_query_parameters(self) -> dict:
         """Build the query parameters schema"""
         properties = {
-            "memory_draft": {
+            "message_time": {
                 "type": "string",
-                "description": "memory_draft",
+                "description": "message time, e.g. '2020-01-01 00:00:00'",
+            },
+            "memory_content": {
+                "type": "string",
+                "description": "content of the memory.",
             },
         }
-        required = ["memory_draft"]
+        required = ["message_time", "memory_content"]
+
+        if self.enable_when_to_use:
+            properties["when_to_use"] = {
+                "type": "string",
+                "description": "description of when to use this memory.",
+            }
+            required.append("when_to_use")
 
         if self.enable_memory_target:
             properties["memory_target"] = {
                 "type": "string",
-                "description": "memory_target",
+                "description": "target memory type for this memory.",
             }
             required.append("memory_target")
 
@@ -56,7 +74,7 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
                     "properties": {
                         "draft_items": {
                             "type": "array",
-                            "description": "List of draft memory items.",
+                            "description": "draft_items",
                             "items": self._build_query_parameters(),
                         },
                     },
@@ -82,7 +100,7 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
 
             queries_by_target[target].append(
                 {
-                    "query": item["memory_draft"],
+                    "query": item["memory_content"],
                     "limit": self.top_k,
                     "filters": {},
                 },

@@ -99,6 +99,7 @@ class PersonalSummarizer(BaseMemoryAgent):
         else:
             tools_s2, messages_s2, success_s2 = [], [], True
 
+        answer = (messages_s1[-1].content if success_s1 else "") + (messages_s2[-1].content if success_s2 else "")
         success = success_s1 and success_s2
         messages = messages_s1 + messages_s2
         tools = tools_s1 + tools_s2
@@ -108,8 +109,9 @@ class PersonalSummarizer(BaseMemoryAgent):
                 memory_nodes.extend(tool.memory_nodes)
 
         return {
-            "answer": memory_nodes,
+            "answer": answer,
             "success": success,
             "messages": messages,
             "tools": tools,
+            "memory_nodes": memory_nodes,
         }

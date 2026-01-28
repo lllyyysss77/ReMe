@@ -85,7 +85,7 @@ class ReMeSummarizer(BaseMemoryAgent):
             success = success and agent.response.success
             messages.extend(agent.response.metadata["messages"])
             tools.extend(agent.response.metadata["tools"])
-            memory_nodes.extend(agent.response.answer)
+            memory_nodes.extend(agent.response.metadata["memory_nodes"])
 
         return {
             "answer": memory_nodes,

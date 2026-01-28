@@ -31,24 +31,32 @@ class DelegateTask(BaseMemoryTool):
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "memory_target_tasks": {
+                        "tasks": {
                             "type": "array",
-                            "description": "List of memory_target tasks to delegate to specific memory agents",
+                            "description": "List of tasks to delegate to specific memory agents",
                             "items": {
-                                "type": "string",
-                                "description": "A memory_target identifier to delegate to the corresponding agent",
+                                "type": "object",
+                                "description": "A task item",
+                                "properties": {
+                                    "memory_target": {
+                                        "type": "string",
+                                        "description": "The memory_target identifier to "
+                                        "delegate to the corresponding agent",
+                                    },
+                                },
+                                "required": ["memory_target"],
                             },
                         },
                     },
-                    "required": ["memory_target_tasks"],
+                    "required": ["tasks"],
                 },
             },
         )
 
     async def execute(self):
-        # Deduplicate and validate memory_target_tasks
-        memory_target_tasks = self.context.get("memory_target_tasks", [])
-        memory_target_tasks = sorted(set(memory_target_tasks))
+        # Deduplicate and validate tasks
+        tasks = self.context.get("tasks", [])
+        memory_target_tasks = sorted(set(task["memory_target"] for task in tasks))
 
         # Submit memory_target_tasks to agents
         agent_list: list[BaseMemoryAgent] = []

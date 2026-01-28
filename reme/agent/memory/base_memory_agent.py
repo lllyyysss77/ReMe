@@ -1,5 +1,6 @@
 """Base memory agent for handling memory operations with tool-based reasoning."""
 
+import json
 from abc import ABCMeta
 
 from ...core.enumeration import MemoryType
@@ -57,7 +58,11 @@ class BaseMemoryAgent(BaseReact, metaclass=ABCMeta):
     @property
     def meta_memory_info(self) -> str:
         """Get the meta memory info from context."""
-        lines = ["Format: - memory_target: memory_type memories about memory_target"]
+        lines = []
         for memory_target, memory_type in self.memory_target_type_mapping.items():
-            lines.append(f"- {memory_target}: {memory_type} memories about {memory_target}")
+            line = {
+                "agent": f"Agent managing {memory_type} memories for {memory_target}",
+                "memory_target": memory_target,
+            }
+            lines.append(json.dumps(line, ensure_ascii=False))
         return "\n".join(lines)

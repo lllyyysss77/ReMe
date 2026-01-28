@@ -8,7 +8,7 @@ from .profile_handler import ProfileHandler
 from ...core.schema import ToolCall
 
 
-class ReadProfile(BaseMemoryTool):
+class ReadAllProfiles(BaseMemoryTool):
     """Tool to read all user profiles"""
 
     def __init__(self, profile_path: str, **kwargs):
@@ -35,7 +35,7 @@ class ReadProfile(BaseMemoryTool):
             memory_target=self.memory_target,
         )
 
-        profiles_str = profile_handler.read_all()
+        profiles_str = profile_handler.read_all(add_profile_id=True)
         if not profiles_str:
             output = "No profiles found."
             logger.info(output)

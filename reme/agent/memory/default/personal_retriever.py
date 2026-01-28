@@ -20,6 +20,13 @@ class PersonalRetriever(BaseMemoryAgent):
         else:
             raise ValueError("input must have either `query` or `messages`")
 
+        read_all_profiles_tool: BaseTool | None = self.pop_tool("read_all_profiles")
+        if read_all_profiles_tool is not None:
+            all_profiles = await read_all_profiles_tool.call(memory_target=self.memory_target,
+                                                             service_context=self.service_context)
+        else:
+            all_profiles = ""
+
         return [
             Message(
                 role=Role.SYSTEM,
@@ -27,7 +34,7 @@ class PersonalRetriever(BaseMemoryAgent):
                     prompt_name="system_prompt",
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
-                    user_profile=await self.read_user_profile(show_id="history"),
+                    user_profile=all_profiles,
                     context=context.strip(),
                 ),
             ),
@@ -59,5 +66,4 @@ class PersonalRetriever(BaseMemoryAgent):
     async def execute(self):
         result = await super().execute()
         result["retrieved_nodes"] = self.retrieved_nodes
-
         return result

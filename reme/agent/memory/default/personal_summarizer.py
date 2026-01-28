@@ -1,5 +1,4 @@
 """Personal memory summarizer agent for two-phase personal memory processing."""
-
 from loguru import logger
 
 from ..base_memory_agent import BaseMemoryAgent
@@ -13,13 +12,12 @@ class PersonalSummarizer(BaseMemoryAgent):
 
     memory_type: MemoryType = MemoryType.PERSONAL
 
-    async def _build_phase1_messages(self) -> list[Message]:
-        """Build messages for phase 1: retrieve and add memory."""
+    async def _build_s1_messages(self) -> list[Message]:
         return [
             Message(
                 role=Role.SYSTEM,
                 content=self.prompt_format(
-                    prompt_name="system_prompt_phase1",
+                    prompt_name="system_prompt_s1",
                     context=self.context.history_node.content,
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
@@ -27,26 +25,24 @@ class PersonalSummarizer(BaseMemoryAgent):
             ),
             Message(
                 role=Role.USER,
-                content=self.get_prompt("user_message_phase1"),
+                content=self.get_prompt("user_message_s1"),
             ),
         ]
 
-    async def _build_phase2_messages(self) -> list[Message]:
-        """Build messages for phase 2: update user profile."""
+    async def _build_s2_messages(self) -> list[Message]:
         return [
             Message(
                 role=Role.SYSTEM,
                 content=self.prompt_format(
-                    prompt_name="system_prompt_phase2",
+                    prompt_name="system_prompt_s2",
                     context=self.context.history_node.content,
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
-                    user_profile=await self.read_user_profile(show_id="profile"),
                 ),
             ),
             Message(
                 role=Role.USER,
-                content=self.get_prompt("user_message_phase2"),
+                content=self.get_prompt("user_message_s2"),
             ),
         ]
 
@@ -73,34 +69,52 @@ class PersonalSummarizer(BaseMemoryAgent):
         )
 
     async def execute(self):
-        """Execute two-phase memory processing: retrieve/add -> update profile."""
-        tools = self.tools
-        for i, tool in enumerate(tools):
+        memory_tools = []
+        profile_tools = []
+        for i, tool in enumerate(self.tools):
+            tool_name = tool.tool_call.name
+            if "_memory" in tool_name:
+                memory_tools.append(tool)
+            elif "_profile" in tool_name:
+                profile_tools.append(tool)
+            else:
+                raise ValueError(f"[{self.__class__.__name__}] unknown tool_name={tool_name}")
             logger.info(f"[{self.__class__.__name__}] tool_call[{i}]={tool.tool_call.simple_input_dump(as_dict=False)}")
 
-        messages_phase1 = await self._build_phase1_messages()
-        for i, message in enumerate(messages_phase1):
+        stage = "s1-memory"
+        messages_s1 = await self._build_s1_messages()
+        for i, message in enumerate(messages_s1):
             role = message.name or message.role
-            logger.info(f"[{self.__class__.__name__} S1] role={role} {message.simple_dump(as_dict=False)}")
-        tools_phase1, messages_phase1, success_phase1 = await self.react(messages_phase1, tools[:-1], stage="S1")
+            logger.info(f"[{self.__class__.__name__} {stage}] role={role} {message.simple_dump(as_dict=False)}")
+        tools_s1, messages_s1, success_s1 = await self.react(messages_s1, memory_tools, stage=stage)
 
-        messages_phase2 = await self._build_phase2_messages()
-        for i, message in enumerate(messages_phase2):
-            role = message.name or message.role
-            logger.info(f"[{self.__class__.__name__} S2] role={role} {message.simple_dump(as_dict=False)}")
-        tools_phase2, messages_phase2, success_phase2 = await self.react(messages_phase2, tools[-1:], stage="S2")
+        if profile_tools:
+            stage = "s2-profile"
+            messages_s2 = await self._build_s2_messages()
+            for i, message in enumerate(messages_s2):
+                role = message.name or message.role
+                logger.info(f"[{self.__class__.__name__} {stage}] role={role} {message.simple_dump(as_dict=False)}")
+            tools_s2, messages_s2, success_s2 = await self.react(messages_s2, profile_tools, stage=stage)
+        else:
+            tools_s2, messages_s2, success_s2 = [], [], True
 
-        success = success_phase1 and success_phase2
-        messages = messages_phase1 + messages_phase2
-        tools = tools_phase1 + tools_phase2
+        success = success_s1 and success_s2
+        messages = messages_s1 + messages_s2
+        tools = tools_s1 + tools_s2
         memory_nodes = []
         for tool in tools:
             if tool.memory_nodes:
                 memory_nodes.extend(tool.memory_nodes)
+
+        profile_nodes = []
+        for tool in tools:
+            if tool.profile_nodes:
+                profile_nodes.extend(tool.profile_nodes)
 
         return {
             "answer": memory_nodes,
             "success": success,
             "messages": messages,
             "tools": tools,
+            "profile_nodes": profile_nodes,
         }

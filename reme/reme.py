@@ -6,6 +6,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from .core import Application
 from .agent.memory.default import ReMeSummarizer, PersonalSummarizer, PersonalRetriever, ReMeRetriever
 from .config import ReMeConfigParser
 from .core.context import PromptHandler, ServiceContext
@@ -21,7 +22,7 @@ from .tool.memory import UpdateUserProfile, RetrieveMemory, AddMemory, DelegateT
     ProfileHandler
 
 
-class ReMe:
+class ReMe(Application):
     """ReMe with config file support and flow execution methods."""
 
     def __init__(
@@ -50,7 +51,20 @@ class ReMe:
             tool_retrieve_version: str = "default",
         **kwargs,
     ):
-        # MemoryTarget -> MemoryType
+        super().__init__(
+            *args,
+            llm_api_key=llm_api_key,
+            llm_api_base=llm_api_base,
+            embedding_api_key=embedding_api_key,
+            embedding_api_base=embedding_api_base,
+            enable_logo=enable_logo,
+            parser=ReMeConfigParser,
+            llm=llm,
+            embedding_model=embedding_model,
+            vector_store=vector_store,
+            token_counter=token_counter,
+            **kwargs,
+        )
         memory_target_type_mapping: dict[str, MemoryType] = {}
         if personal_memory_target:
             for name in personal_memory_target:
@@ -66,36 +80,8 @@ class ReMe:
             for name in tool_memory_target:
                 assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
                 memory_target_type_mapping[name] = MemoryType.TOOL
-
-        # ServiceContext
-        self.service_context = ServiceContext(
-            *args,
-            llm_api_key=llm_api_key,
-            llm_api_base=llm_api_base,
-            embedding_api_key=embedding_api_key,
-            embedding_api_base=embedding_api_base,
-            service_config=None,
-            parser=ReMeConfigParser,
-            config_path=None,
-            enable_logo=enable_logo,
-            llm=llm,
-            embedding_model=embedding_model,
-            vector_store=vector_store,
-            token_counter=token_counter,
-            memory_target_type_mapping=memory_target_type_mapping,
-            **kwargs,
-        )
-
+        self.service_context.memory_target_type_mapping = memory_target_type_mapping
         self.profile_path: str = profile_path
-
-        # PromptHandler
-        self.prompt_handler = PromptHandler(language=self.service_context.language)
-
-        # LLM & EmbeddingModel & VectorStore & TokenCounter
-        self.llm: BaseLLM | None = self.service_context.llms.get("default", None)
-        self.embedding_model: BaseEmbeddingModel | None = self.service_context.embedding_models.get("default", None)
-        self.vector_store: BaseVectorStore | None = self.service_context.vector_stores.get("default", None)
-        self.token_counter: BaseTokenCounter | None = self.service_context.token_counters.get("default", None)
 
     @property
     def memory_target_type_mapping(self) -> dict[str, MemoryType]:
@@ -394,57 +380,6 @@ class ReMe:
 
     async def context_reload(self):
         """working memory retrieve"""
-
-    async def execute_flow(self, name: str, **kwargs) -> Response:
-        """Execute a flow with the given name and parameters."""
-        assert name in self.service_context.flows, f"Flow {name} not found"
-        flow: BaseFlow = self.service_context.flows[name]
-        return await flow.call(**kwargs)
-
-    async def execute_stream_flow(self, name: str, **kwargs):
-        """Execute a stream flow with the given name and parameters."""
-        assert name in self.service_context.flows, f"Flow {name} not found"
-        flow: BaseFlow = self.service_context.flows[name]
-        assert flow.stream is True, "non-stream flow is not supported in execute_stream_flow!"
-        stream_queue = asyncio.Queue()
-        task = asyncio.create_task(flow.call(stream_queue=stream_queue, **kwargs))
-        async for chunk in execute_stream_task(
-            stream_queue=stream_queue,
-            task=task,
-            task_name=name,
-            as_bytes=False,
-        ):
-            yield chunk
-
-    def run_service(self):
-        """Run the configured service (HTTP, MCP, or CMD)."""
-        self.service_context.service.run()
-
-    async def __aenter__(self):
-        """Async context manager entry."""
-        return self
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-    async def close(self):
-        """Close"""
-        return await self.service_context.close()
-
-    def close_sync(self):
-        """Close synchronously"""
-        self.service_context.close_sync()
-
-    async def __aexit__(self, exc_type=None, exc_val=None, exc_tb=None):
-        """Async context manager exit."""
-        await self.close()
-        return False
-
-    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
-        """Context manager exit."""
-        self.close_sync()
-        return False
 
 
 def main():

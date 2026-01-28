@@ -11,6 +11,7 @@ from . import service
 from . import token_counter
 from . import utils
 from . import vector_store
+from .application import Application
 from .context import R
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "token_counter",
     "utils",
     "vector_store",
+    "Application",
     "R",
 ]

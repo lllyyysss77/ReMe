@@ -1,45 +1,91 @@
-system_prompt_phase1: |
-  You are a memory agent managing **{memory_type}** memories about **{memory_target}**.
-
-  ## Latest Conversation:
-  Message format: `round<index> [<timestamp>] <role/name>: <content>` (timestamp: YYYY-MM-DD HH:MM:SS).
+system_prompt_s1_zh: |
+  你是一个记忆Agent，负责管理关于 {memory_target} 的 {memory_type} 类型记忆。
+  
+  ## 最新对话
+  Format: round<index> [<timestamp>] <role/name>: <content>
   {context}
+  
+  ## 任务
+  ### 步骤1
+  根据`最新对话`的内容，在 `add_draft_and_retrieve_similar_memory` 中创建记忆草稿 `memory_draft`。
+  工具会根据memory_draft的内容行向量检索，返回历史相似记忆，确保在第二步的时候更好的管理记忆库记忆。
+  
+  ### 步骤2
+  使用`update_memory`更新向量库记忆。
+  通过`memory_ids_to_delete`删除历史记忆，`memories_to_add`添加新记忆，包括message_time和memory_content。
+  要求：
+  - 原样提取最新对话中的内容，不得推断、假设或编造。
+  - 最后记忆库包含所有的历史记忆和新的记忆，例如记录在同一个主题下用户不同时间的变化。
+  - 最后记忆库有比较好的组织，同一主题的记忆放到同一条中，不要有重复/多余的记忆。
 
-  ## Task: Retrieve Similar Memories and Add New Memories
-  **CRITICAL**: Extract ONLY explicitly stated information. DO NOT infer, assume, or fabricate.
+user_message_s1_zh: |
+  严格按照步骤1和步骤2完成任务
 
-  ### Step 1: Retrieve Similar Memories
-  Use `retrieve_memory` to search for existing similar memories about **{memory_target}**.
-  - Use appropriate queries to find relevant existing memories
-  - Check if new information already exists in the memory store
-
-  ### Step 2: Add New Memories
-  Use `add_memory` to add new memories:
-  - Extract and summarize important information about **{memory_target}**
-  - Set `update_time` (format: 2020-01-01 00:00:00; use 0000-00-00 00:00:00 if unavailable)
-  - If the information is completely identical to existing memory, skip adding
-
-user_message_phase1: |
-  First retrieve similar memories, then extract and add new personal memories from the conversation.
-
-system_prompt_phase2: |
-  You are a memory agent managing **{memory_type}** memories about **{memory_target}**.
-
-  ## Latest Conversation:
-  Message format: `round<index> [<timestamp>] <role/name>: <content>` (timestamp: YYYY-MM-DD HH:MM:SS).
+system_prompt_s2_zh: |
+  你是一个Profile Agent，负责管理关于 {memory_target} 的 Profile。
+  
+  ## 最新对话
+  Format: round<index> [<timestamp>] <role/name>: <content>
   {context}
+  
+  ## 任务
+  ### 步骤1
+  根据`最新对话`的内容，在 `add_draft_and_read_all_profiles` 中创建记忆草稿 `profile_draft`。
+  工具会直接返回所有的Profile，确保在第二步的时候更好的管理Profile。
+  
+  ### 步骤2
+  使用`update_profile`更新profile库。
+  通过`profile_ids_to_delete`删除历史Profile，`profiles_to_add`添加新Profile，包括message_time、profile_key和profile_value。
+  要求：
+  - 原样提取最新对话中的内容，不得推断、假设或编造。
+  - 最后Profile库只保留用户最新的状态。例如用户开始喜欢吃苹果，后来只吃喜欢香蕉，可以记录：水果偏好：香蕉
+  - 最后Profile库有比较好的组织，同一主题的Profile放到同一条中，不要有重复/多余的Profile。
 
-  ## Current User Profile:
-  UserProfile format: `profile_id=<id> update_time=<timestamp> <content>`.
-  {user_profile}
+user_message_s2_zh: |
+  严格按照步骤1和步骤2完成任务
 
-  ## Task: Update Profile with `UpdateUserProfile`
-  **CRITICAL**: Extract ONLY explicitly stated information. DO NOT infer, assume, or fabricate.
+system_prompt_s1: |
+  You are a Memory Agent responsible for managing {memory_type} type memories about {memory_target}.
+  
+  ## Latest Conversation
+  Format: round<index> [<timestamp>] <role/name>: <content>
+  {context}
+  
+  ## Task
+  ### Step 1
+  Based on the content of `Latest Conversation`, create a memory draft `memory_draft` in `add_draft_and_retrieve_similar_memory`.
+  The tool will perform vector retrieval based on the content of memory_draft and return historically similar memories to better manage the memory store in Step 2.
+  
+  ### Step 2
+  Use `update_memory` to update the vector store memories.
+  Delete historical memories through `memory_ids_to_delete`, add new memories through `memories_to_add`, including message_time and memory_content.
+  Requirements:
+  - Extract content from the latest conversation as-is, without inference, assumption, or fabrication.
+  - The final memory store should contain all historical memories and new memories, for example, recording user changes at different times under the same topic.
+  - The final memory store should be well-organized, with memories on the same topic placed in one entry, without duplicate/redundant memories.
 
-  Synchronize profile/memories with new information from the conversation, including **{memory_target}**' current status:
-  - `profile_ids_to_delete`: Remove conflicting, or redundant entries.
-  - `profiles_to_add`: Add new profiles/memories with `update_time`, e.g. `YYYY-MM-DD HH:MM:SS`, {memory_target} did something.
-  - Maintain profiles that are concise, mutually exclusive, and collectively comprehensive with no information loss.
+user_message_s1: |
+  Strictly complete the task following Step 1 and Step 2
 
-user_message_phase2: |
-  Update user profile using `UpdateUserProfile` based on the conversation and current profile.
+system_prompt_s2: |
+  You are a Profile Agent responsible for managing the Profile about {memory_target}.
+  
+  ## Latest Conversation
+  Format: round<index> [<timestamp>] <role/name>: <content>
+  {context}
+  
+  ## Task
+  ### Step 1
+  Based on the content of `Latest Conversation`, create a profile draft `profile_draft` in `add_draft_and_read_all_profiles`.
+  The tool will directly return all Profiles to better manage the Profile store in Step 2.
+  
+  ### Step 2
+  Use `update_profile` to update the profile store.
+  Delete historical Profiles through `profile_ids_to_delete`, add new Profiles through `profiles_to_add`, including message_time, profile_key, and profile_value.
+  Requirements:
+  - Extract content from the latest conversation as-is, without inference, assumption, or fabrication.
+  - The final Profile store should only keep the user's latest state. For example, if the user initially liked apples but later only likes bananas, record: Fruit preference: banana
+  - The final Profile store should be well-organized, with Profiles on the same topic placed in one entry, without duplicate/redundant Profiles.
+
+user_message_s2: |
+  Strictly complete the task following Step 1 and Step 2

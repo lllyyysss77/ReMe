@@ -1,4 +1,4 @@
-"""Retrieve memory from vector store"""
+"""Add draft memory and retrieve similar memories from vector store"""
 
 from loguru import logger
 
@@ -8,32 +8,23 @@ from ...core.schema import ToolCall, MemoryNode
 from ...core.utils import deduplicate_memories
 
 
-class RetrieveMemory(BaseMemoryTool):
-    """Tool to retrieve memories using similarity search"""
+class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
+    """Tool to add draft memory and retrieve similar memories"""
 
-    def __init__(self, top_k: int = 20, enable_memory_target: bool = False, enable_time_filter: bool = False, **kwargs):
+    def __init__(self, top_k: int = 20, enable_memory_target: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.top_k: int = top_k
         self.enable_memory_target: bool = enable_memory_target
-        self.enable_time_filter: bool = enable_time_filter
 
     def _build_query_parameters(self) -> dict:
-        """Build the query parameters schema based on enabled features."""
+        """Build the query parameters schema"""
         properties = {
-            "query": {
+            "memory_draft": {
                 "type": "string",
-                "description": "query",
+                "description": "memory_draft",
             },
         }
-        required = ["query"]
-
-        if self.enable_time_filter:
-            properties["time_filter"] = {
-                "type": "string",
-                "description": "Optional time filter to narrow down search results by date. "
-                               "Format: single date '20200101' for exact date match, "
-                               "or date range '20200101,20200102' for inclusive range filtering.",
-            }
+        required = ["memory_draft"]
 
         if self.enable_memory_target:
             properties["memory_target"] = {
@@ -51,7 +42,7 @@ class RetrieveMemory(BaseMemoryTool):
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": "Retrieve relevant memories from the vector store using semantic similarity search.",
+                "description": "Add draft memory and retrieve similar memories from the vector store.",
                 "parameters": self._build_query_parameters(),
             },
         )
@@ -59,29 +50,29 @@ class RetrieveMemory(BaseMemoryTool):
     def _build_multiple_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": "Retrieve relevant memories from the vector store using semantic similarity search.",
+                "description": "Add draft memory and retrieve similar memories from the vector store.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "query_items": {
+                        "draft_items": {
                             "type": "array",
-                            "description": "List of query items.",
+                            "description": "List of draft memory items.",
                             "items": self._build_query_parameters(),
                         },
                     },
-                    "required": ["query_items"],
+                    "required": ["draft_items"],
                 },
             },
         )
 
     async def execute(self):
         if self.enable_multiple:
-            query_items = self.context.get("query_items", [])
+            draft_items = self.context.get("draft_items", [])
         else:
-            query_items = [self.context]
+            draft_items = [self.context]
 
         queries_by_target: dict[str, list[dict]] = {}
-        for item in query_items:
+        for item in draft_items:
             if self.enable_memory_target:
                 target = item["memory_target"]
             else:
@@ -89,20 +80,10 @@ class RetrieveMemory(BaseMemoryTool):
             if target not in queries_by_target:
                 queries_by_target[target] = []
 
-            filters = {}
-            time_filter = item.get("time_filter")
-            if time_filter:
-                time_filter = time_filter.strip()
-                if "," in time_filter:
-                    start, end = time_filter.split(",")
-                    filters = {"time_int": [int(start.strip()), int(end.strip())]}
-                else:
-                    filters = {"time_int": [int(time_filter), int(time_filter)]}
-
             queries_by_target[target].append({
-                "query": item["query"],
+                "query": item["memory_draft"],
                 "limit": self.top_k,
-                "filters": filters,
+                "filters": {},
             })
 
         # Execute batch searches for each target
@@ -118,9 +99,9 @@ class RetrieveMemory(BaseMemoryTool):
         self.retrieved_nodes.extend(new_nodes)
 
         if not new_nodes:
-            output = "No new memories found."
+            output = "No similar memories found."
         else:
             output = "\n".join([n.format(ref_memory_id_key="history_id") for n in new_nodes])
 
-        logger.info(f"Retrieved {len(memory_nodes)} memories, {len(new_nodes)} new after deduplication")
+        logger.info(f"Retrieved {len(memory_nodes)} similar memories, {len(new_nodes)} new after deduplication")
         return output

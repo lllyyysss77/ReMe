@@ -17,12 +17,20 @@ class AddDraftAndReadAllProfiles(BaseMemoryTool):
     def _build_query_parameters(self) -> dict:
         """Build the query parameters schema"""
         properties = {
-            "profile_draft": {
+            "message_time": {
                 "type": "string",
-                "description": "profile_draft",
+                "description": "Message time, e.g. '2020-01-01 00:00:00'",
+            },
+            "profile_key": {
+                "type": "string",
+                "description": "Profile key or category, e.g. 'name'",
+            },
+            "profile_value": {
+                "type": "string",
+                "description": "Profile value or content, e.g. 'John Smith'",
             },
         }
-        required = ["profile_draft"]
+        required = ["message_time", "profile_key", "profile_value"]
 
         if self.enable_memory_target:
             properties["memory_target"] = {

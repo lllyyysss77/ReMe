@@ -214,7 +214,7 @@ class ReMe(Application):
         enable_thinking_params: bool = False,
         version: str = "default",
         retrieve_top_k: int = 20,
-        enable_memory_target: bool = True,
+        enable_time_filter: bool = True,
         return_dict: bool = False,
         **kwargs,
     ) -> str | dict:
@@ -231,7 +231,7 @@ class ReMe(Application):
                     RetrieveMemory(
                         enable_thinking_params=enable_thinking_params,
                         top_k=retrieve_top_k,
-                        enable_memory_target=enable_memory_target,
+                        enable_time_filter=enable_time_filter,
                     ),
                     ReadHistory(enable_thinking_params=enable_thinking_params),
                 ],

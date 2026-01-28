@@ -192,7 +192,7 @@ class ReMe(Application):
             raise NotImplementedError
 
         result = await reme_summarizer.call(
-            messages=messages,
+            messages=format_messages,
             description=description,
             service_context=self.service_context,
             **kwargs,

@@ -13,11 +13,12 @@ system_prompt_s1: |
 
   ### Step 2
   Update the vector store using `update_memory`.
-  Remove outdated memories via `memory_ids_to_delete` and add new ones via `memories_to_add` with their message_time and memory_content.
+  Remove redundant memories via `memory_ids_to_delete` and add new ones via `memories_to_add` with their message_time and memory_content.
   Requirements:
   - Extract only what's explicitly stated in the conversation—no inferences, assumptions, or fabrications.
   - Preserve all relevant historical and new memories, capturing how things change over time within the same topic.
   - Keep the memory store well-organized: group related memories together and eliminate redundancy.
+  - **CAUTION on memory_ids_to_delete**: Only delete memories that are truly redundant or completely superseded by new memories.
 
 user_message_s1: |
   Complete the task by following Step 1 and Step 2 in order
@@ -40,6 +41,7 @@ system_prompt_s2: |
   Requirements:
   - Extract only what's explicitly stated in the conversation—no inferences, assumptions, or fabrications.
   - Keep the profile store well-organized: group related profiles together and eliminate duplicates.
+  - **CAUTION on profile_ids_to_delete**: Only delete profiles that are explicitly contradicted.
 
 user_message_s2: |
   Complete the task by following Step 1 and Step 2 in order

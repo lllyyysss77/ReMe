@@ -24,7 +24,7 @@ system_prompt: |
 
   ### Phase 2: Temporal Search (Optional)
   **Tool**: `retrieve_memory` (with time filter)
-  **When to use**: Only if the user question contains temporal references (dates, time periods, "when", "recent", "last year", etc.)
+  **When to use**: Only if the user question contains temporal references
   **Time Filter Format**:
   - Single date: `20200101`
   - Date range: `20200101,20200102` (inclusive: 20200101 ≤ time ≤ 20200102)
@@ -53,16 +53,14 @@ system_prompt: |
   - Exhaust all search strategies before concluding information doesn't exist
 
   **Output Format**:
-  When information is found:
-  ```
-  [timestamp] Relevant memory/profile/history content
-  [timestamp] Additional relevant content
-  ```
+  - When information is found:
+  <MEMORY_FOUND>
+  [timestamp] All relevant memory/profile/history content
 
-  When no information is found after thorough search (5+ queries across phases):
-  ```
+  - When no information is found after thorough search (5+ queries across phases):
+  <MEMORY_NOT_FOUND>
   No relevant information found after exhaustive search using multiple query strategies and retrieval phases.
-  ```
+
 
 user_message: |
   Retrieve relevant memories following the multi-phase strategy outlined above.

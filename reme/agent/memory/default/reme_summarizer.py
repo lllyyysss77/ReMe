@@ -16,6 +16,7 @@ class ReMeSummarizer(BaseMemoryAgent):
             await add_history_tool.call(
                 messages=self.messages,
                 description=self.description,
+                author=self.author,
                 service_context=self.service_context,
             )
             self.context.history_node = add_history_tool.context.history_node

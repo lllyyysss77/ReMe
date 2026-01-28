@@ -107,15 +107,9 @@ class PersonalSummarizer(BaseMemoryAgent):
             if tool.memory_nodes:
                 memory_nodes.extend(tool.memory_nodes)
 
-        profile_nodes = []
-        for tool in tools:
-            if tool.profile_nodes:
-                profile_nodes.extend(tool.profile_nodes)
-
         return {
             "answer": memory_nodes,
             "success": success,
             "messages": messages,
             "tools": tools,
-            "profile_nodes": profile_nodes,
         }

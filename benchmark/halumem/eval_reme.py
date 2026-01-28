@@ -26,7 +26,6 @@ from typing import Any
 
 from loguru import logger
 
-from reme.core.schema import MemoryNode, Message
 from reme.reme import ReMe
 
 
@@ -328,7 +327,7 @@ class MemoryProcessor:
         # Retrieve memories from ReMe using new API
         result = await self.reme.retrieve_memory(
             query=query,
-            top_k=top_k,
+            retrieve_top_k=top_k,
             user_name=user_id,
             version="default",
             return_dict=True,
@@ -637,7 +636,8 @@ class HaluMemEvaluator:
             for user_data in all_users
         ]
         if all_user_names:
-            await self.reme.delete_all_profiles(all_user_names)
+            for user_name in all_user_names:
+                self.reme.get_profile_handler(user_name).delete_all()
             logger.info(f"Deleted all profiles for {len(all_user_names)} users")
 
         # Clear existing data

@@ -106,4 +106,7 @@ class Application:
 
     def run_service(self):
         """Run the configured service (HTTP, MCP, or CMD)."""
+        import warnings
+
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         self.service_context.service.run()

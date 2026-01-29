@@ -32,6 +32,7 @@ from .tool.memory import (
     UpdateProfile,
     AddHistory,
     ReadAllProfiles,
+    AddMemory,
 )
 
 
@@ -141,12 +142,28 @@ class ReMe(Application):
             personal_summarizer = PersonalV1Summarizer(
                 tools=[
                     AddDraftAndRetrieveSimilarMemory(
-                        enable_thinking_params=enable_thinking_params,
                         top_k=retrieve_top_k,
+                        enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
+                        enable_when_to_use=False,
+                        enable_multiple=True,
                     ),
-                    UpdateMemoryV2(enable_thinking_params=enable_thinking_params),
+                    AddMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
+                        enable_when_to_use=False,
+                        enable_multiple=True,
+                    ),
                     AddDraftAndReadAllProfiles(
                         enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
+                        enable_multiple=True,
+                        profile_dir=self.profile_dir,
+                    ),
+                    UpdateProfile(
+                        enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
+                        enable_multiple=True,
                         profile_dir=self.profile_dir,
                     ),
                 ],
@@ -260,12 +277,14 @@ class ReMe(Application):
                 tools=[
                     ReadAllProfiles(
                         enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
                         profile_dir=self.profile_dir,
                     ),
                     RetrieveMemory(
-                        enable_thinking_params=enable_thinking_params,
                         top_k=retrieve_top_k,
+                        enable_thinking_params=enable_thinking_params,
                         enable_time_filter=enable_time_filter,
+                        enable_multiple=True
                     ),
                     ReadHistory(enable_thinking_params=enable_thinking_params),
                 ],

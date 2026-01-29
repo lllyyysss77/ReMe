@@ -267,6 +267,7 @@ class ReMe(Application):
                         top_k=retrieve_top_k,
                         enable_time_filter=enable_time_filter,
                     ),
+                    ReadHistory(enable_thinking_params=enable_thinking_params),
                 ],
             )
 

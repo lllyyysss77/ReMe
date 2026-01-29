@@ -12,6 +12,7 @@ from ..enumeration import ChunkEnum, Role
 from ..schema import Message
 from ..schema import StreamChunk
 from ..schema import ToolCall
+from ..utils import extract_content
 
 
 class BaseLLM(ABC):
@@ -457,6 +458,43 @@ class BaseLLM(ABC):
 
                 time.sleep(1 + i)
         return default_value
+
+    async def simple_request(
+        self,
+        prompt: str,
+        model_name: str,
+        callback_fn: Callable[[Message], Any] | None = None,
+        default_value: Any = None,
+        **kwargs,
+    ) -> str:
+        """Make a simple request using the LLM."""
+        assistant_message = await self.chat(
+            messages=[Message(role=Role.USER, content=prompt)],
+            model_name=model_name,
+            callback_fn=callback_fn,
+            default_value=default_value,
+            **kwargs,
+        )
+        return assistant_message.content
+
+    async def simple_request_for_json(
+        self,
+        prompt: str,
+        model_name: str,
+        **kwargs,
+    ) -> dict:
+        """Make a simple request using the LLM and extract JSON."""
+
+        def extract_fn(message: Message) -> dict:
+            return extract_content(message.content)
+
+        return await self.chat(
+            messages=[Message(role=Role.USER, content=prompt)],
+            model_name=model_name,
+            callback_fn=extract_fn,
+            default_value={},
+            **kwargs,
+        )
 
     async def close(self):
         """Release async resources."""

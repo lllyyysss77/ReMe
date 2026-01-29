@@ -36,6 +36,7 @@ class MemoryNode(BaseModel):
         memory_target: Target or topic this memory relates to.
         when_to_use: Condition description for vector retrieval.
         content: Actual memory content.
+        message_time: Time of the message that generated this memory.
         ref_memory_id: Reference to related raw history memory.
         time_created: Creation timestamp.
         time_modified: Last modification timestamp.
@@ -49,6 +50,7 @@ class MemoryNode(BaseModel):
     memory_target: str = Field(default="", description="Target or topic of the memory")
     when_to_use: str = Field(default="", description="Condition description for vector retrieval")
     content: str = Field(default="", description="Actual memory content")
+    message_time: str = Field(default="", description="Time of the message that generated this memory")
     ref_memory_id: str = Field(default="", description="Reference to related raw history memory ID")
 
     time_created: str = Field(default_factory=get_now_time, description="Creation timestamp")
@@ -123,6 +125,7 @@ class MemoryNode(BaseModel):
         metadata: dict[str, Any] = {
             "memory_type": self.memory_type.value,
             "memory_target": self.memory_target,
+            "message_time": self.message_time,
             "ref_memory_id": self.ref_memory_id,
             "time_created": self.time_created,
             "time_modified": self.time_modified,
@@ -144,6 +147,34 @@ class MemoryNode(BaseModel):
             content=vector_content,
             metadata=metadata,
         )
+
+    def format(
+        self,
+        include_memory_id: bool = True,
+        include_when_to_use: bool = True,
+        include_content: bool = True,
+        include_message_time: bool = True,
+        ref_memory_id_key: str = "",
+    ) -> str:
+        """Format memory node as string with configurable fields."""
+        line = ""
+
+        if include_memory_id and self.memory_id:
+            line += f"memory_id={self.memory_id} "
+
+        if include_message_time and self.message_time:
+            line += f"[{self.message_time}] "
+
+        if include_when_to_use and self.when_to_use:
+            line += f"{self.when_to_use} "
+
+        if include_content and self.content:
+            line += self.content.strip()
+
+        if ref_memory_id_key and self.ref_memory_id:
+            line += f" {ref_memory_id_key}={self.ref_memory_id}"
+
+        return line.strip()
 
     @classmethod
     def from_vector_node(cls, node: VectorNode) -> "MemoryNode":
@@ -189,6 +220,7 @@ class MemoryNode(BaseModel):
             memory_target=metadata.pop("memory_target", ""),
             when_to_use=when_to_use,
             content=content,
+            message_time=metadata.pop("message_time", ""),
             ref_memory_id=metadata.pop("ref_memory_id", ""),
             time_created=metadata.pop("time_created", ""),
             time_modified=metadata.pop("time_modified", ""),

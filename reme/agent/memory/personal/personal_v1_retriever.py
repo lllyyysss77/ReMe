@@ -3,18 +3,14 @@
 from ..base_memory_agent import BaseMemoryAgent
 from ....core.enumeration import Role, MemoryType
 from ....core.op import BaseTool
-from ....core.schema import Message, MemoryNode
+from ....core.schema import Message
 from ....core.utils import format_messages
 
 
-class PersonalRetriever(BaseMemoryAgent):
+class PersonalV1Retriever(BaseMemoryAgent):
     """Retrieve personal memories through vector search and history reading."""
 
     memory_type: MemoryType = MemoryType.PERSONAL
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.retrieved_nodes: list[MemoryNode] = []
 
     async def build_messages(self) -> list[Message]:
         if self.context.get("query"):
@@ -24,6 +20,15 @@ class PersonalRetriever(BaseMemoryAgent):
         else:
             raise ValueError("input must have either `query` or `messages`")
 
+        read_all_profiles_tool: BaseTool | None = self.pop_tool("read_all_profiles")
+        if read_all_profiles_tool is not None:
+            all_profiles = await read_all_profiles_tool.call(
+                memory_target=self.memory_target,
+                service_context=self.service_context,
+            )
+        else:
+            all_profiles = ""
+
         return [
             Message(
                 role=Role.SYSTEM,
@@ -31,7 +36,7 @@ class PersonalRetriever(BaseMemoryAgent):
                     prompt_name="system_prompt",
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
-                    user_profile=await self.read_user_profile(show_id="history"),
+                    user_profile=all_profiles,
                     context=context.strip(),
                 ),
             ),
@@ -59,3 +64,23 @@ class PersonalRetriever(BaseMemoryAgent):
             retrieved_nodes=self.retrieved_nodes,
             **kwargs,
         )
+
+    async def execute(self):
+        result = await super().execute()
+        answer = result["answer"]
+        if "MEMORY_NOT_FOUND" in answer:
+            result["answer"] = "\n".join(
+                [
+                    n.format(
+                        include_memory_id=False,
+                        include_when_to_use=False,
+                        include_content=True,
+                        include_message_time=False,
+                        ref_memory_id_key="",
+                    )
+                    for n in self.retrieved_nodes
+                ],
+            )
+
+        result["retrieved_nodes"] = self.retrieved_nodes
+        return result

@@ -38,6 +38,13 @@ class BaseReact(BaseOp):
         """Return available tools for the agent."""
         return self.sub_ops
 
+    def pop_tool(self, name: str) -> "BaseTool | None":
+        """Remove and return a tool from self.tools by name."""
+        for i, tool in enumerate(self.sub_ops):
+            if tool.tool_call.name == name:
+                return self.sub_ops.pop(i)
+        return None
+
     async def build_messages(self) -> list[Message]:
         """Build initial message list from context query or messages."""
         if self.context.get("query"):
@@ -93,7 +100,7 @@ class BaseReact(BaseOp):
                 logger.warning(f"{prefix} unknown tool_call={tool_call.name}")
                 continue
 
-            logger.info(f"{prefix} submit tool_calls={tool_call.simple_output_dump(as_dict=False)}")
+            logger.info(f"{prefix} submit tool_call[{tool_call.name}] arguments={tool_call.arguments}")
 
             # Create independent tool copy with unique ID
             tool_copy: BaseTool = tool_dict[tool_call.name].copy()

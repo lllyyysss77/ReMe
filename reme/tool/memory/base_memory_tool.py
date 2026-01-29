@@ -6,7 +6,6 @@ from pathlib import Path
 from ...core.enumeration import MemoryType
 from ...core.op import BaseTool
 from ...core.schema import ToolCall, MemoryNode, ToolAttr
-from ...core.utils import CacheHandler
 
 
 class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
@@ -16,14 +15,13 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
         self,
         enable_multiple: bool = True,
         enable_thinking_params: bool = False,
-        local_memory_path: str = "./reme_local_memory",
+        profile_dir: str = "",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.enable_multiple: bool = enable_multiple
         self.enable_thinking_params: bool = enable_thinking_params
-        self.local_memory_path: str = local_memory_path
-        self.memory_nodes: list[MemoryNode | str] = []
+        self.profile_dir: str = profile_dir
 
     def _build_tool_call(self) -> ToolCall:
         """Build and return the tool call schema"""
@@ -61,36 +59,50 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
         return self._tool_call
 
     @property
-    def local_memory(self) -> CacheHandler:
-        """Create the meta memory cache handler."""
-        return CacheHandler(Path(self.local_memory_path) / self.vector_store.collection_name)
-
-    @property
     def memory_type(self) -> MemoryType:
         """Get the memory type from context."""
-        return MemoryType(self.context.get("memory_type"))
+        return self.memory_target_type_mapping[self.memory_target]
 
     @property
     def memory_target(self) -> str:
         """Get the memory target from context."""
-        return self.context.get("memory_target", "")
+        if "memory_target" in self.context:
+            return self.context.memory_target
+        elif len(self.memory_target_type_mapping) == 1:
+            return list(self.memory_target_type_mapping.keys())[0]
+        else:
+            raise ValueError("memory_target is not specified in context or memory_target_type_mapping!")
 
     @property
-    def memory_cache_key(self) -> str:
-        """Get the memory cache key from context."""
-        return f"{self.memory_type.value}_{self.memory_target}".replace(" ", "_").lower()
-
-    @property
-    def history_node(self) -> MemoryNode:
+    def history_id(self) -> str:
         """Get the history node from context."""
-        return self.context.get("history_node")
+        if "history_node" in self.context:
+            return self.context.history_node.memory_id
+        return ""
 
     @property
     def retrieved_nodes(self) -> list[MemoryNode]:
         """Get the retrieved nodes from context."""
-        return self.context.get("retrieved_nodes")
+        return self.context.retrieved_nodes
 
     @property
     def author(self) -> str:
         """Get the author from context."""
-        return self.context.get("author", "")
+        return self.context.author
+
+    @property
+    def memory_nodes(self) -> list[MemoryNode | str]:
+        """Get the memory nodes from context."""
+        if "memory_nodes" not in self.context:
+            self.context.memory_nodes = []
+        return self.context.memory_nodes
+
+    @property
+    def memory_target_type_mapping(self) -> dict[str, MemoryType]:
+        """Get the memory target type mapping from context."""
+        return self.context.service_context.memory_target_type_mapping
+
+    @property
+    def profile_path(self) -> Path:
+        """Get the path to the profile directory for the current collection."""
+        return Path(self.profile_dir) / self.vector_store.collection_name

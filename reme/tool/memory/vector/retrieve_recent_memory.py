@@ -2,13 +2,14 @@
 
 from loguru import logger
 
+from .memory_handler import MemoryHandler
 from ..base_memory_tool import BaseMemoryTool
-from ....core.schema import ToolCall, MemoryNode, VectorNode
+from ....core.schema import ToolCall, MemoryNode
 from ....core.utils import deduplicate_memories
 
 
 class RetrieveRecentMemory(BaseMemoryTool):
-    """Tool to retrieve most recent memories sorted by conversation time"""
+    """Tool to retrieve most recent memories sorted by time"""
 
     def __init__(self, top_k: int = 20, **kwargs):
         kwargs["enable_multiple"] = False
@@ -16,10 +17,9 @@ class RetrieveRecentMemory(BaseMemoryTool):
         self.top_k: int = top_k
 
     def _build_tool_call(self) -> ToolCall:
-        """Build and return the tool call schema"""
         return ToolCall(
             **{
-                "description": "retrieve the most recent memories sorted by conversation time (newest first).",
+                "description": "retrieve the most recent memories sorted by message time (newest first).",
                 "parameters": {
                     "type": "object",
                     "properties": {},
@@ -28,35 +28,25 @@ class RetrieveRecentMemory(BaseMemoryTool):
             },
         )
 
-    async def _retrieve_recent(self) -> list[MemoryNode]:
-        """Retrieve recent memories sorted by conversation_time descending"""
-        filter_dict = {
-            "memory_type": self.memory_type.value,
-            "memory_target": self.memory_target,
-        }
+    async def execute(self):
+        handler = MemoryHandler(self.memory_target, self.service_context)
 
-        nodes: list[VectorNode] = await self.vector_store.list(
-            filters=filter_dict,
+        memory_nodes: list[MemoryNode] = await handler.list(
             limit=self.top_k,
-            sort_key="conversation_time",
+            sort_key="message_time",
             reverse=True,
         )
-
-        return [MemoryNode.from_vector_node(n) for n in nodes]
-
-    async def execute(self):
-        memory_nodes: list[MemoryNode] = await self._retrieve_recent()
         memory_nodes = deduplicate_memories(memory_nodes)
 
-        retrieved_memory_ids = {node.memory_id for node in self.retrieved_nodes if node.memory_id}
-        new_memory_nodes = [node for node in memory_nodes if node.memory_id not in retrieved_memory_ids]
-        self.retrieved_nodes.extend(new_memory_nodes)
-        self.memory_nodes = new_memory_nodes
+        retrieved_ids = {n.memory_id for n in self.retrieved_nodes if n.memory_id}
+        new_nodes = [n for n in memory_nodes if n.memory_id not in retrieved_ids]
+        self.retrieved_nodes.extend(new_nodes)
+        self.memory_nodes.extend(new_nodes)
 
-        if not new_memory_nodes:
-            output = "No new memory_nodes found (duplicates removed)."
+        if not new_nodes:
+            output = "No new memories found."
         else:
-            output = "\n".join([m.format_memory() for m in new_memory_nodes])
+            output = "\n".join([n.format(ref_memory_id_key="history_id") for n in new_nodes])
 
-        logger.info(f"Retrieved {len(memory_nodes)} memory_nodes, {len(new_memory_nodes)} new after deduplication")
+        logger.info(f"Retrieved {len(memory_nodes)} memories, {len(new_nodes)} new after deduplication")
         return output

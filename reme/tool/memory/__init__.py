@@ -1,40 +1,48 @@
 """memory tools"""
 
 from .base_memory_tool import BaseMemoryTool
-from .hands_off.hands_off import HandsOff
+from .delegate_task import DelegateTask
 from .history.add_history import AddHistory
 from .history.read_history import ReadHistory
-from .identity.add_identity import AddIdentity
-from .identity.read_identity import ReadIdentity
-from .meta.add_meta_memory import AddMetaMemory
-from .meta.read_meta_memory import ReadMetaMemory
-from .user_profile.read_user_profile import ReadUserProfile
-from .user_profile.update_user_profile import UpdateUserProfile
+from .profiles.add_draft_and_read_all_profiles import AddDraftAndReadAllProfiles
+from .profiles.profile_handler import ProfileHandler
+from .profiles.read_all_profiles import ReadAllProfiles
+from .profiles.update_profile import UpdateProfile
+from .vector.add_draft_and_retrieve_similar_memory import AddDraftAndRetrieveSimilarMemory
 from .vector.add_memory import AddMemory
 from .vector.delete_memory import DeleteMemory
+from .vector.memory_handler import MemoryHandler
 from .vector.retrieve_memory import RetrieveMemory
 from .vector.retrieve_recent_memory import RetrieveRecentMemory
 from .vector.update_memory import UpdateMemory
+from .vector.update_memory_v2 import UpdateMemoryV2
 from ...core import R
 
 __all__ = [
+    # Base
     "BaseMemoryTool",
-    "HandsOff",
+    "DelegateTask",
+    # History
     "AddHistory",
     "ReadHistory",
-    "AddIdentity",
-    "ReadIdentity",
-    "AddMetaMemory",
-    "ReadMetaMemory",
-    "ReadUserProfile",
-    "UpdateUserProfile",
+    # Profiles
+    "AddDraftAndReadAllProfiles",
+    "ProfileHandler",
+    "ReadAllProfiles",
+    "UpdateProfile",
+    # Vector
+    "AddDraftAndRetrieveSimilarMemory",
     "AddMemory",
     "DeleteMemory",
+    "MemoryHandler",
     "RetrieveMemory",
     "RetrieveRecentMemory",
     "UpdateMemory",
+    "UpdateMemoryV2",
 ]
 
 for name in __all__:
     tool_class = globals()[name]
-    R.op.register()(tool_class)
+    # Only register classes that inherit from BaseMemoryTool
+    if isinstance(tool_class, type) and issubclass(tool_class, BaseMemoryTool) and tool_class is not BaseMemoryTool:
+        R.op.register()(tool_class)

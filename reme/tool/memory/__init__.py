@@ -1,42 +1,48 @@
 """memory tools"""
 
-from .add_draft_and_read_all_profiles import AddDraftAndReadAllProfiles
-from .add_draft_and_retrieve_similar_memory import AddDraftAndRetrieveSimilarMemory
-from .add_history import AddHistory
-from .add_memory import AddMemory
 from .base_memory_tool import BaseMemoryTool
 from .delegate_task import DelegateTask
-from .delete_memory import DeleteMemory
-from .memory_handler import MemoryHandler
-from .profile_handler import ProfileHandler
-from .read_all_profiles import ReadAllProfiles
-from .read_history import ReadHistory
-from .retrieve_memory import RetrieveMemory
-from .retrieve_recent_memory import RetrieveRecentMemory
-from .update_memory import UpdateMemory
-from .update_memory_v2 import UpdateMemoryV2
-from .update_profile import UpdateProfile
+from .history.add_history import AddHistory
+from .history.read_history import ReadHistory
+from .profiles.add_draft_and_read_all_profiles import AddDraftAndReadAllProfiles
+from .profiles.profile_handler import ProfileHandler
+from .profiles.read_all_profiles import ReadAllProfiles
+from .profiles.update_profile import UpdateProfile
+from .vector.add_draft_and_retrieve_similar_memory import AddDraftAndRetrieveSimilarMemory
+from .vector.add_memory import AddMemory
+from .vector.delete_memory import DeleteMemory
+from .vector.memory_handler import MemoryHandler
+from .vector.retrieve_memory import RetrieveMemory
+from .vector.retrieve_recent_memory import RetrieveRecentMemory
+from .vector.update_memory import UpdateMemory
+from .vector.update_memory_v2 import UpdateMemoryV2
 from ...core import R
 
 __all__ = [
-    "AddDraftAndReadAllProfiles",
-    "AddDraftAndRetrieveSimilarMemory",
-    "AddHistory",
-    "AddMemory",
+    # Base
     "BaseMemoryTool",
     "DelegateTask",
-    "DeleteMemory",
-    "MemoryHandler",
+    # History
+    "AddHistory",
+    "ReadHistory",
+    # Profiles
+    "AddDraftAndReadAllProfiles",
     "ProfileHandler",
     "ReadAllProfiles",
-    "ReadHistory",
+    "UpdateProfile",
+    # Vector
+    "AddDraftAndRetrieveSimilarMemory",
+    "AddMemory",
+    "DeleteMemory",
+    "MemoryHandler",
     "RetrieveMemory",
     "RetrieveRecentMemory",
     "UpdateMemory",
     "UpdateMemoryV2",
-    "UpdateProfile",
 ]
 
 for name in __all__:
     tool_class = globals()[name]
-    R.op.register()(tool_class)
+    # Only register classes that inherit from BaseMemoryTool
+    if isinstance(tool_class, type) and issubclass(tool_class, BaseMemoryTool) and tool_class is not BaseMemoryTool:
+        R.op.register()(tool_class)

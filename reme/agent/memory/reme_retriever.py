@@ -1,28 +1,24 @@
-"""ReMe summarizer agent that orchestrates multiple memory agents to summarize information."""
+"""ReMe retriever agent that orchestrates multiple memory agents to retrieve information."""
 
-from ..base_memory_agent import BaseMemoryAgent
-from ....core.enumeration import Role
-from ....core.op import BaseTool
-from ....core.schema import Message
-from ....core.utils import format_messages
+from .base_memory_agent import BaseMemoryAgent
+from ...core.enumeration import Role
+from ...core.op import BaseTool
+from ...core.schema import Message
+from ...core.utils import format_messages
 
 
-class ReMeSummarizer(BaseMemoryAgent):
-    """Orchestrates multiple memory agents to summarize and store information across different memory types."""
+class ReMeRetriever(BaseMemoryAgent):
+    """Orchestrate multiple memory agents to retrieve information."""
 
     async def build_messages(self) -> list[Message]:
-        add_history_tool: BaseTool | None = self.pop_tool("add_history")
-        if add_history_tool is not None:
-            await add_history_tool.call(
-                messages=self.messages,
-                description=self.description,
-                author=self.author,
-                service_context=self.service_context,
-            )
-            self.context.history_node = add_history_tool.context.history_node
+        if self.context.get("query"):
+            context = self.context.query
+        elif self.context.get("messages"):
+            context = self.description + "\n" + format_messages(self.context.messages)
+        else:
+            raise ValueError("input must have either `query` or `messages`")
 
-        context = self.context.description + "\n" + format_messages(self.context.messages)
-        messages = [
+        return [
             Message(
                 role=Role.SYSTEM,
                 content=self.prompt_format(
@@ -36,8 +32,6 @@ class ReMeSummarizer(BaseMemoryAgent):
                 content=self.get_prompt("user_message"),
             ),
         ]
-
-        return messages
 
     async def _acting_step(
         self,
@@ -53,7 +47,7 @@ class ReMeSummarizer(BaseMemoryAgent):
             step,
             description=self.description,
             messages=self.messages,
-            history_node=self.history_node,
+            query=self.query,
             author=self.author,
             **kwargs,
         )
@@ -77,19 +71,22 @@ class ReMeSummarizer(BaseMemoryAgent):
         delegate_task_tool = tools[0]
         agents: list[BaseMemoryAgent] = delegate_task_tool.response.metadata["agents"]
 
+        answer = []
         success = True
         messages = []
         tools = []
-        memory_nodes = []
+        retrieved_nodes = []
         for agent in agents:
+            answer.append(agent.response.answer)
             success = success and agent.response.success
             messages.extend(agent.response.metadata["messages"])
             tools.extend(agent.response.metadata["tools"])
-            memory_nodes.extend(agent.response.metadata["memory_nodes"])
+            retrieved_nodes.extend(agent.response.metadata["retrieved_nodes"])
 
         return {
-            "answer": memory_nodes,
+            "answer": "\n".join(answer),
             "success": True,
             "messages": messages,
             "tools": tools,
+            "retrieved_nodes": retrieved_nodes,
         }

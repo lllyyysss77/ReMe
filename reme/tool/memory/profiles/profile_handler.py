@@ -4,9 +4,9 @@ from pathlib import Path
 
 from loguru import logger
 
-from ...core.enumeration import MemoryType
-from ...core.schema import MemoryNode
-from ...core.utils import CacheHandler, deduplicate_memories
+from ....core.enumeration import MemoryType
+from ....core.schema import MemoryNode
+from ....core.utils import CacheHandler, deduplicate_memories
 
 
 class ProfileHandler:

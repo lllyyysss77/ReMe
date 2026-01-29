@@ -42,6 +42,7 @@ class EvalConfig:
     batch_size: int = 20
     output_dir: str = "bench_results/reme"
     eval_model_name: str = "qwen3-max"
+    algo_version: str = "v1"
 
 
 # ==================== Utilities ====================
@@ -217,7 +218,7 @@ async def answer_question_with_memories(
 
     result = await reme.llm.simple_request_for_json(
         prompt=prompt,
-        model_name=model_name
+        model_name="qwen3-30b-a3b-instruct-2507"
     )
 
     return result
@@ -269,9 +270,10 @@ async def evaluation_for_question(
 class MemoryProcessor:
     """Handles ReMe memory operations."""
 
-    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max"):
+    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max", algo_version: str = "v1"):
         self.reme = reme
         self.eval_model_name = eval_model_name
+        self.algo_version = algo_version
 
     async def add_memories(
             self,
@@ -297,7 +299,7 @@ class MemoryProcessor:
             result = await self.reme.summary_memory(
                 messages=batch,
                 user_name=user_id,
-                version="default",
+                version=self.algo_version,
                 return_dict=True,
             )
 
@@ -305,7 +307,7 @@ class MemoryProcessor:
             total_duration_ms += duration_ms
 
             extracted_memories.extend([m.model_dump(exclude_none=True) for m in result["answer"]])
-            summary_messages.extend([m.simple_dump() for m in result["messages"]])
+            summary_messages.extend([m.simple_dump(enable_argument_dict=True) for m in result["messages"]])
 
         return extracted_memories, summary_messages, total_duration_ms
 
@@ -329,13 +331,13 @@ class MemoryProcessor:
             query=query,
             retrieve_top_k=top_k,
             user_name=user_id,
-            version="default",
+            version=self.algo_version,
             return_dict=True,
         )
 
         # Extract memories from response
         memories = result["answer"]
-        agent_messages = [x.model_dump(exclude_none=True) for x in result["messages"]]
+        agent_messages = [x.simple_dump(enable_argument_dict=True) for x in result["messages"]]
         retrieved_nodes = [x.model_dump(exclude_none=True) for x in result["retrieved_nodes"]]
 
         # Use LLM to generate structured answer from memories
@@ -521,7 +523,11 @@ class HaluMemEvaluator:
         self.reme.prompt_handler.load_prompt_by_file(prompts_yaml_path)
 
         self.file_manager = FileManager(config.output_dir)
-        self.memory_processor = MemoryProcessor(self.reme, config.eval_model_name)
+        self.memory_processor = MemoryProcessor(
+            self.reme,
+            config.eval_model_name,
+            config.algo_version
+        )
         self.qa_evaluator = QuestionAnsweringEvaluator(
             self.memory_processor,
             self.reme,
@@ -763,7 +769,8 @@ async def main_async(
         top_k: int,
         user_num: int,
         max_concurrency: int,
-        eval_model_name: str = "qwen3-max"
+        eval_model_name: str = "qwen3-max",
+        algo_version: str = "v1"
 ):
     """Main async entry point for ReMe evaluation with proper resource cleanup."""
     config = EvalConfig(
@@ -771,7 +778,8 @@ async def main_async(
         top_k=top_k,
         user_num=user_num,
         max_concurrency=max_concurrency,
-        eval_model_name=eval_model_name
+        eval_model_name=eval_model_name,
+        algo_version=algo_version
     )
 
     # Use async context manager for automatic cleanup
@@ -784,7 +792,8 @@ def main(
         top_k: int,
         user_num: int,
         max_concurrency: int,
-        eval_model_name: str = "qwen3-max"
+        eval_model_name: str = "qwen3-max",
+        algo_version: str = "v1"
 ):
     """Main entry point for ReMe evaluation."""
     asyncio.run(main_async(
@@ -792,7 +801,8 @@ def main(
         top_k=top_k,
         user_num=user_num,
         max_concurrency=max_concurrency,
-        eval_model_name=eval_model_name
+        eval_model_name=eval_model_name,
+        algo_version=algo_version
     ))
 
 
@@ -833,6 +843,12 @@ if __name__ == "__main__":
         # default="qwen3-235b-a22b-instruct-2507",
         help="Model name for evaluation (default: qwen3-max)"
     )
+    parser.add_argument(
+        "--algo_version",
+        type=str,
+        default="v1",
+        help="Algorithm version for summary and retrieval (default: v1)"
+    )
 
     args = parser.parse_args()
 
@@ -841,5 +857,6 @@ if __name__ == "__main__":
         top_k=args.top_k,
         user_num=args.user_num,
         max_concurrency=args.max_concurrency,
-        eval_model_name=args.eval_model_name
+        eval_model_name=args.eval_model_name,
+        algo_version=args.algo_version
     )

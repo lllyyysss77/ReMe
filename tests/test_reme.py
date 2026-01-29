@@ -17,34 +17,42 @@ async def test_reme():
         {
             "role": "user",
             "content": "你好，我是张伟，今年28岁，是一名软件工程师。",
+            "time_created": "2026-01-29 10:00:00",
         },
         {
             "role": "assistant",
             "content": "你好张伟！很高兴认识你。作为一名软件工程师，你主要从事什么方向的开发工作呢？",
+            "time_created": "2026-01-29 10:00:05",
         },
         {
             "role": "user",
             "content": "我主要做后端开发，擅长Python和Go语言。最近在研究AI Agent相关的技术。",
+            "time_created": "2026-01-29 10:00:30",
         },
         {
             "role": "assistant",
             "content": "很棒！Python和Go都是非常实用的语言。AI Agent是当前很热门的方向，你在这方面有什么具体的研究重点吗？",
+            "time_created": "2026-01-29 10:00:35",
         },
         {
             "role": "user",
             "content": "我特别关注记忆系统的设计，希望能让AI Agent具有长期记忆能力。我的工作地点在北京，平时喜欢看技术博客和参加技术分享会。",
+            "time_created": "2026-01-29 10:01:00",
         },
         {
             "role": "assistant",
             "content": "记忆系统确实是AI Agent的核心能力之一。北京有很多优秀的技术社区和活动，相信你能找到很多志同道合的朋友。",
+            "time_created": "2026-01-29 10:01:05",
         },
         {
             "role": "user",
             "content": "是的，我每周末都会去参加一些技术沙龙。对了，我的邮箱是zhangwei@example.com，如果有好的技术资料可以发给我。",
+            "time_created": "2026-01-29 10:01:30",
         },
         {
             "role": "assistant",
             "content": "好的，我记下了。保持学习的热情很重要，祝你在AI Agent领域的研究越来越深入！",
+            "time_created": "2026-01-29 10:01:35",
         },
     ]
 

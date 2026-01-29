@@ -1,53 +1,44 @@
-"""Add draft memory and retrieve similar memories from vector store"""
+"""Retrieve memory from vector store"""
 
 from loguru import logger
 
-from .base_memory_tool import BaseMemoryTool
 from .memory_handler import MemoryHandler
-from ...core.schema import ToolCall, MemoryNode
-from ...core.utils import deduplicate_memories
+from ..base_memory_tool import BaseMemoryTool
+from ....core.schema import ToolCall, MemoryNode
+from ....core.utils import deduplicate_memories
 
 
-class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
-    """Tool to add draft memory and retrieve similar memories"""
+class RetrieveMemory(BaseMemoryTool):
+    """Tool to retrieve memories using similarity search"""
 
-    def __init__(
-        self,
-        top_k: int = 20,
-        enable_memory_target: bool = False,
-        enable_when_to_use: bool = False,
-        **kwargs,
-    ):
+    def __init__(self, top_k: int = 20, enable_memory_target: bool = False, enable_time_filter: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.top_k: int = top_k
         self.enable_memory_target: bool = enable_memory_target
-        self.enable_when_to_use: bool = enable_when_to_use
+        self.enable_time_filter: bool = enable_time_filter
 
     def _build_query_parameters(self) -> dict:
-        """Build the query parameters schema"""
+        """Build the query parameters schema based on enabled features."""
         properties = {
-            "message_time": {
+            "query": {
                 "type": "string",
-                "description": "message time, e.g. '2020-01-01 00:00:00'",
-            },
-            "memory_content": {
-                "type": "string",
-                "description": "content of the memory.",
+                "description": "query",
             },
         }
-        required = ["message_time", "memory_content"]
+        required = ["query"]
 
-        if self.enable_when_to_use:
-            properties["when_to_use"] = {
+        if self.enable_time_filter:
+            properties["time_filter"] = {
                 "type": "string",
-                "description": "description of when to use this memory.",
+                "description": "Optional time filter to narrow down search results by date. "
+                "Format: single date '20200101' for exact date match, "
+                "or date range '20200101,20200102' for inclusive range filtering.",
             }
-            required.append("when_to_use")
 
         if self.enable_memory_target:
             properties["memory_target"] = {
                 "type": "string",
-                "description": "target memory type for this memory.",
+                "description": "memory_target",
             }
             required.append("memory_target")
 
@@ -60,7 +51,7 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": "Add draft memory and retrieve similar memories from the vector store.",
+                "description": "Retrieve relevant memories from the vector store using semantic similarity search.",
                 "parameters": self._build_query_parameters(),
             },
         )
@@ -68,29 +59,29 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
     def _build_multiple_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": "Add draft memory and retrieve similar memories from the vector store.",
+                "description": "Retrieve relevant memories from the vector store using semantic similarity search.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "draft_items": {
+                        "query_items": {
                             "type": "array",
-                            "description": "draft_items",
+                            "description": "List of query items.",
                             "items": self._build_query_parameters(),
                         },
                     },
-                    "required": ["draft_items"],
+                    "required": ["query_items"],
                 },
             },
         )
 
     async def execute(self):
         if self.enable_multiple:
-            draft_items = self.context.get("draft_items", [])
+            query_items = self.context.get("query_items", [])
         else:
-            draft_items = [self.context]
+            query_items = [self.context]
 
         queries_by_target: dict[str, list[dict]] = {}
-        for item in draft_items:
+        for item in query_items:
             if self.enable_memory_target:
                 target = item["memory_target"]
             else:
@@ -98,11 +89,21 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
             if target not in queries_by_target:
                 queries_by_target[target] = []
 
+            filters = {}
+            time_filter = item.get("time_filter")
+            if time_filter:
+                time_filter = time_filter.strip()
+                if "," in time_filter:
+                    start, end = time_filter.split(",")
+                    filters = {"time_int": [int(start.strip()), int(end.strip())]}
+                else:
+                    filters = {"time_int": [int(time_filter), int(time_filter)]}
+
             queries_by_target[target].append(
                 {
-                    "query": item["memory_content"],
+                    "query": item["query"],
                     "limit": self.top_k,
-                    "filters": {},
+                    "filters": filters,
                 },
             )
 
@@ -119,9 +120,9 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
         self.retrieved_nodes.extend(new_nodes)
 
         if not new_nodes:
-            output = "No similar memories found."
+            output = "No new memories found."
         else:
             output = "\n".join([n.format(ref_memory_id_key="history_id") for n in new_nodes])
 
-        logger.info(f"Retrieved {len(memory_nodes)} similar memories, {len(new_nodes)} new after deduplication")
+        logger.info(f"Retrieved {len(memory_nodes)} memories, {len(new_nodes)} new after deduplication")
         return output

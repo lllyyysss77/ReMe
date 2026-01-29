@@ -145,17 +145,13 @@ class ToolCall(BaseModel):
         }
         return result if as_dict else json.dumps(result, ensure_ascii=False)
 
-    def simple_output_dump(self, as_dict: bool = True) -> dict | str:
-        """Convert ToolCall to output format dictionary or JSON string for API responses.
-
-        Args:
-            as_dict: If True, returns dict; if False, returns JSON string.
-        """
+    def simple_output_dump(self, as_dict: bool = True, enable_argument_dict: bool = False) -> dict | str:
+        """Convert ToolCall to output format dictionary or JSON string for API responses."""
         result = {
             "index": self.index,
             "id": self.id,
             self.type: {
-                "arguments": self.arguments,
+                "arguments": self.argument_dict if enable_argument_dict else self.arguments,
                 "name": self.name,
             },
             "type": self.type,

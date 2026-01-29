@@ -2,10 +2,10 @@
 
 from loguru import logger
 
-from .base_memory_tool import BaseMemoryTool
 from .memory_handler import MemoryHandler
-from ...core.schema import ToolCall, MemoryNode
-from ...core.utils import deduplicate_memories
+from ..base_memory_tool import BaseMemoryTool
+from ....core.schema import ToolCall, MemoryNode
+from ....core.utils import deduplicate_memories
 
 
 class RetrieveRecentMemory(BaseMemoryTool):

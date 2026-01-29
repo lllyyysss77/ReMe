@@ -23,7 +23,5 @@ system_prompt: |
      - Each memory_target should be assigned **only once** - do not duplicate assignments
   3. Use the `delegate_task` tool **once** with all relevant memory_target(s) to enable parallel processing by specialized agents
 
-  Note: If the context contains no memorable information (e.g., simple greetings), return `<NO_MEMORY_NEEDED>`.
-
 user_message: |
   Please analyze the context and delegate retrieval tasks to the appropriate specialized agents.

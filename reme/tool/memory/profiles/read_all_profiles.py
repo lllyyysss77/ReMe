@@ -2,9 +2,9 @@
 
 from loguru import logger
 
-from .base_memory_tool import BaseMemoryTool
 from .profile_handler import ProfileHandler
-from ...core.schema import ToolCall
+from ..base_memory_tool import BaseMemoryTool
+from ....core.schema import ToolCall
 
 
 class ReadAllProfiles(BaseMemoryTool):

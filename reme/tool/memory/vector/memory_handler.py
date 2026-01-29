@@ -1,9 +1,9 @@
 """Memory handler"""
 
-from ...core.context import ServiceContext
-from ...core.enumeration import MemoryType
-from ...core.schema import MemoryNode
-from ...core.vector_store import BaseVectorStore
+from ....core.context import ServiceContext
+from ....core.enumeration import MemoryType
+from ....core.schema import MemoryNode
+from ....core.vector_store import BaseVectorStore
 
 
 class MemoryHandler:

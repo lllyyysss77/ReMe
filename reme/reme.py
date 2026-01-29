@@ -3,15 +3,17 @@
 import sys
 from pathlib import Path
 
-from reme.agent.memory import BaseMemoryAgent
-from .agent.memory.default import (
+from .agent.memory import (
+    BaseMemoryAgent,
     ReMeSummarizer,
+    ReMeRetriever,
+    PersonalV1Summarizer,
+    PersonalV1Retriever,
     PersonalSummarizer,
     PersonalRetriever,
-    ReMeRetriever,
     ProceduralSummarizer,
-    ToolSummarizer,
     ProceduralRetriever,
+    ToolSummarizer,
     ToolRetriever,
 )
 from .config import ReMeConfigParser
@@ -116,7 +118,7 @@ class ReMe(Application):
             format_messages.append(message)
 
         personal_summarizer: BaseMemoryAgent
-        if version:
+        if version == "default":
             personal_summarizer = PersonalSummarizer(
                 tools=[
                     AddDraftAndRetrieveSimilarMemory(
@@ -134,17 +136,33 @@ class ReMe(Application):
                     ),
                 ],
             )
+
+        elif version == "v1":
+            personal_summarizer = PersonalV1Summarizer(
+                tools=[
+                    AddDraftAndRetrieveSimilarMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        top_k=retrieve_top_k,
+                    ),
+                    UpdateMemoryV2(enable_thinking_params=enable_thinking_params),
+                    AddDraftAndReadAllProfiles(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                ],
+            )
+
         else:
             raise NotImplementedError
 
         procedural_summarizer: BaseMemoryAgent
-        if version == "default":
+        if version in ["default", "v1"]:
             procedural_summarizer = ProceduralSummarizer(tools=[])
         else:
             raise NotImplementedError
 
         tool_summarizer: BaseMemoryAgent
-        if version == "default":
+        if version in ["default", "v1"]:
             tool_summarizer = ToolSummarizer(tools=[])
         else:
             raise NotImplementedError
@@ -186,7 +204,7 @@ class ReMe(Application):
             memory_agents = [personal_summarizer, procedural_summarizer, tool_summarizer]
 
         reme_summarizer: BaseMemoryAgent
-        if version == "default":
+        if version in ["default", "v1"]:
             reme_summarizer = ReMeSummarizer(tools=[AddHistory(), DelegateTask(memory_agents=memory_agents)])
         else:
             raise NotImplementedError
@@ -221,7 +239,7 @@ class ReMe(Application):
         """Retrieve relevant personal, procedural and tool memories for a query."""
 
         personal_retriever: BaseMemoryAgent
-        if version:
+        if version == "default":
             personal_retriever = PersonalRetriever(
                 tools=[
                     ReadAllProfiles(
@@ -236,17 +254,33 @@ class ReMe(Application):
                     ReadHistory(enable_thinking_params=enable_thinking_params),
                 ],
             )
+
+        elif version == "v1":
+            personal_retriever = PersonalV1Retriever(
+                tools=[
+                    ReadAllProfiles(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                    RetrieveMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        top_k=retrieve_top_k,
+                        enable_time_filter=enable_time_filter,
+                    ),
+                ],
+            )
+
         else:
             raise NotImplementedError
 
         procedural_retriever: BaseMemoryAgent
-        if version == "default":
+        if version in ["default", "v1"]:
             procedural_retriever = ProceduralRetriever(tools=[])
         else:
             raise NotImplementedError
 
         tool_retriever: BaseMemoryAgent
-        if version == "default":
+        if version in ["default", "v1"]:
             tool_retriever = ToolRetriever(tools=[])
         else:
             raise NotImplementedError
@@ -286,7 +320,7 @@ class ReMe(Application):
             memory_agents = [personal_retriever, procedural_retriever, tool_retriever]
 
         reme_retriever: BaseMemoryAgent
-        if version == "default":
+        if version in ["default", "v1"]:
             reme_retriever = ReMeRetriever(tools=[DelegateTask(memory_agents=memory_agents)])
         else:
             raise NotImplementedError

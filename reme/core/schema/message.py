@@ -84,6 +84,7 @@ class Message(BaseModel):
         add_reasoning: bool = True,
         add_time_created: bool = False,
         add_metadata: bool = False,
+        enable_argument_dict: bool = False,
         as_dict: bool = True,
     ) -> dict | str:
         """Transforms the message into a simplified dictionary for standard APIs."""
@@ -98,7 +99,13 @@ class Message(BaseModel):
             result["reasoning_content"] = self.reasoning_content
 
         if self.tool_calls:
-            result["tool_calls"] = [tc.simple_output_dump() for tc in self.tool_calls]
+            result["tool_calls"] = [
+                tc.simple_output_dump(
+                    as_dict=True,
+                    enable_argument_dict=enable_argument_dict,
+                )
+                for tc in self.tool_calls
+            ]
 
         if self.tool_call_id:
             result["tool_call_id"] = self.tool_call_id

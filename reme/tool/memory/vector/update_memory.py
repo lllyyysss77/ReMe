@@ -2,9 +2,9 @@
 
 from loguru import logger
 
-from .base_memory_tool import BaseMemoryTool
 from .memory_handler import MemoryHandler
-from ...core.schema import ToolCall
+from ..base_memory_tool import BaseMemoryTool
+from ....core.schema import ToolCall
 
 
 class UpdateMemory(BaseMemoryTool):

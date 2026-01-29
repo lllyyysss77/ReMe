@@ -28,5 +28,10 @@ __all__ = [
 ]
 
 for name in __all__:
-    tool_class = globals()[name]
-    R.op.register()(tool_class)
+    agent_class = globals()[name]
+    if (
+        isinstance(agent_class, type)
+        and issubclass(agent_class, BaseMemoryAgent)
+        and agent_class is not BaseMemoryAgent
+    ):
+        R.op.register()(agent_class)

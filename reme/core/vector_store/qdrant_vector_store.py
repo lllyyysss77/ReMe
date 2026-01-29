@@ -86,19 +86,17 @@ class QdrantVectorStore(BaseVectorStore):
             **kwargs,
         )
 
-        client_kwargs = {k: v for k, v in kwargs.items() if k != "thread_pool"}
-
-        self.client = AsyncQdrantClient(
-            host=host,
-            port=port,
-            path=path,
-            url=url,
-            api_key=api_key,
-            https=https,
-            grpc_port=grpc_port,
-            prefer_grpc=prefer_grpc,
-            **client_kwargs,
-        )
+        # Store connection parameters for lazy initialization
+        self.host = host
+        self.port = port
+        self.path = path
+        self.url = url
+        self.api_key = api_key
+        self.https = https
+        self.grpc_port = grpc_port
+        self.prefer_grpc = prefer_grpc
+        self.client_kwargs = {k: v for k, v in kwargs.items() if k != "thread_pool"}
+        self._client: AsyncQdrantClient | None = None
 
         self.is_local = path is not None
         distance_map = {
@@ -109,9 +107,31 @@ class QdrantVectorStore(BaseVectorStore):
         self.distance = distance_map.get(distance.lower(), Distance.COSINE)
         self.on_disk = on_disk
 
+    async def _get_client(self) -> AsyncQdrantClient:
+        """Create or return the existing AsyncQdrantClient.
+        
+        This lazy initialization ensures the client is created in the correct event loop.
+        """
+        if self._client is None:
+            self._client = AsyncQdrantClient(
+                host=self.host,
+                port=self.port,
+                path=self.path,
+                url=self.url,
+                api_key=self.api_key,
+                https=self.https,
+                grpc_port=self.grpc_port,
+                prefer_grpc=self.prefer_grpc,
+                **self.client_kwargs,
+            )
+            logger.info("AsyncQdrantClient initialized")
+        
+        return self._client
+
     async def list_collections(self) -> list[str]:
         """Retrieve names of all existing collections in the Qdrant instance."""
-        collections = await self.client.get_collections()
+        client = await self._get_client()
+        collections = await client.get_collections()
         return [collection.name for collection in collections.collections]
 
     async def create_collection(self, collection_name: str, **kwargs: Any):
@@ -130,7 +150,8 @@ class QdrantVectorStore(BaseVectorStore):
         distance = kwargs.get("distance", self.distance)
         on_disk = kwargs.get("on_disk", self.on_disk)
 
-        await self.client.create_collection(
+        client = await self._get_client()
+        await client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
                 size=dimensions,
@@ -147,10 +168,11 @@ class QdrantVectorStore(BaseVectorStore):
     async def _create_payload_indexes(self, collection_name: str):
         """Create keyword indexes for common metadata fields to optimize filtering."""
         common_fields = ["user_id", "agent_id", "run_id", "actor_id", "source"]
+        client = await self._get_client()
 
         for field in common_fields:
             try:
-                await self.client.create_payload_index(
+                await client.create_payload_index(
                     collection_name=collection_name,
                     field_name=field,
                     field_schema="keyword",
@@ -163,16 +185,18 @@ class QdrantVectorStore(BaseVectorStore):
         """Permanently remove a collection from the Qdrant instance."""
         collections = await self.list_collections()
         if collection_name in collections:
-            await self.client.delete_collection(collection_name=collection_name)
+            client = await self._get_client()
+            await client.delete_collection(collection_name=collection_name)
             logger.info(f"Deleted collection {collection_name}")
         else:
             logger.warning(f"Collection {collection_name} does not exist")
 
     async def copy_collection(self, collection_name: str, **kwargs: Any):
         """Duplicate an existing collection to a new one including all data."""
-        collection_info = await self.client.get_collection(collection_name=self.collection_name)
+        client = await self._get_client()
+        collection_info = await client.get_collection(collection_name=self.collection_name)
 
-        await self.client.create_collection(
+        await client.create_collection(
             collection_name=collection_name,
             vectors_config=collection_info.config.params.vectors,
         )
@@ -181,7 +205,7 @@ class QdrantVectorStore(BaseVectorStore):
         batch_size = 100
 
         while True:
-            records, next_offset = await self.client.scroll(
+            records, next_offset = await client.scroll(
                 collection_name=self.collection_name,
                 limit=batch_size,
                 offset=offset,
@@ -201,7 +225,7 @@ class QdrantVectorStore(BaseVectorStore):
                 for record in records
             ]
 
-            await self.client.upsert(
+            await client.upsert(
                 collection_name=collection_name,
                 points=points,
             )
@@ -244,7 +268,8 @@ class QdrantVectorStore(BaseVectorStore):
             points.append(point)
 
         wait = kwargs.get("wait", True)
-        await self.client.upsert(
+        client = await self._get_client()
+        await client.upsert(
             collection_name=self.collection_name,
             points=points,
             wait=wait,
@@ -333,7 +358,8 @@ class QdrantVectorStore(BaseVectorStore):
         query_filter = self._create_filter(filters) if filters else None
         score_threshold = kwargs.get("score_threshold", None)
 
-        results = await self.client.query_points(
+        client = await self._get_client()
+        results = await client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
             query_filter=query_filter,
@@ -369,7 +395,8 @@ class QdrantVectorStore(BaseVectorStore):
             point_ids.append(point_id)
 
         wait = kwargs.get("wait", True)
-        await self.client.delete(
+        client = await self._get_client()
+        await client.delete(
             collection_name=self.collection_name,
             points_selector=PointIdsList(points=point_ids),
             wait=wait,
@@ -384,7 +411,8 @@ class QdrantVectorStore(BaseVectorStore):
         # Delete all points by using an empty filter (matches all)
         from qdrant_client.models import FilterSelector
 
-        await self.client.delete(
+        client = await self._get_client()
+        await client.delete(
             collection_name=self.collection_name,
             points_selector=FilterSelector(filter=Filter(must=[])),
             wait=wait,
@@ -424,7 +452,8 @@ class QdrantVectorStore(BaseVectorStore):
             points.append(point)
 
         wait = kwargs.get("wait", True)
-        await self.client.upsert(
+        client = await self._get_client()
+        await client.upsert(
             collection_name=self.collection_name,
             points=points,
             wait=wait,
@@ -446,7 +475,8 @@ class QdrantVectorStore(BaseVectorStore):
                 point_id = abs(hash(vector_id)) % (10**18)
             point_ids.append(point_id)
 
-        points = await self.client.retrieve(
+        client = await self._get_client()
+        points = await client.retrieve(
             collection_name=self.collection_name,
             ids=point_ids,
             with_payload=True,
@@ -489,7 +519,8 @@ class QdrantVectorStore(BaseVectorStore):
         # If sorting is needed, fetch more records than the limit to ensure correct sorting
         fetch_limit = 10000 if sort_key else (limit or 10000)
 
-        records, _ = await self.client.scroll(
+        client = await self._get_client()
+        records, _ = await client.scroll(
             collection_name=self.collection_name,
             scroll_filter=scroll_filter,
             limit=fetch_limit,
@@ -528,5 +559,7 @@ class QdrantVectorStore(BaseVectorStore):
 
     async def close(self):
         """Close the AsyncQdrantClient connection and release resources."""
-        await self.client.close()
-        logger.info("Qdrant client connection closed")
+        if self._client is not None:
+            await self._client.close()
+            self._client = None
+            logger.info("Qdrant client connection closed")

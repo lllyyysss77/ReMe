@@ -9,3 +9,5 @@
 - [] mcp开发
 - [] reme外层接口完善
 - [] reme2 readme完善
+- [] 看日志，看要这个default版本怎么优化。
+- [] 学习Clawdbot记忆系统

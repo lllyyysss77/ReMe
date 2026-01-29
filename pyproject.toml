@@ -76,6 +76,6 @@ Documentation = "https://reme.agentscope.io/"
 Repository = "https://github.com/agentscope-ai/ReMe"
 
 [project.scripts]
-reme = "reme.reme:main"
+reme = "reme_ai.main:main"
 
 # python -m build && twine upload dist/*

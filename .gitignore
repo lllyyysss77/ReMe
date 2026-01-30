@@ -34,6 +34,9 @@ test_compact_storage/*
 test_working_memory/*
 *.code-workspace
 local_vector_store/*
+reme_profile/*
 chroma_vector_store/*
 bench_results/*
 meta_memory/*
+*.sqlite3
+**/data/*.json

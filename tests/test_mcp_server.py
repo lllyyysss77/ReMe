@@ -5,8 +5,8 @@ from typing import Any
 from fastmcp import FastMCP
 from fastmcp.tools import FunctionTool
 
-from reme_ai.core.schema import ToolCall
-from reme_ai.core.utils import create_pydantic_model
+from reme.core.schema import ToolCall
+from reme.core.utils import create_pydantic_model
 
 mcp = FastMCP("DynamicSchemaServer", port=8010)
 

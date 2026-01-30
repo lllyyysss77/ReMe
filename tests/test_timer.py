@@ -7,7 +7,7 @@ import time
 
 from loguru import logger
 
-from reme_ai.core.utils import timer
+from reme.core.utils import timer
 
 
 @timer

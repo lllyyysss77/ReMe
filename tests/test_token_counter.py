@@ -14,9 +14,9 @@ Usage:
 import argparse
 from typing import Type, List
 
-from reme_ai.core.enumeration import Role
-from reme_ai.core.schema import Message, ToolCall
-from reme_ai.core.token_counter import BaseTokenCounter, OpenAITokenCounter, HFTokenCounter
+from reme.core.enumeration import Role
+from reme.core.schema import Message, ToolCall
+from reme.core.token_counter import BaseTokenCounter, OpenAITokenCounter, HFTokenCounter
 
 
 def get_token_counter(counter_class: Type[BaseTokenCounter], **kwargs) -> BaseTokenCounter:

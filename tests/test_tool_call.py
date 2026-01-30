@@ -2,7 +2,7 @@
 
 import json
 
-from reme_ai.core.schema.tool_call import ToolCall
+from reme.core.schema.tool_call import ToolCall
 
 
 def test_simple_schema():

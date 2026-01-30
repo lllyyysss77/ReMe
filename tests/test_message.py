@@ -4,8 +4,8 @@ import unittest
 
 from mcp.types import Tool
 
-from reme_ai.core.enumeration import Role
-from reme_ai.core.schema import ToolAttr, ToolCall, ContentBlock, Message
+from reme.core.enumeration import Role
+from reme.core.schema import ToolAttr, ToolCall, ContentBlock, Message
 
 
 class TestModelDefinitions(unittest.TestCase):

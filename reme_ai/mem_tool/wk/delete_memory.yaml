@@ -1,5 +1,0 @@
-tool_multiple: |
-  Delete multiple memories from the vector store using their unique IDs.
-
-memory_ids: |
-  A list of unique identifiers (memory_ids) of the memories to delete.

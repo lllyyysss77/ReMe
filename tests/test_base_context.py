@@ -4,7 +4,8 @@ Ensures attribute-style and dict-style access work interchangeably.
 """
 
 import pickle
-from reme_ai.core.context import BaseContext
+
+from reme.core.context import BaseContext
 
 
 def test_attribute_access():

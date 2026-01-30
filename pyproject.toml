@@ -67,8 +67,14 @@ reme_ai = [
     "**/*.json",
 ]
 
+reme = [
+    "**/*.yaml",
+    "**/*.py",
+    "**/*.json",
+]
+
 [tool.setuptools.dynamic]
-version = { attr = "reme_ai.__version__" }
+version = { attr = "reme.__version__" }
 
 [project.urls]
 Homepage = "https://github.com/agentscope-ai/ReMe"
@@ -77,5 +83,6 @@ Repository = "https://github.com/agentscope-ai/ReMe"
 
 [project.scripts]
 reme = "reme_ai.main:main"
+reme2 = "reme.reme:main"
 
 # python -m build && twine upload dist/*

@@ -37,6 +37,7 @@ from .tool.memory import (
     AddProfile,
     AddHistory,
     ReadAllProfiles,
+    AddMemory,
 )
 
 
@@ -55,9 +56,9 @@ class ReMe(Application):
         embedding_model: dict | None = None,
         vector_store: dict | None = None,
         token_counter: dict | None = None,
-        personal_memory_target: list[str] | None = None,
-        procedural_memory_target: list[str] | None = None,
-        tool_memory_target: list[str] | None = None,
+        target_user_names: list[str] | None = None,
+        target_task_names: list[str] | None = None,
+        target_tool_names: list[str] | None = None,
         profile_dir: str = "reme_profile",
         **kwargs,
     ):
@@ -76,25 +77,25 @@ class ReMe(Application):
             **kwargs,
         )
         memory_target_type_mapping: dict[str, MemoryType] = {}
-        if personal_memory_target:
-            for name in personal_memory_target:
-                assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
+        if target_user_names:
+            for name in target_user_names:
+                assert name not in memory_target_type_mapping, f"target_user_names={name} is already used."
                 memory_target_type_mapping[name] = MemoryType.PERSONAL
 
-        if procedural_memory_target:
-            for name in procedural_memory_target:
-                assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
+        if target_task_names:
+            for name in target_task_names:
+                assert name not in memory_target_type_mapping, f"target_task_names={name} is already used."
                 memory_target_type_mapping[name] = MemoryType.PROCEDURAL
 
-        if tool_memory_target:
-            for name in tool_memory_target:
-                assert name not in memory_target_type_mapping, f"Memory target name {name} is already used."
+        if target_tool_names:
+            for name in target_tool_names:
+                assert name not in memory_target_type_mapping, f"target_tool_names={name} is already used."
                 memory_target_type_mapping[name] = MemoryType.TOOL
 
         self.service_context.memory_target_type_mapping = memory_target_type_mapping
         self.profile_dir: str = profile_dir
 
-    def add_meta_memory(self, memory_type: str | MemoryType, memory_target: str):
+    def _add_meta_memory(self, memory_type: str | MemoryType, memory_target: str):
         """Register or validate a memory target with the given memory type."""
         if memory_target in self.service_context.memory_target_type_mapping:
             assert self.service_context.memory_target_type_mapping[memory_target] is memory_type
@@ -148,11 +149,26 @@ class ReMe(Application):
                 tools=[
                     AddAndRetrieveSimilarMemory(
                         enable_thinking_params=enable_thinking_params,
-                        top_k=retrieve_top_k,
+                        enable_memory_target=False,
+                        enable_when_to_use=False,
+                        enable_multiple=True,
                     ),
-                    UpdateMemoryV2(enable_thinking_params=enable_thinking_params),
+                    AddMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
+                        enable_when_to_use=False,
+                        enable_multiple=True,
+                    ),
                     AddDraftAndReadAllProfiles(
                         enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
+                        enable_multiple=True,
+                        profile_dir=self.profile_dir,
+                    ),
+                    UpdateProfile(
+                        enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
+                        enable_multiple=True,
                         profile_dir=self.profile_dir,
                     ),
                 ],
@@ -217,30 +233,30 @@ class ReMe(Application):
             if isinstance(user_name, str):
                 for message in format_messages:
                     message.name = user_name
-                self.add_meta_memory(MemoryType.PERSONAL, user_name)
+                self._add_meta_memory(MemoryType.PERSONAL, user_name)
             elif isinstance(user_name, list):
                 for name in user_name:
-                    self.add_meta_memory(MemoryType.PERSONAL, name)
+                    self._add_meta_memory(MemoryType.PERSONAL, name)
             else:
                 raise RuntimeError("user_name must be str or list[str]")
             memory_agents.append(personal_summarizer)
 
         if task_name:
             if isinstance(task_name, str):
-                self.add_meta_memory(MemoryType.PROCEDURAL, task_name)
+                self._add_meta_memory(MemoryType.PROCEDURAL, task_name)
             elif isinstance(task_name, list):
                 for name in task_name:
-                    self.add_meta_memory(MemoryType.PROCEDURAL, name)
+                    self._add_meta_memory(MemoryType.PROCEDURAL, name)
             else:
                 raise RuntimeError("task_name must be str or list[str]")
             memory_agents.append(procedural_summarizer)
 
         if tool_name:
             if isinstance(tool_name, str):
-                self.add_meta_memory(MemoryType.TOOL, tool_name)
+                self._add_meta_memory(MemoryType.TOOL, tool_name)
             elif isinstance(tool_name, list):
                 for name in tool_name:
-                    self.add_meta_memory(MemoryType.TOOL, name)
+                    self._add_meta_memory(MemoryType.TOOL, name)
             else:
                 raise RuntimeError("tool_name must be str or list[str]")
             memory_agents.append(tool_summarizer)
@@ -305,12 +321,14 @@ class ReMe(Application):
                 tools=[
                     ReadAllProfiles(
                         enable_thinking_params=enable_thinking_params,
+                        enable_memory_target=False,
                         profile_dir=self.profile_dir,
                     ),
                     RetrieveMemory(
-                        enable_thinking_params=enable_thinking_params,
                         top_k=retrieve_top_k,
+                        enable_thinking_params=enable_thinking_params,
                         enable_time_filter=enable_time_filter,
+                        enable_multiple=True
                     ),
                     ReadHistory(enable_thinking_params=enable_thinking_params),
                 ],
@@ -348,30 +366,30 @@ class ReMe(Application):
         memory_agents = []
         if user_name:
             if isinstance(user_name, str):
-                self.add_meta_memory(MemoryType.PERSONAL, user_name)
+                self._add_meta_memory(MemoryType.PERSONAL, user_name)
             elif isinstance(user_name, list):
                 for name in user_name:
-                    self.add_meta_memory(MemoryType.PERSONAL, name)
+                    self._add_meta_memory(MemoryType.PERSONAL, name)
             else:
                 raise RuntimeError("user_name must be str or list[str]")
             memory_agents.append(personal_retriever)
 
         if task_name:
             if isinstance(task_name, str):
-                self.add_meta_memory(MemoryType.PROCEDURAL, task_name)
+                self._add_meta_memory(MemoryType.PROCEDURAL, task_name)
             elif isinstance(task_name, list):
                 for name in task_name:
-                    self.add_meta_memory(MemoryType.PROCEDURAL, name)
+                    self._add_meta_memory(MemoryType.PROCEDURAL, name)
             else:
                 raise RuntimeError("task_name must be str or list[str]")
             memory_agents.append(procedural_retriever)
 
         if tool_name:
             if isinstance(tool_name, str):
-                self.add_meta_memory(MemoryType.TOOL, tool_name)
+                self._add_meta_memory(MemoryType.TOOL, tool_name)
             elif isinstance(tool_name, list):
                 for name in tool_name:
-                    self.add_meta_memory(MemoryType.TOOL, name)
+                    self._add_meta_memory(MemoryType.TOOL, name)
             else:
                 raise RuntimeError("tool_name must be str or list[str]")
             memory_agents.append(tool_retriever)

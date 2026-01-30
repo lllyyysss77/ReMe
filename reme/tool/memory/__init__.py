@@ -48,6 +48,5 @@ __all__ = [
 
 for name in __all__:
     tool_class = globals()[name]
-    # Only register classes that inherit from BaseMemoryTool
     if isinstance(tool_class, type) and issubclass(tool_class, BaseMemoryTool) and tool_class is not BaseMemoryTool:
         R.op.register()(tool_class)

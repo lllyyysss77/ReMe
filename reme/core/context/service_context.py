@@ -121,6 +121,7 @@ class ServiceContext(BaseContext):
                 thread_pool=self.thread_pool,
                 **config.model_extra,
             )
+            run_coro_safely(self.vector_stores[name].create_collection(config.collection_name))
 
         # Initialize flow instances
         self.flows: dict[str, BaseFlow] = {}
@@ -188,6 +189,10 @@ class ServiceContext(BaseContext):
 
             except Exception as e:
                 logger.exception(f"list_tool_calls: {server_name} error: {e}")
+
+    async def reset_default_collection(self, collection_name: str):
+        """Reset the default vector store."""
+        await self.vector_stores["default"].reset_collection(collection_name)
 
     async def close(self):
         """Close all service components asynchronously."""

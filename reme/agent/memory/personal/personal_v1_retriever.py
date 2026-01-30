@@ -12,6 +12,10 @@ class PersonalV1Retriever(BaseMemoryAgent):
 
     memory_type: MemoryType = MemoryType.PERSONAL
 
+    def __init__(self, return_memory_nodes: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self.return_memory_nodes: bool = return_memory_nodes
+
     async def build_messages(self) -> list[Message]:
         if self.context.get("query"):
             context = self.context.query
@@ -67,8 +71,7 @@ class PersonalV1Retriever(BaseMemoryAgent):
 
     async def execute(self):
         result = await super().execute()
-        answer = result["answer"]
-        if "MEMORY_NOT_FOUND" in answer:
+        if self.return_memory_nodes:
             result["answer"] = "\n".join(
                 [
                     n.format(

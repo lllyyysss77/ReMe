@@ -44,6 +44,7 @@ class EvalConfig:
     reme_model_name: str = "qwen-flash"
     eval_model_name: str = "qwen3-max"
     algo_version: str = "halumem"
+    enable_thinking_params: bool = False
 
 
 # ==================== Utilities ====================
@@ -271,10 +272,11 @@ async def evaluation_for_question(
 class MemoryProcessor:
     """Handles ReMe memory operations."""
 
-    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max", algo_version: str = "halumem"):
+    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max", algo_version: str = "halumem", enable_thinking_params: bool = False):
         self.reme = reme
         self.eval_model_name = eval_model_name
         self.algo_version = algo_version
+        self.enable_thinking_params = enable_thinking_params
 
     async def add_memories(
             self,
@@ -303,7 +305,7 @@ class MemoryProcessor:
                 version=self.algo_version,
                 return_dict=True,
                 enable_time_filter=True,
-                enable_thinking_params=False
+                enable_thinking_params=self.enable_thinking_params
             )
 
             duration_ms = (time.time() - start) * 1000
@@ -337,7 +339,7 @@ class MemoryProcessor:
             version=self.algo_version,
             return_dict=True,
             enable_time_filter=True,
-            enable_thinking_params=False
+            enable_thinking_params=self.enable_thinking_params
         )
 
         # Extract memories from response
@@ -551,7 +553,8 @@ class HaluMemEvaluator:
         self.memory_processor = MemoryProcessor(
             self.reme,
             config.eval_model_name,
-            config.algo_version
+            config.algo_version,
+            config.enable_thinking_params
         )
         self.qa_evaluator = QuestionAnsweringEvaluator(
             self.memory_processor,
@@ -867,7 +870,8 @@ async def main_async(
         max_concurrency: int,
         reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
-        algo_version: str = "halumem"
+        algo_version: str = "halumem",
+        enable_thinking_params: bool = False
 ):
     """Main async entry point for ReMe evaluation with proper resource cleanup."""
     config = EvalConfig(
@@ -877,7 +881,8 @@ async def main_async(
         max_concurrency=max_concurrency,
         reme_model_name=reme_model_name,
         eval_model_name=eval_model_name,
-        algo_version=algo_version
+        algo_version=algo_version,
+        enable_thinking_params=enable_thinking_params
     )
 
     # Use async context manager for automatic cleanup
@@ -892,7 +897,8 @@ def main(
         max_concurrency: int,
         reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
-        algo_version: str = "halumem"
+        algo_version: str = "halumem",
+        enable_thinking_params: bool = False
 ):
     """Main entry point for ReMe evaluation."""
     asyncio.run(main_async(
@@ -902,7 +908,8 @@ def main(
         max_concurrency=max_concurrency,
         reme_model_name=reme_model_name,
         eval_model_name=eval_model_name,
-        algo_version=algo_version
+        algo_version=algo_version,
+        enable_thinking_params=enable_thinking_params
     ))
 
 
@@ -955,8 +962,15 @@ if __name__ == "__main__":
         default="halumem",
         help="Algorithm version for summary and retrieval (default: halumem)"
     )
+    parser.add_argument(
+        "--enable_thinking_params",
+        action="store_true",
+        default=False,
+        help="Enable thinking parameters for summary and retrieval (default: False)"
+    )
 
     args = parser.parse_args()
+    print(f"args={args}!")
 
     main(
         data_path=args.data_path,
@@ -965,5 +979,6 @@ if __name__ == "__main__":
         max_concurrency=args.max_concurrency,
         reme_model_name=args.reme_model_name,
         eval_model_name=args.eval_model_name,
-        algo_version=args.algo_version
+        algo_version=args.algo_version,
+        enable_thinking_params=args.enable_thinking_params
     )

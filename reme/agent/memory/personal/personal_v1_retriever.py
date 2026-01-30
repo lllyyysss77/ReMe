@@ -8,7 +8,13 @@ from ....core.utils import format_messages
 
 
 class PersonalV1Retriever(BaseMemoryAgent):
-    """Retrieve personal memories through vector search and history reading."""
+    """Retrieve personal memories through vector search and history reading.
+    clear && python benchmark/halumem/eval_reme.py \
+        --data_path /Users/yuli/workspace/HaluMem/data/HaluMem-Medium.jsonl \
+        --reme_model_name qwen3-30b-a3b-instruct-2507 \
+        --algo_version v1 \
+        --enable_thinking_params
+    """
 
     memory_type: MemoryType = MemoryType.PERSONAL
 

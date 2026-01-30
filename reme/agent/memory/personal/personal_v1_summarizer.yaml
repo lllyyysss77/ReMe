@@ -15,13 +15,29 @@ user_message_s1: |
   - Extract only what's explicitly stated—no inferences, assumptions, or fabrications
   - The tool will retrieve similar historical memories via vector search to help you in Step 2
 
-  ### Step 2: Add New Memories
-  Review each memory draft from Step 1 and compare it with the retrieved historical memories:
-  - **Skip** the draft if its content is already fully covered by historical memories (avoid redundancy)
-  - **Add** the draft using `add_memory` if it contains new or additional information not present in historical memories
-  - Required parameters for each memory to add:
-    * `message_time`: timestamp from the conversation
-    * `memory_content`: consolidated memory content
+  ### Step 2: Update and Add Memories
+  Review each memory draft from Step 1 and compare it with the retrieved historical memories, then use `update_memory` to manage all memories in one call:
+
+  **For memories_to_update** (updating existing memories):
+  - For each memory to update, fill in the required parameters:
+    * `memory_id`: ID of the historical memory to update (from retrieved memories in Step 1)
+    * `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
+    * `memory_content`: updated or consolidated memory content
+  - Update memories when:
+    * The draft contains additional information that should be merged with existing memories
+    * Historical memories need to be corrected or refined based on new information
+
+  **For memories_to_add** (adding new memories):
+  - For each new memory, fill in the required parameters:
+    * `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
+    * `memory_content`: memory content
+  - Add memories when:
+    * The draft contains completely new information not present in historical memories
+    * The information cannot be merged into any existing memory
+
+  **General Guidelines:**
+  - **Skip** drafts if their content is already fully covered by historical memories (avoid redundancy)
+  - You can update and add memories in a single `update_memory` tool call
 
 user_message_s2: |
   You are a Profile Agent responsible for managing profiles about {memory_target}.

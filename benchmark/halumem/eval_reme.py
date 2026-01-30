@@ -41,6 +41,7 @@ class EvalConfig:
     max_concurrency: int = 2
     batch_size: int = 20
     output_dir: str = "bench_results/reme"
+    reme_model_name: str = "qwen-flash"
     eval_model_name: str = "qwen3-max"
     algo_version: str = "v1"
 
@@ -540,7 +541,7 @@ class HaluMemEvaluator:
 
     def __init__(self, config: EvalConfig):
         self.config = config
-        self.reme = ReMe()
+        self.reme = ReMe(llm={"model_name": self.config.reme_model_name})
 
         # Load evaluation prompts into ReMe's prompt handler
         prompts_yaml_path = Path(__file__).parent / "eval_reme.yaml"
@@ -872,6 +873,7 @@ async def main_async(
         top_k: int,
         user_num: int,
         max_concurrency: int,
+        reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
         algo_version: str = "v1"
 ):
@@ -881,6 +883,7 @@ async def main_async(
         top_k=top_k,
         user_num=user_num,
         max_concurrency=max_concurrency,
+        reme_model_name=reme_model_name,
         eval_model_name=eval_model_name,
         algo_version=algo_version
     )
@@ -895,6 +898,7 @@ def main(
         top_k: int,
         user_num: int,
         max_concurrency: int,
+        reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
         algo_version: str = "v1"
 ):
@@ -904,6 +908,7 @@ def main(
         top_k=top_k,
         user_num=user_num,
         max_concurrency=max_concurrency,
+        reme_model_name=reme_model_name,
         eval_model_name=eval_model_name,
         algo_version=algo_version
     ))
@@ -941,10 +946,15 @@ if __name__ == "__main__":
         help="Maximum concurrent user processing (default: 100)"
     )
     parser.add_argument(
-        "--eval_model_name",
+        "--reme_model_name",
         type=str,
         default="qwen-flash",
-        # default="qwen3-235b-a22b-instruct-2507",
+        help="Model name for ReMe (default: qwen-flash)"
+    )
+    parser.add_argument(
+        "--eval_model_name",
+        type=str,
+        default="qwen3-max",
         help="Model name for evaluation (default: qwen3-max)"
     )
     parser.add_argument(
@@ -961,6 +971,7 @@ if __name__ == "__main__":
         top_k=args.top_k,
         user_num=args.user_num,
         max_concurrency=args.max_concurrency,
+        reme_model_name=args.reme_model_name,
         eval_model_name=args.eval_model_name,
         algo_version=args.algo_version
     )

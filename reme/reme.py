@@ -9,6 +9,8 @@ from .agent.memory import (
     ReMeRetriever,
     PersonalV1Summarizer,
     PersonalV1Retriever,
+    PersonalHalumemSummarizer,
+    PersonalHalumemRetriever,
     PersonalSummarizer,
     PersonalRetriever,
     ProceduralSummarizer,
@@ -26,10 +28,12 @@ from .tool.memory import (
     ReadHistory,
     ProfileHandler,
     MemoryHandler,
-    AddDraftAndRetrieveSimilarMemory,
+    AddAndRetrieveSimilarMemory,
     UpdateMemoryV2,
     AddDraftAndReadAllProfiles,
     UpdateProfile,
+    # DeleteProfile,
+    # AddProfile,
     AddHistory,
     ReadAllProfiles,
     AddMemory,
@@ -122,7 +126,7 @@ class ReMe(Application):
         if version == "default":
             personal_summarizer = PersonalSummarizer(
                 tools=[
-                    AddDraftAndRetrieveSimilarMemory(
+                    AddAndRetrieveSimilarMemory(
                         enable_thinking_params=enable_thinking_params,
                         top_k=retrieve_top_k,
                     ),
@@ -141,8 +145,7 @@ class ReMe(Application):
         elif version == "v1":
             personal_summarizer = PersonalV1Summarizer(
                 tools=[
-                    AddDraftAndRetrieveSimilarMemory(
-                        top_k=retrieve_top_k,
+                    AddAndRetrieveSimilarMemory(
                         enable_thinking_params=enable_thinking_params,
                         enable_memory_target=False,
                         enable_when_to_use=False,
@@ -168,18 +171,51 @@ class ReMe(Application):
                     ),
                 ],
             )
-
+        elif version == "halumem":
+            personal_summarizer = PersonalHalumemSummarizer(
+                tools=[
+                    AddAndRetrieveSimilarMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        top_k=retrieve_top_k,
+                    ),
+                    UpdateMemoryV2(
+                        enable_thinking_params=enable_thinking_params,
+                    ),
+                    # RetrieveMemory(
+                    #     enable_thinking_params=enable_thinking_params,
+                    #     top_k=retrieve_top_k,
+                    #     enable_time_filter=enable_time_filter,
+                    # ),
+                    # 处理userprofile
+                    ReadAllProfiles(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                    UpdateProfile(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                    # AddProfile(
+                    #     enable_thinking_params=enable_thinking_params,
+                    #     profile_dir=self.profile_dir,
+                    # ),
+                    # DeleteProfile(
+                    #     enable_thinking_params=enable_thinking_params,
+                    #     profile_dir=self.profile_dir,
+                    # ),
+                ],
+            )
         else:
             raise NotImplementedError
 
         procedural_summarizer: BaseMemoryAgent
-        if version in ["default", "v1"]:
+        if version in ["default", "v1", "halumem"]:
             procedural_summarizer = ProceduralSummarizer(tools=[])
         else:
             raise NotImplementedError
 
         tool_summarizer: BaseMemoryAgent
-        if version in ["default", "v1"]:
+        if version in ["default", "v1", "halumem"]:
             tool_summarizer = ToolSummarizer(tools=[])
         else:
             raise NotImplementedError
@@ -221,7 +257,7 @@ class ReMe(Application):
             memory_agents = [personal_summarizer, procedural_summarizer, tool_summarizer]
 
         reme_summarizer: BaseMemoryAgent
-        if version in ["default", "v1"]:
+        if version in ["default", "v1", "halumem"]:
             reme_summarizer = ReMeSummarizer(tools=[AddHistory(), DelegateTask(memory_agents=memory_agents)])
         else:
             raise NotImplementedError
@@ -284,23 +320,37 @@ class ReMe(Application):
                         top_k=retrieve_top_k,
                         enable_thinking_params=enable_thinking_params,
                         enable_time_filter=enable_time_filter,
-                        enable_multiple=True
+                        enable_multiple=True,
                     ),
                     ReadHistory(enable_thinking_params=enable_thinking_params),
                 ],
             )
-
+        elif version == "halumem":
+            personal_retriever = PersonalHalumemRetriever(
+                tools=[
+                    ReadAllProfiles(
+                        enable_thinking_params=enable_thinking_params,
+                        profile_dir=self.profile_dir,
+                    ),
+                    RetrieveMemory(
+                        enable_thinking_params=enable_thinking_params,
+                        top_k=retrieve_top_k,
+                        enable_time_filter=enable_time_filter,
+                    ),
+                    ReadHistory(enable_thinking_params=enable_thinking_params),
+                ],
+            )
         else:
             raise NotImplementedError
 
         procedural_retriever: BaseMemoryAgent
-        if version in ["default", "v1"]:
+        if version in ["default", "v1", "halumem"]:
             procedural_retriever = ProceduralRetriever(tools=[])
         else:
             raise NotImplementedError
 
         tool_retriever: BaseMemoryAgent
-        if version in ["default", "v1"]:
+        if version in ["default", "v1", "halumem"]:
             tool_retriever = ToolRetriever(tools=[])
         else:
             raise NotImplementedError
@@ -340,7 +390,7 @@ class ReMe(Application):
             memory_agents = [personal_retriever, procedural_retriever, tool_retriever]
 
         reme_retriever: BaseMemoryAgent
-        if version in ["default", "v1"]:
+        if version in ["default", "v1", "halumem"]:
             reme_retriever = ReMeRetriever(tools=[DelegateTask(memory_agents=memory_agents)])
         else:
             raise NotImplementedError

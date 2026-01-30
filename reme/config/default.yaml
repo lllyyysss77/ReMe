@@ -16,7 +16,6 @@ llm:
   default:
     backend: openai
     model_name: qwen3-30b-a3b-instruct-2507
-#    model_name: qwen-flash
     request_interval: 1
     temperature: 0.0001
 
@@ -46,3 +45,4 @@ token_counter:
     backend: hf
     model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct
     use_mirror: true
+

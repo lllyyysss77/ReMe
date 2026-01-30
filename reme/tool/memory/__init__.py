@@ -7,8 +7,10 @@ from .history.read_history import ReadHistory
 from .profiles.add_draft_and_read_all_profiles import AddDraftAndReadAllProfiles
 from .profiles.profile_handler import ProfileHandler
 from .profiles.read_all_profiles import ReadAllProfiles
+from .profiles.add_profile import AddProfile
 from .profiles.update_profile import UpdateProfile
-from .vector.add_draft_and_retrieve_similar_memory import AddDraftAndRetrieveSimilarMemory
+from .profiles.delete_profile import DeleteProfile
+from .vector.add_draft_and_retrieve_similar_memory import AddAndRetrieveSimilarMemory
 from .vector.add_memory import AddMemory
 from .vector.delete_memory import DeleteMemory
 from .vector.memory_handler import MemoryHandler
@@ -27,11 +29,13 @@ __all__ = [
     "ReadHistory",
     # Profiles
     "AddDraftAndReadAllProfiles",
+    "AddProfile",
     "ProfileHandler",
     "ReadAllProfiles",
     "UpdateProfile",
+    "DeleteProfile",
     # Vector
-    "AddDraftAndRetrieveSimilarMemory",
+    "AddAndRetrieveSimilarMemory",
     "AddMemory",
     "DeleteMemory",
     "MemoryHandler",

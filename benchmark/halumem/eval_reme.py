@@ -41,6 +41,7 @@ class EvalConfig:
     max_concurrency: int = 2
     batch_size: int = 20
     output_dir: str = "bench_results/reme"
+    reme_model_name: str = "qwen-flash"
     eval_model_name: str = "qwen3-max"
     algo_version: str = "v1"
 
@@ -218,7 +219,7 @@ async def answer_question_with_memories(
 
     result = await reme.llm.simple_request_for_json(
         prompt=prompt,
-        model_name="qwen3-30b-a3b-instruct-2507"
+        model_name="qwen-flash"
     )
 
     return result
@@ -301,6 +302,8 @@ class MemoryProcessor:
                 user_name=user_id,
                 version=self.algo_version,
                 return_dict=True,
+                enable_time_filter=True,
+                enable_thinking_params=False
             )
 
             duration_ms = (time.time() - start) * 1000
@@ -333,6 +336,8 @@ class MemoryProcessor:
             user_name=user_id,
             version=self.algo_version,
             return_dict=True,
+            enable_time_filter=True,
+            enable_thinking_params=False
         )
 
         # Extract memories from response
@@ -404,6 +409,16 @@ class QuestionAnsweringEvaluator:
                 model_name=self.eval_model_name
             )
 
+            eval_result_original_answer = await evaluation_for_question(
+                reme=self.reme,
+                question=qa["question"],
+                reference_answer=qa["answer"],
+                key_memory_points=evidence_text,
+                response=retrieved_memories,
+                dialogue=formatted_dialogue,
+                model_name=self.eval_model_name
+            )
+
             # Build result record
             qa_result = {
                 **qa,
@@ -416,7 +431,9 @@ class QuestionAnsweringEvaluator:
                 "retrieve_messages": agent_messages,
                 "search_duration_ms": duration_ms,
                 "result_type": eval_result.get("evaluation_result"),
-                "question_answering_reasoning": eval_result.get("reasoning", "")
+                "question_answering_reasoning": eval_result.get("reasoning", ""),
+                "original_result_type": eval_result_original_answer.get("evaluation_result"),
+                "original_question_answering_reasoning": eval_result_original_answer.get("reasoning", ""),
             }
             results.append(qa_result)
 
@@ -427,8 +444,8 @@ class MetricsAggregator:
     """Aggregates evaluation metrics."""
 
     @staticmethod
-    def compute_qa_metrics(qa_records: list[dict]) -> dict[str, Any]:
-        """Compute question answering metrics."""
+    def _compute_single_metric(qa_records: list[dict], result_key: str) -> dict[str, Any]:
+        """Compute metrics for a single result type key."""
         total = len(qa_records)
         if total == 0:
             return {
@@ -448,7 +465,7 @@ class MetricsAggregator:
         valid = 0
 
         for qa in qa_records:
-            result_type = qa.get("result_type", "")
+            result_type = qa.get(result_key, "")
 
             if result_type in ["Correct", "Hallucination", "Omission"]:
                 valid += 1
@@ -481,6 +498,14 @@ class MetricsAggregator:
             })
 
         return metrics
+
+    @staticmethod
+    def compute_qa_metrics(qa_records: list[dict]) -> dict[str, Any]:
+        """Compute question answering metrics for both result_type and original_result_type."""
+        return {
+            "with_llm_answer": MetricsAggregator._compute_single_metric(qa_records, "result_type"),
+            "with_original_memories": MetricsAggregator._compute_single_metric(qa_records, "original_result_type")
+        }
 
     @staticmethod
     def compute_time_metrics(eval_results_file: str) -> dict[str, float]:
@@ -516,7 +541,7 @@ class HaluMemEvaluator:
 
     def __init__(self, config: EvalConfig):
         self.config = config
-        self.reme = ReMe()
+        self.reme = ReMe(llm={"model_name": self.config.reme_model_name})
 
         # Load evaluation prompts into ReMe's prompt handler
         prompts_yaml_path = Path(__file__).parent / "eval_reme.yaml"
@@ -535,6 +560,10 @@ class HaluMemEvaluator:
             config.eval_model_name
         )
         self.data_loader = DataLoader()
+
+        # For real-time updates
+        self._update_lock: asyncio.Lock | None = None
+        self._output_file: str | None = None
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -626,7 +655,19 @@ class HaluMemEvaluator:
 
             self.file_manager.save_session(user_name, idx, session_data)
 
+            # Update results file after each session completes
+            await self._trigger_update()
+
         return {"uuid": uuid, "user_name": user_name, "status": "ok"}
+
+    async def _trigger_update(self):
+        """Trigger real-time update of results and statistics."""
+        if self._update_lock is None or self._output_file is None:
+            return
+
+        async with self._update_lock:
+            self.file_manager.combine_results(self._output_file)
+            self._update_statistics(self._output_file)
 
     async def run_evaluation(self):
         """Run the complete evaluation pipeline using ReMe."""
@@ -661,6 +702,12 @@ class HaluMemEvaluator:
         print(f"Users: {len(users_to_process)} | Concurrency: {self.config.max_concurrency}")
         print("=" * 80 + "\n")
 
+        # Output file path for real-time updates
+        self._output_file = os.path.join(self.config.output_dir, "eval_results.jsonl")
+
+        # Lock for thread-safe file updates
+        self._update_lock = asyncio.Lock()
+
         # Process users with concurrency control
         semaphore = asyncio.Semaphore(self.config.max_concurrency)
 
@@ -671,11 +718,14 @@ class HaluMemEvaluator:
                 # Check cache
                 if self.file_manager.user_has_cache(user_name):
                     print(f"⚡ [{idx}/{len(users_to_process)}] Skipping {user_name} (cached)")
-                    return {"user_name": user_name, "status": "cached"}
+                    result = {"user_name": user_name, "status": "cached"}
+                    # Also trigger update for cached users
+                    await self._trigger_update()
+                else:
+                    print(f"🔄 [{idx}/{len(users_to_process)}] Processing {user_name}...")
+                    result = await self.process_user(user_data)
+                    print(f"✅ [{idx}/{len(users_to_process)}] Completed {user_name}")
 
-                print(f"🔄 [{idx}/{len(users_to_process)}] Processing {user_name}...")
-                result = await self.process_user(user_data)
-                print(f"✅ [{idx}/{len(users_to_process)}] Completed {user_name}")
                 return result
 
         tasks = [
@@ -684,16 +734,57 @@ class HaluMemEvaluator:
         ]
         await asyncio.gather(*tasks)
 
-        # Combine results
-        output_file = os.path.join(self.config.output_dir, "eval_results.jsonl")
-        self.file_manager.combine_results(output_file)
-
         elapsed = time.time() - start_time
         print(f"\n✅ Processing completed in {elapsed:.2f}s")
-        print(f"📁 Results: {output_file}\n")
+        print(f"📁 Results: {self._output_file}\n")
 
-        # Aggregate metrics
-        await self.aggregate_and_report(output_file)
+        # Final aggregation and report
+        await self.aggregate_and_report(self._output_file)
+
+    def _update_statistics(self, results_file: str):
+        """Update statistics file based on current results (for real-time monitoring)."""
+        if not os.path.exists(results_file):
+            return
+
+        # Collect all QA records
+        qa_records = []
+        try:
+            with open(results_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    user_data = json.loads(line)
+
+                    for session in user_data["sessions"]:
+                        if session.get("is_generated_qa_session"):
+                            continue
+
+                        eval_results = session.get("evaluation_results", {})
+                        qa_records.extend(
+                            eval_results.get("question_answering_records", [])
+                        )
+        except (json.JSONDecodeError, KeyError):
+            return
+
+        if not qa_records:
+            return
+
+        # Compute metrics
+        qa_metrics = MetricsAggregator.compute_qa_metrics(qa_records)
+        time_metrics = MetricsAggregator.compute_time_metrics(results_file)
+
+        final_results = {
+            "overall_score": {
+                "question_answering": qa_metrics,
+                "time_consuming": time_metrics
+            },
+            "question_answering_records": qa_records
+        }
+
+        # Save statistics
+        report_file = os.path.join(self.config.output_dir, "eval_statistics.json")
+        with open(report_file, "w", encoding="utf-8") as f:
+            json.dump(final_results, f, ensure_ascii=False, indent=4)
 
     async def aggregate_and_report(self, results_file: str):
         """Aggregate results and generate final report."""
@@ -746,14 +837,27 @@ class HaluMemEvaluator:
         print("EVALUATION SUMMARY - REME")
         print("=" * 80 + "\n")
 
-        print("📊 Question Answering:")
-        print(f"  Correct (all):       {qa_metrics['correct_qa_ratio(all)']:.4f}")
-        print(f"  Hallucination (all): {qa_metrics['hallucination_qa_ratio(all)']:.4f}")
-        print(f"  Omission (all):      {qa_metrics['omission_qa_ratio(all)']:.4f}")
-        print(f"  Correct (valid):     {qa_metrics['correct_qa_ratio(valid)']:.4f}")
-        print(f"  Hallucination (valid): {qa_metrics['hallucination_qa_ratio(valid)']:.4f}")
-        print(f"  Omission (valid):    {qa_metrics['omission_qa_ratio(valid)']:.4f}")
-        print(f"  Valid/Total:         {qa_metrics['qa_valid_num']}/{qa_metrics['qa_num']}")
+        # Print metrics for LLM-generated answer (result_type)
+        llm_metrics = qa_metrics["with_llm_answer"]
+        print("📊 Question Answering (with LLM answer):")
+        print(f"  Correct (all):       {llm_metrics['correct_qa_ratio(all)']:.4f}")
+        print(f"  Hallucination (all): {llm_metrics['hallucination_qa_ratio(all)']:.4f}")
+        print(f"  Omission (all):      {llm_metrics['omission_qa_ratio(all)']:.4f}")
+        print(f"  Correct (valid):     {llm_metrics['correct_qa_ratio(valid)']:.4f}")
+        print(f"  Hallucination (valid): {llm_metrics['hallucination_qa_ratio(valid)']:.4f}")
+        print(f"  Omission (valid):    {llm_metrics['omission_qa_ratio(valid)']:.4f}")
+        print(f"  Valid/Total:         {llm_metrics['qa_valid_num']}/{llm_metrics['qa_num']}")
+
+        # Print metrics for original retrieved memories (original_result_type)
+        orig_metrics = qa_metrics["with_original_memories"]
+        print("\n📊 Question Answering (with original memories):")
+        print(f"  Correct (all):       {orig_metrics['correct_qa_ratio(all)']:.4f}")
+        print(f"  Hallucination (all): {orig_metrics['hallucination_qa_ratio(all)']:.4f}")
+        print(f"  Omission (all):      {orig_metrics['omission_qa_ratio(all)']:.4f}")
+        print(f"  Correct (valid):     {orig_metrics['correct_qa_ratio(valid)']:.4f}")
+        print(f"  Hallucination (valid): {orig_metrics['hallucination_qa_ratio(valid)']:.4f}")
+        print(f"  Omission (valid):    {orig_metrics['omission_qa_ratio(valid)']:.4f}")
+        print(f"  Valid/Total:         {orig_metrics['qa_valid_num']}/{orig_metrics['qa_num']}")
 
         print(f"\n⏱️  Time Metrics:")
         print(f"  Memory Addition:  {time_metrics['add_dialogue_duration_time']:.2f} min")
@@ -769,6 +873,7 @@ async def main_async(
         top_k: int,
         user_num: int,
         max_concurrency: int,
+        reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
         algo_version: str = "v1"
 ):
@@ -778,6 +883,7 @@ async def main_async(
         top_k=top_k,
         user_num=user_num,
         max_concurrency=max_concurrency,
+        reme_model_name=reme_model_name,
         eval_model_name=eval_model_name,
         algo_version=algo_version
     )
@@ -792,6 +898,7 @@ def main(
         top_k: int,
         user_num: int,
         max_concurrency: int,
+        reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
         algo_version: str = "v1"
 ):
@@ -801,6 +908,7 @@ def main(
         top_k=top_k,
         user_num=user_num,
         max_concurrency=max_concurrency,
+        reme_model_name=reme_model_name,
         eval_model_name=eval_model_name,
         algo_version=algo_version
     ))
@@ -815,7 +923,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data_path",
         type=str,
-        required=True,
+        # required=True,
+        default="/Users/zhouwk/PycharmProjects/MemAgent/dataset/halumem/HaluMem-Medium.jsonl",
         help="Path to HaluMem JSONL file"
     )
     parser.add_argument(
@@ -833,20 +942,25 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_concurrency",
         type=int,
-        default=100,
+        default=1,
         help="Maximum concurrent user processing (default: 100)"
+    )
+    parser.add_argument(
+        "--reme_model_name",
+        type=str,
+        default="qwen-flash",
+        help="Model name for ReMe (default: qwen-flash)"
     )
     parser.add_argument(
         "--eval_model_name",
         type=str,
         default="qwen3-max",
-        # default="qwen3-235b-a22b-instruct-2507",
         help="Model name for evaluation (default: qwen3-max)"
     )
     parser.add_argument(
         "--algo_version",
         type=str,
-        default="v1",
+        default="halumem",
         help="Algorithm version for summary and retrieval (default: v1)"
     )
 
@@ -857,6 +971,7 @@ if __name__ == "__main__":
         top_k=args.top_k,
         user_num=args.user_num,
         max_concurrency=args.max_concurrency,
+        reme_model_name=args.reme_model_name,
         eval_model_name=args.eval_model_name,
         algo_version=args.algo_version
     )

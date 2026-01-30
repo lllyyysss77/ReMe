@@ -109,7 +109,7 @@ class QdrantVectorStore(BaseVectorStore):
 
     async def _get_client(self) -> AsyncQdrantClient:
         """Create or return the existing AsyncQdrantClient.
-        
+
         This lazy initialization ensures the client is created in the correct event loop.
         """
         if self._client is None:
@@ -125,7 +125,7 @@ class QdrantVectorStore(BaseVectorStore):
                 **self.client_kwargs,
             )
             logger.info("AsyncQdrantClient initialized")
-        
+
         return self._client
 
     async def list_collections(self) -> list[str]:

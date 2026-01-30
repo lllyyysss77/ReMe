@@ -29,12 +29,14 @@ from .tool.memory import (
     ProfileHandler,
     MemoryHandler,
     AddAndRetrieveSimilarMemory,
+    AddDraftAndRetrieveSimilarMemory,
     UpdateMemoryV2,
     AddDraftAndReadAllProfiles,
     UpdateProfile,
     AddHistory,
     ReadAllProfiles,
-    AddMemory,
+    UpdateProfilesV1,
+    UpdateMemoryV1,
 )
 
 
@@ -143,25 +145,24 @@ class ReMe(Application):
         elif version == "v1":
             personal_summarizer = PersonalV1Summarizer(
                 tools=[
-                    AddAndRetrieveSimilarMemory(
+                    AddDraftAndRetrieveSimilarMemory(
                         enable_thinking_params=enable_thinking_params,
                         enable_memory_target=False,
                         enable_when_to_use=False,
                         enable_multiple=True,
                     ),
-                    AddMemory(
+                    UpdateMemoryV1(
                         enable_thinking_params=enable_thinking_params,
                         enable_memory_target=False,
                         enable_when_to_use=False,
                         enable_multiple=True,
                     ),
-                    AddDraftAndReadAllProfiles(
+                    ReadAllProfiles(
                         enable_thinking_params=enable_thinking_params,
                         enable_memory_target=False,
-                        enable_multiple=True,
                         profile_dir=self.profile_dir,
                     ),
-                    UpdateProfile(
+                    UpdateProfilesV1(
                         enable_thinking_params=enable_thinking_params,
                         enable_memory_target=False,
                         enable_multiple=True,
@@ -308,6 +309,7 @@ class ReMe(Application):
 
         elif version == "v1":
             personal_retriever = PersonalV1Retriever(
+                return_memory_nodes=False,
                 tools=[
                     ReadAllProfiles(
                         enable_thinking_params=enable_thinking_params,
@@ -320,7 +322,10 @@ class ReMe(Application):
                         enable_time_filter=enable_time_filter,
                         enable_multiple=True,
                     ),
-                    ReadHistory(enable_thinking_params=enable_thinking_params),
+                    ReadHistory(
+                        enable_thinking_params=enable_thinking_params,
+                        enable_multiple=True,
+                    ),
                 ],
             )
         elif version == "halumem":

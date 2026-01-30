@@ -35,18 +35,14 @@ class PersonalV1Retriever(BaseMemoryAgent):
 
         return [
             Message(
-                role=Role.SYSTEM,
+                role=Role.USER,
                 content=self.prompt_format(
-                    prompt_name="system_prompt",
+                    prompt_name="user_message",
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
                     user_profile=all_profiles,
                     context=context.strip(),
                 ),
-            ),
-            Message(
-                role=Role.USER,
-                content=self.get_prompt("user_message"),
             ),
         ]
 

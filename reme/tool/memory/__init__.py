@@ -10,6 +10,7 @@ from .profiles.delete_profile import DeleteProfile
 from .profiles.profile_handler import ProfileHandler
 from .profiles.read_all_profiles import ReadAllProfiles
 from .profiles.update_profile import UpdateProfile
+from .profiles.update_profiles_v1 import UpdateProfilesV1
 from .vector.add_and_retrieve_similar_memory import AddAndRetrieveSimilarMemory
 from .vector.add_draft_and_retrieve_similar_memory import AddDraftAndRetrieveSimilarMemory
 from .vector.add_memory import AddMemory
@@ -18,6 +19,7 @@ from .vector.memory_handler import MemoryHandler
 from .vector.retrieve_memory import RetrieveMemory
 from .vector.retrieve_recent_memory import RetrieveRecentMemory
 from .vector.update_memory import UpdateMemory
+from .vector.update_memory_v1 import UpdateMemoryV1
 from .vector.update_memory_v2 import UpdateMemoryV2
 from ...core import R
 
@@ -35,6 +37,7 @@ __all__ = [
     "ReadAllProfiles",
     "UpdateProfile",
     "DeleteProfile",
+    "UpdateProfilesV1",
     # Vector
     "AddAndRetrieveSimilarMemory",
     "AddDraftAndRetrieveSimilarMemory",
@@ -44,6 +47,7 @@ __all__ = [
     "RetrieveMemory",
     "RetrieveRecentMemory",
     "UpdateMemory",
+    "UpdateMemoryV1",
     "UpdateMemoryV2",
 ]
 

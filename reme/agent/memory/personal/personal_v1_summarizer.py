@@ -16,34 +16,26 @@ class PersonalV1Summarizer(BaseMemoryAgent):
     async def _build_s1_messages(self) -> list[Message]:
         return [
             Message(
-                role=Role.SYSTEM,
+                role=Role.USER,
                 content=self.prompt_format(
-                    prompt_name="system_prompt_s1",
+                    prompt_name="user_message_s1",
                     context=self.context.history_node.content,
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
                 ),
-            ),
-            Message(
-                role=Role.USER,
-                content=self.get_prompt("user_message_s1"),
             ),
         ]
 
     async def _build_s2_messages(self) -> list[Message]:
         return [
             Message(
-                role=Role.SYSTEM,
+                role=Role.USER,
                 content=self.prompt_format(
-                    prompt_name="system_prompt_s2",
+                    prompt_name="user_message_s2",
                     context=self.context.history_node.content,
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
                 ),
-            ),
-            Message(
-                role=Role.USER,
-                content=self.get_prompt("user_message_s2"),
             ),
         ]
 
@@ -99,7 +91,9 @@ class PersonalV1Summarizer(BaseMemoryAgent):
         else:
             tools_s2, messages_s2, success_s2 = [], [], True
 
-        answer = (messages_s1[-1].content if success_s1 else "") + (messages_s2[-1].content if success_s2 else "")
+        answer = (messages_s1[-1].content if success_s1 and messages_s1 else "") + (
+            messages_s2[-1].content if success_s2 and messages_s2 else ""
+        )
         success = success_s1 and success_s2
         messages = messages_s1 + messages_s2
         tools = tools_s1 + tools_s2

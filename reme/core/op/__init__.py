@@ -19,4 +19,4 @@ __all__ = [
     "SequentialOp",
 ]
 
-R.op.register("mcp_tool")(MCPTool)
+R.op.register(MCPTool)

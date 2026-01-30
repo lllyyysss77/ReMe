@@ -43,7 +43,7 @@ class EvalConfig:
     output_dir: str = "bench_results/reme"
     reme_model_name: str = "qwen-flash"
     eval_model_name: str = "qwen3-max"
-    algo_version: str = "v1"
+    algo_version: str = "halumem"
 
 
 # ==================== Utilities ====================
@@ -271,7 +271,7 @@ async def evaluation_for_question(
 class MemoryProcessor:
     """Handles ReMe memory operations."""
 
-    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max", algo_version: str = "v1"):
+    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max", algo_version: str = "halumem"):
         self.reme = reme
         self.eval_model_name = eval_model_name
         self.algo_version = algo_version
@@ -567,21 +567,11 @@ class HaluMemEvaluator:
 
     async def __aenter__(self):
         """Async context manager entry."""
-        return self
+        return await self.reme.start()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit with cleanup."""
-        await self.reme.close()
-        return False
-
-    def __enter__(self):
-        """Sync context manager entry."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Sync context manager exit with cleanup."""
-        self.reme.close_sync()
-        return False
+        return await self.reme.close()
 
     async def process_session(
             self,
@@ -875,7 +865,7 @@ async def main_async(
         max_concurrency: int,
         reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
-        algo_version: str = "v1"
+        algo_version: str = "halumem"
 ):
     """Main async entry point for ReMe evaluation with proper resource cleanup."""
     config = EvalConfig(
@@ -900,7 +890,7 @@ def main(
         max_concurrency: int,
         reme_model_name: str= "qwen-flash",
         eval_model_name: str = "qwen3-max",
-        algo_version: str = "v1"
+        algo_version: str = "halumem"
 ):
     """Main entry point for ReMe evaluation."""
     asyncio.run(main_async(

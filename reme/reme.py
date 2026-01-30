@@ -32,8 +32,6 @@ from .tool.memory import (
     UpdateMemoryV2,
     AddDraftAndReadAllProfiles,
     UpdateProfile,
-    # DeleteProfile,
-    # AddProfile,
     AddHistory,
     ReadAllProfiles,
     AddMemory,
@@ -430,8 +428,7 @@ class ReMe(Application):
 
 def main():
     """Main entry point for running ReMe from command line."""
-    with ReMe(*sys.argv[1:]) as app:
-        app.run_service()
+    ReMe(*sys.argv[1:]).run_service()
 
 
 if __name__ == "__main__":

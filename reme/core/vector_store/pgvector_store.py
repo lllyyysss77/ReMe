@@ -606,6 +606,13 @@ class PGVectorStore(BaseVectorStore):
         await self.delete_collection(self.collection_name)
         await self.create_collection(self.collection_name)
 
+    async def reset_collection(self, collection_name: str):
+        """Reset collection with table name validation for SQL injection prevention."""
+        self._validate_table_name(collection_name)
+        self.collection_name = collection_name
+        await self.create_collection(collection_name)
+        logger.info(f"Collection reset to {collection_name}")
+
     async def close(self):
         """Terminate the database connection pool and release associated resources."""
         if self._pool is not None:

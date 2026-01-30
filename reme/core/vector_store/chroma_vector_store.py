@@ -231,7 +231,7 @@ class ChromaVectorStore(BaseVectorStore):
         new_collection = await self._run_sync_in_executor(_create)
         if collection_name == self.collection_name:
             self.collection = new_collection
-        logger.info(f"Created collection {collection_name}")
+        logger.info(f"Created collection `{collection_name}`")
 
     async def delete_collection(self, collection_name: str, **kwargs):
         """Delete a specified collection from the database."""
@@ -468,15 +468,6 @@ class ChromaVectorStore(BaseVectorStore):
 
         await self._run_sync_in_executor(_recreate)
         logger.info(f"Collection {self.collection_name} has been reset")
-
-    def set_collection_name(self, collection_name: str):
-        """Set the collection name and reinitialize the collection object."""
-        super().set_collection_name(collection_name)
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            metadata={"hnsw:space": "cosine"},
-        )
-        logger.info(f"Collection name set to {collection_name}, collection object reinitialized")
 
     async def close(self):
         """Close the vector store and log the shutdown process."""

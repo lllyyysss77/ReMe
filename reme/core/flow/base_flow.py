@@ -139,9 +139,9 @@ class BaseFlow(ABC):
     def print_flow(self):
         """Log the visual structure of the flow once."""
         if not self._flow_printed:
-            logger.info(f"[{self.__class__.__name__}] ---------- [Flow Structure] {self.name} ----------")
+            logger.info(f"[{self.__class__.__name__}] ---------- [Flow Structure] {self.name} [Start] ----------")
             self._print_operation_tree(self.name, self.flow_op, 0)
-            logger.info(f"[{self.__class__.__name__}] " + "-" * 50)
+            logger.info(f"[{self.__class__.__name__}] ---------- [Flow Structure] {self.name} [End] ----------")
             self._flow_printed = True
 
     async def call(self, **kwargs) -> Response | asyncio.Queue:

@@ -12,6 +12,11 @@ http:
   timeout_keep_alive: 600
   limit_concurrency: 64
 
+flow:
+  test:
+    flow_content: TestOp()
+    description: "test"
+
 llm:
   default:
     backend: openai

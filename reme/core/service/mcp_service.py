@@ -1,5 +1,7 @@
 """Model Context Protocol (MCP) service implementation."""
 
+from contextlib import asynccontextmanager
+
 from fastmcp import FastMCP
 from fastmcp.tools import FunctionTool
 
@@ -13,7 +15,14 @@ class MCPService(BaseService):
     def __init__(self, **kwargs):
         """Initialize FastMCP instance with service settings."""
         super().__init__(**kwargs)
-        self.mcp = FastMCP(name=self.service_config.app_name)
+
+        @asynccontextmanager
+        async def lifespan(_: FastMCP):
+            await self.service_context.start()
+            yield {}
+            await self.service_context.close()
+
+        self.mcp = FastMCP(name=self.service_config.app_name, lifespan=lifespan)
 
     def integrate_flow(self, flow: BaseFlow) -> str | None:
         """Register a non-streaming flow as an MCP tool."""

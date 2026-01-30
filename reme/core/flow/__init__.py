@@ -3,9 +3,12 @@
 from .base_flow import BaseFlow
 from .cmd_flow import CmdFlow
 from .expression_flow import ExpressionFlow
+from ..context import R
 
 __all__ = [
     "BaseFlow",
     "CmdFlow",
     "ExpressionFlow",
 ]
+
+R.flow.register(ExpressionFlow)

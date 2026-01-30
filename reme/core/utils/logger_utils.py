@@ -28,13 +28,13 @@ def init_logger(log_dir: str = "logs", level: str = "INFO") -> None:
         retention="7 days",
         compression="zip",
         encoding="utf-8",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} | {message}",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} | {function} | {message}",
     )
 
     # Configure colorized standard output logging
     logger.add(
         sink=sys.stdout,
         level=level,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} | {message}",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} | {function} | {message}",
         colorize=True,
     )

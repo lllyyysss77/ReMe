@@ -5,12 +5,14 @@ import asyncio
 from reme import ReMe
 from reme.core.schema import VectorNode, MemoryNode
 
-reme = ReMe(vector_store={"collection_name": "reme"})
-
 
 async def test_reme():
     """Tests ReMe memory system with personal information storage and retrieval."""
     # 构建一段包含个人信息的对话
+    reme = ReMe(vector_store={"collection_name": "reme"})
+    await reme.start()
+    # reme = await ReMe.create(vector_store={"collection_name": "reme"})
+
     await reme.vector_store.delete_all()
 
     messages = [

@@ -37,12 +37,23 @@ def timer(func: F) -> F:
         file_path = "unknown"
         line_no = 0
 
-    def patcher(record):
-        """Modifies the log record to reflect the decorated function's location."""
-        record["function"] = func_name
-        record["file"].name = file_path.split("/")[-1]
-        record["file"].path = file_path
-        record["line"] = line_no
+    def create_patcher(instance):
+        """Creates a patcher with runtime class information."""
+        # Get the actual class name at runtime if this is a method
+        if instance is not None and hasattr(instance, "__class__"):
+            class_name = instance.__class__.__name__
+            display_name = f"{class_name}.{func_name}"
+        else:
+            display_name = func_name
+
+        def patcher(record):
+            """Modifies the log record to reflect the decorated function's location."""
+            record["function"] = display_name
+            record["file"].name = file_path.split("/")[-1]
+            record["file"].path = file_path
+            record["line"] = line_no
+
+        return patcher
 
     @functools.wraps(func)
     async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -52,6 +63,9 @@ def timer(func: F) -> F:
             return await func(*args, **kwargs)
         finally:
             duration = time.perf_counter() - start_time
+            # Get the instance (self) if this is a method call
+            instance = args[0] if args else None
+            patcher = create_patcher(instance)
             # Use patch to inject metadata instead of relying on stack depth
             logger.patch(patcher).info(
                 "========== cost={:.6f}s ==========",
@@ -66,6 +80,9 @@ def timer(func: F) -> F:
             return func(*args, **kwargs)
         finally:
             duration = time.perf_counter() - start_time
+            # Get the instance (self) if this is a method call
+            instance = args[0] if args else None
+            patcher = create_patcher(instance)
             logger.patch(patcher).info(
                 "========== cost={:.6f}s ==========",
                 duration,

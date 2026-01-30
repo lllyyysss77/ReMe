@@ -113,9 +113,8 @@ class PersonalHalumemSummarizer(BaseMemoryAgent):
             else:
                 all_profiles = ""
 
-
             stage = "s2-profile"
-            messages_s2 = await self._build_s2_messages(user_profile = all_profiles)
+            messages_s2 = await self._build_s2_messages(user_profile=all_profiles)
             for i, message in enumerate(messages_s2):
                 role = message.name or message.role
                 logger.info(f"[{self.__class__.__name__} {stage}] role={role} {message.simple_dump(as_dict=False)}")

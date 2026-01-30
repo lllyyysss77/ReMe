@@ -1,7 +1,7 @@
 <p align="center">
  <img src="docs/_static/figure/reme_logo.png" alt="ReMe Logo" width="50%">
 </p>
- 
+
 <p align="center">
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python Version"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/pypi/v/reme-ai.svg?logo=pypi" alt="PyPI Version"></a>

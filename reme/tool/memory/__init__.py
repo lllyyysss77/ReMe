@@ -9,7 +9,6 @@ from .profiles.profile_handler import ProfileHandler
 from .profiles.read_all_profiles import ReadAllProfiles
 from .profiles.add_profile import AddProfile
 from .profiles.update_profile import UpdateProfile
-from .profiles.update_profile_filter_older import UpdateProfileFilterOlder
 from .profiles.delete_profile import DeleteProfile
 from .vector.add_draft_and_retrieve_similar_memory import AddAndRetrieveSimilarMemory
 from .vector.add_memory import AddMemory
@@ -30,10 +29,10 @@ __all__ = [
     "ReadHistory",
     # Profiles
     "AddDraftAndReadAllProfiles",
+    "AddProfile",
     "ProfileHandler",
     "ReadAllProfiles",
     "UpdateProfile",
-    "UpdateProfileFilterOlder",
     "DeleteProfile",
     # Vector
     "AddAndRetrieveSimilarMemory",

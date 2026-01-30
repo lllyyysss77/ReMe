@@ -44,27 +44,27 @@ user_message: |
 
   ## User Question
   {context}
-  
+
   # Core Objective:
   Before responding to the user, you must strictly follow the **[Memory Retrieve -> Original Source Tracing -> Broad Search Fallback]** retrieval strategy. It is strictly forbidden to directly opt for an indiscriminate search of massive historical original texts.
-  
+
   ## Retrieval Strategy & Workflow (Strictly Enforced Chain of Thought)
   ### Phase 1: Intent Decomposition and Primary Retrieval (Summary First)
   1. **Analyze Intent**: Analyze the user's current Query, decomposing it into 1-3 core search intents.2. **Summary Priority**: First, retrieve from **high-level memories**.
      - **Action**: Call `vector_retrieve_memory` using at least two different `query`.
      - **Filter**: (Optional) Set metadata filter {{"timestamp": "YYYY-MM-DD"}}
      - **Goal**: Obtain refined conclusions such as entity attributes, task status, user preferences, or environmental information.
-  
+
   ### Phase 2: Memory Evaluation and Deep Tracing (Drill Down)
   Check the retrieval results of Phase 1:
   - **Case A (Sufficient Information)**: If the summarized memory contains all the details needed for the answer, proceed directly to Phase 4 for the response.
   - **Case B (Vague/Complex Information)**: If summarized memory exists (e.g., 'discussed project architecture') but lacks specific details (e.g., 'specific parameter configuration'), use clues from the summary to trace the original text.
      - **Action**: Call `read_history` using ref_memory_id from the retrieved memory.
      - **Goal**: Obtain the specific conversation context at that time.
-  
+
   ### Phase 3: Fallback Retrieval and Strategy Adjustment (Fallback & Expand)
   If no valid information is found in both Phase 1 and Phase 2 (result is empty or similarity is too low): Rewrite the Query based on the context (remove non-keywords, synonym substitution), and search again.
-  
+
   ### Phase 4: Result Compilation and Response
   - Combine the retrieved content (summary or original text) with the current conversation context.
   - If all retrieved results are irrelevant, **it is strictly forbidden to fabricate memories**; directly inform the user that no relevant information was found.

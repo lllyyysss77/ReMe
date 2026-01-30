@@ -90,6 +90,7 @@ class UpdateProfile(BaseMemoryTool):
             if self.enable_memory_target:
                 # Group profiles by memory_target
                 from collections import defaultdict
+
                 profiles_by_target = defaultdict(list)
                 for profile in profiles_to_add:
                     target = profile.get("memory_target", self.memory_target)

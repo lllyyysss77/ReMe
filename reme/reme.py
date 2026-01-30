@@ -32,9 +32,8 @@ from .tool.memory import (
     UpdateMemoryV2,
     AddDraftAndReadAllProfiles,
     UpdateProfile,
-    UpdateProfileFilterOlder,
-    DeleteProfile,
-    AddProfile,
+    # DeleteProfile,
+    # AddProfile,
     AddHistory,
     ReadAllProfiles,
     AddMemory,
@@ -110,7 +109,6 @@ class ReMe(Application):
         task_name: str | list[str] = "",
         tool_name: str | list[str] = "",
         enable_thinking_params: bool = True,
-        enable_time_filter: bool = True,
         version: str = "default",
         retrieve_top_k: int = 20,
         return_dict: bool = False,
@@ -181,24 +179,18 @@ class ReMe(Application):
                         top_k=retrieve_top_k,
                     ),
                     UpdateMemoryV2(
-                        enable_thinking_params=enable_thinking_params
+                        enable_thinking_params=enable_thinking_params,
                     ),
                     # RetrieveMemory(
                     #     enable_thinking_params=enable_thinking_params,
                     #     top_k=retrieve_top_k,
                     #     enable_time_filter=enable_time_filter,
                     # ),
-
                     # 处理userprofile
                     ReadAllProfiles(
                         enable_thinking_params=enable_thinking_params,
                         profile_dir=self.profile_dir,
                     ),
-                    # UpdateProfileFilterOlder(
-                    #     enable_thinking_params=enable_thinking_params,
-                    #     max_profile_count=50,
-                    #     profile_dir=self.profile_dir,
-                    # ),
                     UpdateProfile(
                         enable_thinking_params=enable_thinking_params,
                         profile_dir=self.profile_dir,
@@ -328,7 +320,7 @@ class ReMe(Application):
                         top_k=retrieve_top_k,
                         enable_thinking_params=enable_thinking_params,
                         enable_time_filter=enable_time_filter,
-                        enable_multiple=True
+                        enable_multiple=True,
                     ),
                     ReadHistory(enable_thinking_params=enable_thinking_params),
                 ],
@@ -346,7 +338,7 @@ class ReMe(Application):
                         enable_time_filter=enable_time_filter,
                     ),
                     ReadHistory(enable_thinking_params=enable_thinking_params),
-                ]
+                ],
             )
         else:
             raise NotImplementedError

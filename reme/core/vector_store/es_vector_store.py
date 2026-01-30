@@ -80,7 +80,7 @@ class ESVectorStore(BaseVectorStore):
 
     async def _get_client(self) -> AsyncElasticsearch:
         """Create or return the existing AsyncElasticsearch client.
-        
+
         This lazy initialization ensures the client is created in the correct event loop.
         """
         if self._client is None:
@@ -93,7 +93,7 @@ class ESVectorStore(BaseVectorStore):
                 headers=self.headers,
             )
             logger.info("AsyncElasticsearch client initialized")
-        
+
         return self._client
 
     async def list_collections(self) -> list[str]:

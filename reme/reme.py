@@ -101,8 +101,8 @@ class ReMe(Application):
         else:
             self.service_context.memory_target_type_mapping[memory_target] = MemoryType(memory_type)
 
+    @staticmethod
     def _resolve_memory_target(
-        self,
         user_name: str = "",
         task_name: str = "",
         tool_name: str = "",

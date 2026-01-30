@@ -12,7 +12,7 @@ from ....core.utils import CacheHandler, deduplicate_memories
 class ProfileHandler:
     """User profile CRUD handler"""
 
-    def __init__(self, profile_path: str | Path, memory_target: str, max_capacity: int = 100):
+    def __init__(self, profile_path: str | Path, memory_target: str, max_capacity: int = 50):
         """init"""
         self.memory_target: str = memory_target
         self.cache_key: str = self.memory_target.replace(" ", "_").lower()
@@ -96,6 +96,12 @@ class ProfileHandler:
             ref_memory_id=ref_memory_id,
         )
 
+        # Remove existing nodes with the same when_to_use (profile_key)
+        original_count = len(nodes)
+        nodes = [n for n in nodes if n.when_to_use != profile_key]
+        if len(nodes) < original_count:
+            logger.info(f"Removed {original_count - len(nodes)} duplicate profile(s) with key: {profile_key}")
+
         nodes.append(new_node)
         self._save_nodes(nodes)
         logger.info(f"Added profile: {profile_key}={profile_value}")
@@ -119,6 +125,13 @@ class ProfileHandler:
             )
             for p in profiles
         ]
+
+        # Remove existing nodes with the same when_to_use (profile_key)
+        new_keys = {n.when_to_use for n in new_nodes}
+        original_count = len(nodes)
+        nodes = [n for n in nodes if n.when_to_use not in new_keys]
+        if len(nodes) < original_count:
+            logger.info(f"Removed {original_count - len(nodes)} duplicate profile(s) with matching keys")
 
         nodes.extend(new_nodes)
         self._save_nodes(nodes)

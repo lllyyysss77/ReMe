@@ -567,11 +567,13 @@ class HaluMemEvaluator:
 
     async def __aenter__(self):
         """Async context manager entry."""
-        return await self.reme.start()
+        await self.reme.start()
+        return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit with cleanup."""
-        return await self.reme.close()
+        await self.reme.close()
+        return False
 
     async def process_session(
             self,

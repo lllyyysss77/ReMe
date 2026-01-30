@@ -11,7 +11,7 @@ class MemoryHandler:
 
     def __init__(self, memory_target: str, service_context: ServiceContext):
         self.memory_target: str = memory_target
-        self.memory_type: MemoryType = service_context.memory_target_type_mapping[memory_target]
+        self.memory_type: MemoryType | None = service_context.memory_target_type_mapping.get(memory_target, None)
         self.vector_store: BaseVectorStore = service_context.vector_stores["default"]
 
     async def add_batch(self, memories: list[dict]) -> list[MemoryNode]:
@@ -68,6 +68,17 @@ class MemoryHandler:
         }
         memory_nodes = await self.add_batch([memory_dict])
         return memory_nodes[0]
+
+    async def get(self, memory_ids: str | list[str]) -> MemoryNode | list[MemoryNode]:
+        """Get one or more memory nodes by their memory_ids."""
+        # Call vector_store.get with the memory_ids
+        vector_nodes = await self.vector_store.get(memory_ids)
+
+        # Convert VectorNode(s) to MemoryNode(s)
+        if isinstance(vector_nodes, list):
+            return [MemoryNode.from_vector_node(node) for node in vector_nodes]
+        else:
+            return MemoryNode.from_vector_node(vector_nodes)
 
     async def delete(self, memory_ids: str | list[str]):
         """Delete multiple memory nodes by their memory_ids."""

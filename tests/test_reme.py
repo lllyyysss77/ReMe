@@ -63,7 +63,7 @@ async def test_reme():
     print("=" * 60)
 
     # 对对话进行总结，生成记忆
-    await reme.summary_memory(
+    await reme.summarize_memory(
         messages=messages,
         user_name="zhangwei",
         description="用户自我介绍和技术兴趣分享",

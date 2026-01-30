@@ -21,7 +21,7 @@ from .agent.memory import (
 from .config import ReMeConfigParser
 from .core import Application
 from .core.enumeration import MemoryType
-from .core.schema import Message
+from .core.schema import Message, MemoryNode
 from .tool.memory import (
     RetrieveMemory,
     DelegateTask,
@@ -101,7 +101,46 @@ class ReMe(Application):
         else:
             self.service_context.memory_target_type_mapping[memory_target] = MemoryType(memory_type)
 
-    async def summary_memory(
+    def _resolve_memory_target(
+        self,
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
+    ) -> tuple[MemoryType, str]:
+        """Resolve memory type and target from user_name, task_name, or tool_name.
+
+        Args:
+            user_name: User name for personal memory
+            task_name: Task name for procedural memory
+            tool_name: Tool name for tool memory
+
+        Returns:
+            tuple: (memory_type, memory_target)
+
+        Raises:
+            RuntimeError: If none or multiple memory targets are specified
+        """
+        if user_name:
+            memory_type = MemoryType.PERSONAL
+            memory_target = user_name
+            assert not task_name and not tool_name, "Cannot add task and tool memory when user memory is specified"
+
+        elif task_name:
+            memory_type = MemoryType.PROCEDURAL
+            memory_target = task_name
+            assert not user_name and not tool_name, "Cannot add user and tool memory when task memory is specified"
+
+        elif tool_name:
+            memory_type = MemoryType.TOOL
+            memory_target = tool_name
+            assert not user_name and not task_name, "Cannot add user and task memory when tool memory is specified"
+
+        else:
+            raise RuntimeError("Must specify user_name, task_name, or tool_name")
+
+        return memory_type, memory_target
+
+    async def summarize_memory(
         self,
         messages: list[Message | dict],
         description: str = "",
@@ -411,14 +450,173 @@ class ReMe(Application):
         else:
             return result["answer"]
 
-    @property
-    def profile_path(self) -> Path:
-        """Get the path to the profile directory."""
-        return Path(self.profile_dir) / self.vector_store.collection_name
+    async def add_memory(
+        self,
+        memory_content: str,
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
+        when_to_use: str = "",
+        message_time: str = "",
+        ref_memory_id: str = "",
+        author: str = "",
+        score: float = 0.0,
+        **kwargs,
+    ):
+        """Add memory to the vector store.
+
+        Args:
+            memory_content: The content of the memory to add
+            user_name: User name for personal memory
+            task_name: Task name for procedural memory
+            tool_name: Tool name for tool memory
+            when_to_use: Description of when this memory should be used
+            message_time: Timestamp of the message
+            ref_memory_id: Reference to another memory ID
+            author: Author of the memory
+            score: Score/importance of the memory
+            **kwargs: Additional metadata
+
+        Returns:
+            MemoryNode: The created memory node
+        """
+        memory_type, memory_target = self._resolve_memory_target(user_name, task_name, tool_name)
+        self._add_meta_memory(memory_type, memory_target)
+
+        handler = self.get_memory_handler(memory_target)
+        memory_node = await handler.add(
+            content=memory_content,
+            when_to_use=when_to_use,
+            message_time=message_time,
+            ref_memory_id=ref_memory_id,
+            author=author,
+            score=score,
+            **kwargs,
+        )
+        return memory_node
+
+    async def get_memory(
+        self,
+        memory_id: str,
+    ):
+        """Get a memory node by its memory_id.
+
+        Args:
+            memory_id: The ID of the memory to retrieve
+
+        Returns:
+            MemoryNode: The retrieved memory node
+        """
+        vector_node = await self.vector_store.get(memory_id)
+        return MemoryNode.from_vector_node(vector_node)
+
+    async def delete_memory(
+        self,
+        memory_id: str,
+    ):
+        """Delete a memory node by its memory_id.
+
+        Args:
+            memory_id: The ID of the memory to delete
+        """
+        await self.vector_store.delete(memory_id)
+
+    async def delete_all(self):
+        """Delete all memory nodes in the vector store."""
+        await self.vector_store.delete_all()
+
+    async def update_memory(
+        self,
+        memory_id: str,
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
+        memory_content: str | None = None,
+        when_to_use: str | None = None,
+        message_time: str | None = None,
+        ref_memory_id: str | None = None,
+        author: str | None = None,
+        score: float | None = None,
+        **kwargs,
+    ):
+        """Update a memory node's content and/or metadata.
+
+        Args:
+            memory_id: The ID of the memory to update
+            user_name: User name for personal memory
+            task_name: Task name for procedural memory
+            tool_name: Tool name for tool memory
+            memory_content: New content for the memory (optional)
+            when_to_use: New description of when to use (optional)
+            message_time: New timestamp (optional)
+            ref_memory_id: New reference memory ID (optional)
+            author: New author (optional)
+            score: New score/importance (optional)
+            **kwargs: Additional metadata to update
+
+        Returns:
+            MemoryNode: The updated memory node
+        """
+        memory_type, memory_target = self._resolve_memory_target(user_name, task_name, tool_name)
+        self._add_meta_memory(memory_type, memory_target)
+
+        handler = self.get_memory_handler(memory_target)
+        memory_node = await handler.update(
+            memory_id=memory_id,
+            content=memory_content,
+            when_to_use=when_to_use,
+            message_time=message_time,
+            ref_memory_id=ref_memory_id,
+            author=author,
+            score=score,
+            **kwargs,
+        )
+        return memory_node
+
+    async def list_memory(
+        self,
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
+        filters: dict | None = None,
+        limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = True,
+    ):
+        """List memory nodes with optional filtering and sorting.
+
+        Args:
+            user_name: User name for personal memory
+            task_name: Task name for procedural memory
+            tool_name: Tool name for tool memory
+            filters: Additional filters to apply (optional)
+            limit: Maximum number of results to return (optional)
+            sort_key: Field to sort by (optional)
+            reverse: Sort in reverse order (default: True)
+
+        Returns:
+            list[MemoryNode]: List of memory nodes
+        """
+        memory_type, memory_target = self._resolve_memory_target(user_name, task_name, tool_name)
+        self._add_meta_memory(memory_type, memory_target)
+
+        handler = self.get_memory_handler(memory_target)
+        memory_nodes = await handler.list(
+            filters=filters,
+            limit=limit,
+            sort_key=sort_key,
+            reverse=reverse,
+        )
+        return memory_nodes
 
     def get_memory_handler(self, memory_target: str) -> MemoryHandler:
         """Get the memory handler for the specified memory target."""
         return MemoryHandler(memory_target=memory_target, service_context=self.service_context)
+
+    @property
+    def profile_path(self) -> Path:
+        """Get the path to the profile directory."""
+        return Path(self.profile_dir) / self.vector_store.collection_name
 
     def get_profile_handler(self, user_name: str) -> ProfileHandler:
         """Get the profile handler for the specified user."""

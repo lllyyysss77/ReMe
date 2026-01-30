@@ -299,7 +299,7 @@ class MemoryProcessor:
             start = time.time()
 
             # Use new summary API
-            result = await self.reme.summary_memory(
+            result = await self.reme.summarize_memory(
                 messages=batch,
                 user_name=user_id,
                 version=self.algo_version,

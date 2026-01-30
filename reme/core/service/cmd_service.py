@@ -14,6 +14,7 @@ class CmdService(BaseService):
         """Initialize the command service instance."""
         super().__init__(**kwargs)
         self._cmd_flow: CmdFlow | None = None
+        run_coro_safely(self.service_context.start())
 
     def integrate_flow(self, flow: BaseFlow) -> str | None:
         """Integrate the workflow configuration into the command service."""

@@ -951,7 +951,7 @@ if __name__ == "__main__":
         "--algo_version",
         type=str,
         default="halumem",
-        help="Algorithm version for summary and retrieval (default: v1)"
+        help="Algorithm version for summary and retrieval (default: halumem)"
     )
 
     args = parser.parse_args()

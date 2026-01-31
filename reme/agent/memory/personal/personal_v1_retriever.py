@@ -14,6 +14,23 @@ class PersonalV1Retriever(BaseMemoryAgent):
         --reme_model_name qwen3-30b-a3b-instruct-2507 \
         --algo_version v1 \
         --enable_thinking_params
+    📊 Question Answering (with LLM answer):
+      Correct (all):       0.8537
+      Hallucination (all): 0.1159
+      Omission (all):      0.0305
+      Correct (valid):     0.8537
+      Hallucination (valid): 0.1159
+      Omission (valid):    0.0305
+      Valid/Total:         164/164
+
+    📊 Question Answering (with original memories):
+      Correct (all):       0.9085
+      Hallucination (all): 0.0671
+      Omission (all):      0.0244
+      Correct (valid):     0.9085
+      Hallucination (valid): 0.0671
+      Omission (valid):    0.0244
+      Valid/Total:         164/164
     """
 
     memory_type: MemoryType = MemoryType.PERSONAL

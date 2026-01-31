@@ -12,7 +12,7 @@ user_message_s1: |
     * `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
     * `memory_content`: concise memory content extracted from the conversation
   - Use actual names from the conversation (e.g., "Bob likes apples") instead of generic references (e.g., "user likes apples")
-  - Extract only what's explicitly stated—no inferences, assumptions, or fabrications
+  - Extract all important information comprehensively—do not miss critical details, but avoid any fabrications or unfounded assumptions
   - The tool will retrieve similar historical memories via vector search to help you in Step 2
 
   ### Step 2: Update and Add Memories
@@ -75,5 +75,5 @@ user_message_s2: |
 
   **General Guidelines:**
   - Use actual names from the conversation (e.g., "Bob") instead of generic references (e.g., "user")
-  - Extract only what's explicitly stated—no inferences, assumptions, or fabrications
+  - Extract all important information comprehensively—do not miss critical details, but avoid any fabrications or unfounded assumptions
   - You can update and add profiles in a single tool call

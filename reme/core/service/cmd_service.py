@@ -14,19 +14,24 @@ class CmdService(BaseService):
         """Initialize the command service instance."""
         super().__init__(**kwargs)
         self._cmd_flow: CmdFlow | None = None
-        run_coro_safely(self.service_context.start())
 
     def integrate_flow(self, flow: BaseFlow) -> str | None:
         """Integrate the workflow configuration into the command service."""
-        self._cmd_flow = CmdFlow(flow=self.service_config.cmd.flow)
+        self._cmd_flow = CmdFlow(flow=self.service_config.cmd.flow, service_context=self.service_context)
 
     def run(self):
         """Execute the command flow in either asynchronous or synchronous mode."""
         super().run()
         kwargs = self.service_config.cmd.model_extra
         if self._cmd_flow.async_mode:
-            response = run_coro_safely(self._cmd_flow.call(**kwargs))
+
+            async def async_run():
+                await self.service_context.start()
+                return await self._cmd_flow.call(**kwargs)
+
+            response = run_coro_safely(async_run())
         else:
+            run_coro_safely(self.service_context.start())
             response = self._cmd_flow.call_sync(**kwargs)
 
         if response.answer:

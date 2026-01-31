@@ -8,7 +8,7 @@ from ....core.schema import ToolCall, MemoryNode
 from ....core.utils import deduplicate_memories
 
 
-class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
+class AddAndRetrieveSimilarMemory(BaseMemoryTool):
     """Tool to add draft memory and retrieve similar memories"""
 
     def __init__(
@@ -60,7 +60,7 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": "Add draft memory and retrieve similar memories from the vector store.",
+                "description": "Add memory and retrieve similar memories from the vector store.",
                 "parameters": self._build_query_parameters(),
             },
         )
@@ -68,24 +68,24 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
     def _build_multiple_tool_call(self) -> ToolCall:
         return ToolCall(
             **{
-                "description": "Add draft memory and retrieve similar memories from the vector store.",
+                "description": "Add memory and retrieve similar memories from the vector store.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "draft_items": {
+                        "items": {
                             "type": "array",
-                            "description": "draft_items",
+                            "description": "items",
                             "items": self._build_query_parameters(),
                         },
                     },
-                    "required": ["draft_items"],
+                    "required": ["items"],
                 },
             },
         )
 
     async def execute(self):
         if self.enable_multiple:
-            draft_items = self.context.get("draft_items", [])
+            draft_items = self.context.get("items", [])
         else:
             draft_items = [self.context]
 

@@ -11,7 +11,7 @@ class CmdFlow(BaseFlow):
         """Initialize the command flow with a string-based operation definition."""
         super().__init__(**kwargs)
         self.flow = flow
-        assert flow, "add `flow=<op_flow>` in cmd!"
+        assert flow, "add `cmd.flow=<op_flow>` in cmd!"
 
     def _build_flow(self) -> BaseOp:
         """Parse the stored flow expression into a functional operation object."""

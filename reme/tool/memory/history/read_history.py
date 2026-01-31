@@ -10,7 +10,7 @@ class ReadHistory(BaseMemoryTool):
     """Read history memory tool"""
 
     def __init__(self, **kwargs):
-        kwargs["enable_multiple"] = False
+        kwargs.setdefault("enable_multiple", False)
         super().__init__(**kwargs)
 
     def _build_tool_call(self) -> ToolCall:
@@ -31,17 +31,47 @@ class ReadHistory(BaseMemoryTool):
             },
         )
 
-    async def execute(self):
-        history_id = self.context.history_id
-        nodes = await self.vector_store.get(vector_ids=[history_id])
+    def _build_multiple_tool_call(self) -> ToolCall:
+        """Build and return the tool call schema for multiple histories"""
+        return ToolCall(
+            **{
+                "description": "Read multiple original history dialogues by their IDs.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "history_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of history IDs to read",
+                        },
+                    },
+                    "required": ["history_ids"],
+                },
+            },
+        )
 
-        if not nodes:
-            output = f"No history_id={history_id} data."
+    async def execute(self):
+        """Execute the tool call"""
+        history_ids = self.context.history_ids if self.enable_multiple else [self.context.history_id]
+
+        if not history_ids or (len(history_ids) == 1 and not history_ids[0]):
+            output = "No history_ids provided."
             logger.warning(output)
             return output
 
-        memory_node: MemoryNode = MemoryNode.from_vector_node(nodes[0])
-        self.retrieved_nodes.append(memory_node)
-        output = f"Historical Dialogue[{history_id}]\n{memory_node.content}"
-        logger.info(f"Successfully read history memory_node: {history_id}")
+        nodes = await self.vector_store.get(vector_ids=history_ids)
+
+        if not nodes:
+            output = f"No data found for history_ids={history_ids}."
+            logger.warning(output)
+            return output
+
+        results = []
+        for node in nodes:
+            memory_node: MemoryNode = MemoryNode.from_vector_node(node)
+            self.retrieved_nodes.append(memory_node)
+            results.append(f"Historical Dialogue[{memory_node.memory_id}]\n{memory_node.content}")
+
+        output = "\n\n".join(results) if self.enable_multiple else results[0]
+        logger.info(f"Successfully read {len(nodes)} history memory_node(s): {history_ids}")
         return output

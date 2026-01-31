@@ -14,16 +14,16 @@ class ReadHistory(BaseMemoryTool):
         super().__init__(**kwargs)
 
     def _build_tool_call(self) -> ToolCall:
-        """Build and return the tool call schema for single history"""
+        """Build and return the tool call schema"""
         return ToolCall(
             **{
-                "description": "Read a single original history dialogue by its ID.",
+                "description": "Read original history dialogue.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "history_id": {
                             "type": "string",
-                            "description": "The history ID to read",
+                            "description": "history_id",
                         },
                     },
                     "required": ["history_id"],

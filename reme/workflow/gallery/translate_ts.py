@@ -19,8 +19,6 @@ class TranslateTs(BaseOp):
     async def execute_single_file(self, ts_file: Path):
         """Translate a single ts file."""
         ts_code = ts_file.read_text(encoding="utf-8")
-        python_file = ts_file.with_suffix(".py")
-
         logger.info(f"Translating {ts_file}")
 
         def parse_python(assistant_message: Message):
@@ -29,9 +27,9 @@ class TranslateTs(BaseOp):
             python_code = python_code.split("```python", 1)[1]
             python_code_split = python_code.split("```")
             python_code = "```".join(python_code_split[:-1])
-            return python_code.strip()
+            return python_code.strip(), assistant_message.content.strip()
 
-        output_code = await self.llm.chat(
+        output = await self.llm.chat(
             messages=[
                 Message(
                     role=Role.USER,
@@ -41,8 +39,9 @@ class TranslateTs(BaseOp):
             callback_fn=parse_python,
         )
 
-        python_file.write_text(output_code, encoding="utf-8")
-        logger.info(f"Writing {python_file}")
+        ts_file.with_suffix(".py").write_text(output[0], encoding="utf-8")
+        ts_file.with_suffix(".py").write_text(output[1], encoding="utf-8")
+        logger.info(f"Translate {ts_file} complete.")
 
     async def execute(self):
         """Execute the operation."""

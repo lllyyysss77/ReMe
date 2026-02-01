@@ -40,7 +40,7 @@ class TranslateTs(BaseOp):
         )
 
         ts_file.with_suffix(".py").write_text(output[0], encoding="utf-8")
-        ts_file.with_suffix(".py").write_text(output[1], encoding="utf-8")
+        ts_file.with_suffix(".txt").write_text(output[1], encoding="utf-8")
         logger.info(f"Translate {ts_file} complete.")
 
     async def execute(self):

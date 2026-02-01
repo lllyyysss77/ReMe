@@ -1,9 +1,9 @@
 """workflow"""
 
-from . import test
+from . import gallery
 from . import procedural_memory
 
 __all__ = [
-    "test",
+    "gallery",
     "procedural_memory",
 ]

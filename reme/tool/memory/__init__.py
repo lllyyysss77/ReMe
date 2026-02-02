@@ -4,6 +4,7 @@ from .base_memory_tool import BaseMemoryTool
 from .delegate_task import DelegateTask
 from .history.add_history import AddHistory
 from .history.read_history import ReadHistory
+from .history.read_history_v2 import ReadHistoryV2
 from .profiles.add_draft_and_read_all_profiles import AddDraftAndReadAllProfiles
 from .profiles.add_profile import AddProfile
 from .profiles.delete_profile import DeleteProfile
@@ -30,6 +31,7 @@ __all__ = [
     # History
     "AddHistory",
     "ReadHistory",
+    "ReadHistoryV2",
     # Profiles
     "AddDraftAndReadAllProfiles",
     "AddProfile",

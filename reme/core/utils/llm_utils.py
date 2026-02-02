@@ -9,7 +9,11 @@ from ..enumeration import Role
 from ..schema import Message, Trajectory, MemoryNode
 
 
-def format_messages(messages: list[Message | dict], enable_system: bool = False) -> str:
+def format_messages(
+    messages: list[Message | dict],
+    add_index: bool = True,
+    enable_system: bool = False,
+) -> str:
     """Formats a list of messages into a single string, optionally filtering system roles."""
     formatted_lines = []
     for i, message in enumerate(messages):
@@ -20,7 +24,7 @@ def format_messages(messages: list[Message | dict], enable_system: bool = False)
 
         formatted_lines.append(
             message.format_message(
-                index=i,
+                index=i if add_index else None,
                 add_time=True,
                 use_name=True,
                 add_reasoning=True,

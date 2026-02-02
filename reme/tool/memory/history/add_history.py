@@ -1,5 +1,7 @@
 """Add history tool"""
 
+import json
+
 from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
@@ -38,6 +40,12 @@ class AddHistory(BaseMemoryTool):
             when_to_use=history_content[:1024],
             content=history_content,
             author=self.author,
+            metadata={
+                "messages": json.dumps(
+                    [m.model_dump(exclude_none=True) for m in self.context.messages],
+                    ensure_ascii=False,
+                ),
+            },
         )
         self.context.history_node = history_node
         logger.info(f"Adding history node: {history_node.model_dump_json(indent=2)}")

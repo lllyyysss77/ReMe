@@ -61,6 +61,35 @@ class ReMe(Application):
         profile_dir: str = "reme_profile",
         **kwargs,
     ):
+        """Initialize ReMe with config.
+
+        Args:
+            *args: Arguments passed to Application
+            llm_api_key: API key for LLM provider
+            llm_api_base: API base for LLM provider
+            embedding_api_key: API key for embedding provider
+            embedding_api_base: API base for embedding provider
+            enable_logo: Enable logo
+            llm: LLM configuration
+            embedding_model: Embedding model configuration
+            vector_store: Vector store configuration
+            token_counter: Token counter configuration
+            target_user_names: List of user names for personal memory
+            target_task_names: List of task names for procedural memory
+            target_tool_names: List of tool names for tool memory
+            profile_dir: Directory for profile storage
+            **kwargs: Additional keyword arguments passed to Application
+
+        Example:
+            ```python
+            reme = await ReMe(...).start()
+            # reme = await ReMe.create(...)  # both ok
+
+            await reme.summarize_memory(...)
+            await reme.retrieve_memory(...)
+            ```
+
+        """
         super().__init__(
             *args,
             llm_api_key=llm_api_key,

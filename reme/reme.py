@@ -26,6 +26,7 @@ from .tool.memory import (
     RetrieveMemory,
     DelegateTask,
     ReadHistory,
+    ReadHistoryV2,
     ProfileHandler,
     MemoryHandler,
     AddAndRetrieveSimilarMemory,
@@ -390,9 +391,13 @@ class ReMe(Application):
                         enable_time_filter=enable_time_filter,
                         enable_multiple=True,
                     ),
-                    ReadHistory(
-                        enable_thinking_params=enable_thinking_params,
-                        enable_multiple=True,
+                    # ReadHistory(
+                    #     enable_thinking_params=enable_thinking_params,
+                    #     enable_multiple=True,
+                    # ),
+                    ReadHistoryV2(
+                        message_block_size=4,
+                        vector_top_k=3,
                     ),
                 ],
             )
@@ -408,7 +413,13 @@ class ReMe(Application):
                         top_k=retrieve_top_k,
                         enable_time_filter=enable_time_filter,
                     ),
-                    ReadHistory(enable_thinking_params=enable_thinking_params),
+                    # ReadHistory(
+                    #     enable_thinking_params=enable_thinking_params
+                    # ),
+                    ReadHistoryV2(
+                        message_block_size=4,
+                        vector_top_k=3,
+                    ),
                 ],
             )
         else:

@@ -38,12 +38,12 @@ class EvalConfig:
     data_path: str
     top_k: int = 20
     user_num: int = 1
-    max_concurrency: int = 2
-    batch_size: int = 20
+    max_concurrency: int = 1
+    batch_size: int = 40
     output_dir: str = "bench_results/reme"
     reme_model_name: str = "qwen-flash"
     eval_model_name: str = "qwen3-max"
-    algo_version: str = "halumem"
+    algo_version: str = "v1"
     enable_thinking_params: bool = False
 
 
@@ -220,7 +220,7 @@ async def answer_question_with_memories(
 
     result = await reme.llm.simple_request_for_json(
         prompt=prompt,
-        model_name="qwen-flash"
+        model_name=model_name
     )
 
     return result
@@ -272,8 +272,9 @@ async def evaluation_for_question(
 class MemoryProcessor:
     """Handles ReMe memory operations."""
 
-    def __init__(self, reme: ReMe, eval_model_name: str = "qwen3-max", algo_version: str = "halumem", enable_thinking_params: bool = False):
+    def __init__(self, reme: ReMe, reme_model_name:str="qwen3-max",eval_model_name: str = "qwen3-max", algo_version: str = "halumem", enable_thinking_params: bool = False):
         self.reme = reme
+        self.reme_model_name = reme_model_name
         self.eval_model_name = eval_model_name
         self.algo_version = algo_version
         self.enable_thinking_params = enable_thinking_params
@@ -353,7 +354,7 @@ class MemoryProcessor:
             question=query,
             memories=memories,
             user_id=user_id,
-            model_name=self.eval_model_name
+            model_name=self.reme_model_name,
         )
 
         # Add original memories to the result
@@ -552,6 +553,7 @@ class HaluMemEvaluator:
         self.file_manager = FileManager(config.output_dir)
         self.memory_processor = MemoryProcessor(
             self.reme,
+            config.reme_model_name,
             config.eval_model_name,
             config.algo_version,
             config.enable_thinking_params
@@ -866,6 +868,7 @@ class HaluMemEvaluator:
 async def main_async(
         data_path: str,
         top_k: int,
+        batch_size: int,
         user_num: int,
         max_concurrency: int,
         reme_model_name: str= "qwen-flash",
@@ -877,6 +880,7 @@ async def main_async(
     config = EvalConfig(
         data_path=data_path,
         top_k=top_k,
+        batch_size=batch_size,
         user_num=user_num,
         max_concurrency=max_concurrency,
         reme_model_name=reme_model_name,
@@ -893,6 +897,7 @@ async def main_async(
 def main(
         data_path: str,
         top_k: int,
+        batch_size: int,
         user_num: int,
         max_concurrency: int,
         reme_model_name: str= "qwen-flash",
@@ -904,6 +909,7 @@ def main(
     asyncio.run(main_async(
         data_path=data_path,
         top_k=top_k,
+        batch_size=batch_size,
         user_num=user_num,
         max_concurrency=max_concurrency,
         reme_model_name=reme_model_name,
@@ -945,6 +951,12 @@ if __name__ == "__main__":
         help="Maximum concurrent user processing (default: 100)"
     )
     parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=40,
+        help="Batch size for memory summary processing of each conversation (default: 40)"
+    )
+    parser.add_argument(
         "--reme_model_name",
         type=str,
         default="qwen-flash",
@@ -959,8 +971,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--algo_version",
         type=str,
-        default="halumem",
-        help="Algorithm version for summary and retrieval (default: halumem)"
+        default="v1",
+        help="Algorithm version for summary and retrieval (default: v1)"
     )
     parser.add_argument(
         "--enable_thinking_params",
@@ -975,6 +987,7 @@ if __name__ == "__main__":
     main(
         data_path=args.data_path,
         top_k=args.top_k,
+        batch_size=args.batch_size,
         user_num=args.user_num,
         max_concurrency=args.max_concurrency,
         reme_model_name=args.reme_model_name,

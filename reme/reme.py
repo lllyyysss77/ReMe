@@ -82,11 +82,14 @@ class ReMe(Application):
 
         Example:
             ```python
-            reme = await ReMe(...).start()
+            reme = ReMe(...)
+            await reme.start()
             # reme = await ReMe.create(...)  # both ok
 
             await reme.summarize_memory(...)
             await reme.retrieve_memory(...)
+
+            await reme.close()
             ```
 
         """

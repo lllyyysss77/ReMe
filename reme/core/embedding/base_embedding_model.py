@@ -10,6 +10,7 @@ from abc import ABC
 from loguru import logger
 
 from ..schema import VectorNode
+from ..schema.memory_chunk import MemoryChunk
 
 
 class BaseEmbeddingModel(ABC):
@@ -171,6 +172,72 @@ class BaseEmbeddingModel(ABC):
         else:
             logger.warning(f"Mismatch: got {len(embeddings)} vectors for {len(nodes)} nodes")
         return nodes
+
+    async def get_chunk_embedding(self, chunk: MemoryChunk, **kwargs) -> MemoryChunk:
+        """Async generate and populate embedding field for a single MemoryChunk object.
+
+        Args:
+            chunk: MemoryChunk object containing text to embed
+            **kwargs: Additional arguments passed to the embedding model
+
+        Returns:
+            The same MemoryChunk object with populated embedding field
+        """
+        chunk.embedding = await self.get_embedding(chunk.text, **kwargs)
+        return chunk
+
+    async def get_chunk_embeddings(self, chunks: list[MemoryChunk], **kwargs) -> list[MemoryChunk]:
+        """Async generate and populate embedding fields for a batch of MemoryChunk objects.
+
+        Args:
+            chunks: List of MemoryChunk objects containing text to embed
+            **kwargs: Additional arguments passed to the embedding model
+
+        Returns:
+            The same list of MemoryChunk objects with populated embedding fields
+        """
+        texts = [chunk.text for chunk in chunks]
+        embeddings: list[list[float]] = await self.get_embeddings(texts, **kwargs)
+
+        if len(embeddings) == len(chunks):
+            for chunk, vec in zip(chunks, embeddings):
+                chunk.embedding = vec
+        else:
+            logger.warning(f"Mismatch: got {len(embeddings)} vectors for {len(chunks)} chunks")
+        return chunks
+
+    def get_chunk_embedding_sync(self, chunk: MemoryChunk, **kwargs) -> MemoryChunk:
+        """Synchronously generate and populate embedding field for a single MemoryChunk object.
+
+        Args:
+            chunk: MemoryChunk object containing text to embed
+            **kwargs: Additional arguments passed to the embedding model
+
+        Returns:
+            The same MemoryChunk object with populated embedding field
+        """
+        chunk.embedding = self.get_embedding_sync(chunk.text, **kwargs)
+        return chunk
+
+    def get_chunk_embeddings_sync(self, chunks: list[MemoryChunk], **kwargs) -> list[MemoryChunk]:
+        """Synchronously generate embeddings for a batch of MemoryChunk objects.
+
+        Args:
+            chunks: List of MemoryChunk objects containing text to embed
+            **kwargs: Additional arguments passed to the embedding model
+
+        Returns:
+            The same list of MemoryChunk objects with populated embedding fields
+        """
+        texts = [chunk.text for chunk in chunks]
+        embeddings: list[list[float]] = self.get_embeddings_sync(texts, **kwargs)
+
+        if len(embeddings) == len(chunks):
+            for chunk, vec in zip(chunks, embeddings):
+                chunk.embedding = vec
+        else:
+            logger.warning(f"Mismatch: got {len(embeddings)} vectors for {len(chunks)} chunks")
+        return chunks
 
     def close_sync(self):
         """Synchronously release resources and close connections."""

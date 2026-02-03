@@ -354,7 +354,7 @@ class MemoryProcessor:
             question=query,
             memories=memories,
             user_id=user_id,
-            model_name=self.reme_model_name,
+            model_name=self.eval_model_name,
         )
 
         # Add original memories to the result

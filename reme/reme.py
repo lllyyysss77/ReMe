@@ -304,14 +304,17 @@ class ReMe(Application):
             raise NotImplementedError
 
         memory_agents = []
+        memory_targets = []
         if user_name:
             if isinstance(user_name, str):
                 for message in format_messages:
                     message.name = user_name
                 self._add_meta_memory(MemoryType.PERSONAL, user_name)
+                memory_targets.append(user_name)
             elif isinstance(user_name, list):
                 for name in user_name:
                     self._add_meta_memory(MemoryType.PERSONAL, name)
+                    memory_targets.append(name)
             else:
                 raise RuntimeError("user_name must be str or list[str]")
             memory_agents.append(personal_summarizer)
@@ -319,9 +322,11 @@ class ReMe(Application):
         if task_name:
             if isinstance(task_name, str):
                 self._add_meta_memory(MemoryType.PROCEDURAL, task_name)
+                memory_targets.append(task_name)
             elif isinstance(task_name, list):
                 for name in task_name:
                     self._add_meta_memory(MemoryType.PROCEDURAL, name)
+                    memory_targets.append(name)
             else:
                 raise RuntimeError("task_name must be str or list[str]")
             memory_agents.append(procedural_summarizer)
@@ -329,9 +334,11 @@ class ReMe(Application):
         if tool_name:
             if isinstance(tool_name, str):
                 self._add_meta_memory(MemoryType.TOOL, tool_name)
+                memory_targets.append(tool_name)
             elif isinstance(tool_name, list):
                 for name in tool_name:
                     self._add_meta_memory(MemoryType.TOOL, name)
+                    memory_targets.append(name)
             else:
                 raise RuntimeError("tool_name must be str or list[str]")
             memory_agents.append(tool_summarizer)
@@ -349,6 +356,7 @@ class ReMe(Application):
             messages=format_messages,
             description=description,
             service_context=self.service_context,
+            memory_targets=memory_targets,
             **kwargs,
         )
 
@@ -469,12 +477,15 @@ class ReMe(Application):
             raise NotImplementedError
 
         memory_agents = []
+        memory_targets = []
         if user_name:
             if isinstance(user_name, str):
                 self._add_meta_memory(MemoryType.PERSONAL, user_name)
+                memory_targets.append(user_name)
             elif isinstance(user_name, list):
                 for name in user_name:
                     self._add_meta_memory(MemoryType.PERSONAL, name)
+                    memory_targets.append(name)
             else:
                 raise RuntimeError("user_name must be str or list[str]")
             memory_agents.append(personal_retriever)
@@ -482,9 +493,11 @@ class ReMe(Application):
         if task_name:
             if isinstance(task_name, str):
                 self._add_meta_memory(MemoryType.PROCEDURAL, task_name)
+                memory_targets.append(task_name)
             elif isinstance(task_name, list):
                 for name in task_name:
                     self._add_meta_memory(MemoryType.PROCEDURAL, name)
+                    memory_targets.append(name)
             else:
                 raise RuntimeError("task_name must be str or list[str]")
             memory_agents.append(procedural_retriever)
@@ -492,9 +505,11 @@ class ReMe(Application):
         if tool_name:
             if isinstance(tool_name, str):
                 self._add_meta_memory(MemoryType.TOOL, tool_name)
+                memory_targets.append(tool_name)
             elif isinstance(tool_name, list):
                 for name in tool_name:
                     self._add_meta_memory(MemoryType.TOOL, name)
+                    memory_targets.append(name)
             else:
                 raise RuntimeError("tool_name must be str or list[str]")
             memory_agents.append(tool_retriever)
@@ -513,6 +528,7 @@ class ReMe(Application):
             messages=messages,
             description=description,
             service_context=self.service_context,
+            memory_targets=memory_targets,
             **kwargs,
         )
 

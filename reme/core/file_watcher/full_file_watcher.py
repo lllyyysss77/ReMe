@@ -1,0 +1,76 @@
+"""Full file watcher for complete file synchronization.
+
+This module provides a file watcher that processes entire files
+on any change, ensuring complete synchronization.
+"""
+
+import asyncio
+import os
+
+from loguru import logger
+from watchfiles import Change
+
+from .base_file_watcher import BaseFileWatcher
+from ..enumeration import MemorySource
+from ..schema import FileMetadata
+from ..utils import chunk_markdown, hash_text
+
+
+class FullFileWatcher(BaseFileWatcher):
+    """Full file watcher implementation for full synchronization"""
+
+    def __init__(self, chunk_tokens: int = 400, chunk_overlap: int = 80, **kwargs):
+        """
+        Initialize full file watcher"""
+        super().__init__(**kwargs)
+        self.chunk_tokens = chunk_tokens
+        self.chunk_overlap = chunk_overlap
+        self.dirty = False
+
+    @staticmethod
+    async def _build_file_metadata(path: str) -> FileMetadata:
+        def _read_file_sync():
+            stat_t = os.stat(path)
+            with open(path, "r", encoding="utf-8") as f:
+                content_t = f.read()
+            return stat_t, content_t
+
+        stat, content = await asyncio.to_thread(_read_file_sync)
+        return FileMetadata(
+            hash=hash_text(content),
+            mtime_ms=stat.st_mtime * 1000,
+            size=stat.st_size,
+            path=path,
+            content=content,
+        )
+
+    async def _on_changes(self, changes: set[tuple[Change, str]]):
+        """Handle file changes with full synchronization"""
+        self.dirty = True
+        for change_type, path in changes:
+            if change_type in [Change.added, Change.modified]:
+                file_meta = await self._build_file_metadata(path)
+                chunks = (
+                    chunk_markdown(
+                        file_meta.content,
+                        file_meta.path,
+                        MemorySource.MEMORY,
+                        self.chunk_tokens,
+                        self.chunk_overlap,
+                    )
+                    or []
+                )
+                if chunks:
+                    chunks = await self.memory_store.get_chunk_embeddings(chunks)
+                file_meta.chunk_count = len(chunks)
+                await self.memory_store.delete_file(file_meta.path, MemorySource.MEMORY)
+                await self.memory_store.upsert_file(file_meta, MemorySource.MEMORY, chunks)
+
+            elif change_type == Change.deleted:
+                await self.memory_store.delete_file(path, MemorySource.MEMORY)
+
+            else:
+                logger.warning(f"Unknown change type: {change_type}")
+
+            logger.info(f"File {change_type} changed: {path}")
+        self.dirty = False

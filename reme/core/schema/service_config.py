@@ -77,6 +77,16 @@ class VectorStoreConfig(BaseModel):
     embedding_model: str = Field(default="default")
 
 
+class MemoryStoreConfig(BaseModel):
+    """Configuration for memory database storage and associated embeddings."""
+
+    model_config = ConfigDict(extra="allow")
+
+    backend: str = Field(default="sqlite")
+    store_name: str = Field(default="reme")
+    embedding_model: str = Field(default="default")
+
+
 class TokenCounterConfig(BaseModel):
     """Configuration for token counting services and model mapping."""
 
@@ -109,4 +119,5 @@ class ServiceConfig(BaseModel):
     llm: dict[str, LLMConfig] = Field(default_factory=dict)
     embedding_model: dict[str, EmbeddingModelConfig] = Field(default_factory=dict)
     vector_store: dict[str, VectorStoreConfig] = Field(default_factory=dict)
+    memory_store: dict[str, MemoryStoreConfig] = Field(default_factory=dict)
     token_counter: dict[str, TokenCounterConfig] = Field(default_factory=dict)

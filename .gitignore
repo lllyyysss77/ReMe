@@ -40,3 +40,5 @@ bench_results/*
 meta_memory/*
 *.sqlite3
 **/data/*.json
+*.db
+memories/*

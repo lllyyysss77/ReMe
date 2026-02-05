@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from ..token_counter import BaseTokenCounter
     from ..flow import BaseFlow
     from ..service import BaseService
+    from ..memory_storage import BaseMemoryStore
 
 
 class ServiceContext(BaseContext):
@@ -77,6 +78,8 @@ class ServiceContext(BaseContext):
         self.embedding_models: dict[str, "BaseEmbeddingModel"] = {}
         self.token_counters: dict[str, "BaseTokenCounter"] = {}
         self.vector_stores: dict[str, "BaseVectorStore"] = {}
+        self.memory_stores: dict[str, "BaseMemoryStore"] = {}
+
         self.flows: dict[str, "BaseFlow"] = {}
         self.mcp_server_mapping: dict[str, dict] = {}
         self.service: "BaseService" = R.service[self.service_config.backend](service_context=self)
@@ -193,6 +196,14 @@ class ServiceContext(BaseContext):
             )
             await self.vector_stores[name].create_collection(config.collection_name)
 
+        for name, config in self.service_config.memory_store.items():
+            self.memory_stores[name] = R.memory_store[config.backend](
+                store_name=config.store_name,
+                embedding_model=self.embedding_models[config.embedding_model],
+                **config.model_extra,
+            )
+            await self.memory_stores[name].start()
+
         if self.service_config.mcp_servers:
             await self.prepare_mcp_servers()
 
@@ -225,6 +236,9 @@ class ServiceContext(BaseContext):
         """Close all service components asynchronously."""
         for _, vector_store in self.vector_stores.items():
             await vector_store.close()
+
+        for _, memory_store in self.memory_stores.items():
+            await memory_store.close()
 
         for _, llm in self.llms.items():
             await llm.close()

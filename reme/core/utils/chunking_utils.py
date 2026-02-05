@@ -1,19 +1,17 @@
 """Chunking logic for Markdown files."""
 
-from typing import List, Dict, Any
-
-from ..utils.hashing import hash_text
-from ...enumeration import MemorySource
-from ...schema import MemoryChunk
+from .common_utils import hash_text
+from ..enumeration import MemorySource
+from ..schema import MemoryChunk
 
 
 def chunk_markdown(
     text: str,
     path: str,
     source: MemorySource,
-    chunk_tokens: int = 300,
-    overlap: int = 30,
-) -> List[MemoryChunk]:
+    chunk_tokens: int,
+    overlap: int,
+) -> list[MemoryChunk]:
     """
     Markdown chunking logic implemented based on the TypeScript version.
 
@@ -35,10 +33,10 @@ def chunk_markdown(
     max_chars = max(32, chunk_tokens * 4)
     overlap_chars = max(0, overlap * 4)
 
-    chunks: List[MemoryChunk] = []
+    chunks: list[MemoryChunk] = []
 
     # Currently building chunk
-    current: List[Dict[str, Any]] = []  # [{'line': str, 'line_no': int}]
+    current: list[dict] = []  # [{'line': str, 'line_no': int}]
     current_chars = 0
 
     def flush():
@@ -83,8 +81,8 @@ def chunk_markdown(
         kept = []
 
         # Collect lines from the end until reaching overlap size
-        for i in range(len(current) - 1, -1, -1):
-            entry = current[i]
+        for j in range(len(current) - 1, -1, -1):
+            entry = current[j]
             if not entry:
                 continue
 
@@ -123,4 +121,4 @@ def chunk_markdown(
     # Process the final chunk
     flush()
 
-    return chunks
+    return [c for c in chunks if c.text.strip()]

@@ -13,6 +13,7 @@ from tqdm import tqdm
 from ..context import RuntimeContext, PromptHandler, ServiceContext
 from ..embedding import BaseEmbeddingModel
 from ..llm import BaseLLM
+from ..memory_storage import BaseMemoryStore
 from ..schema import Response
 from ..token_counter import BaseTokenCounter
 from ..utils import camel_to_snake, CacheHandler, timer
@@ -41,6 +42,7 @@ class BaseOp(metaclass=ABCMeta):
         llm: str | BaseLLM = "default",
         embedding_model: str | BaseEmbeddingModel = "default",
         vector_store: str | BaseVectorStore = "default",
+        memory_store: str | BaseMemoryStore = "default",
         token_counter: str | BaseTokenCounter = "default",
         enable_cache: bool = False,
         cache_path: str = "cache/op",
@@ -62,6 +64,7 @@ class BaseOp(metaclass=ABCMeta):
         self._llm = llm
         self._embedding_model = embedding_model
         self._vector_store = vector_store
+        self._memory_store = memory_store
         self._token_counter = token_counter
 
         self.enable_cache = enable_cache
@@ -138,6 +141,13 @@ class BaseOp(metaclass=ABCMeta):
         if isinstance(self._vector_store, str):
             self._vector_store = self.service_context.vector_stores[self._vector_store]
         return self._vector_store
+
+    @property
+    def memory_store(self) -> BaseMemoryStore:
+        """Lazily initialize and return the memory store instance."""
+        if isinstance(self._memory_store, str):
+            self._memory_store = self.service_context.memory_stores[self._memory_store]
+        return self._memory_store
 
     @property
     def token_counter(self) -> BaseTokenCounter:

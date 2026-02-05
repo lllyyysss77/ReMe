@@ -58,7 +58,7 @@ class ReMe(Application):
         target_user_names: list[str] | None = None,
         target_task_names: list[str] | None = None,
         target_tool_names: list[str] | None = None,
-        profile_dir: str = "reme_profile",
+        profile_dir: str = ".reme/profile",
         **kwargs,
     ):
         """Initialize ReMe with config.

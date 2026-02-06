@@ -145,19 +145,8 @@ class PydanticConfigParser:
             raise FileNotFoundError(f"config={config_path} not found")
         return config_path
 
-    def parse_args(self, *args: str) -> T:
-        """Parse CLI arguments and load configs from YAML files.
-
-        Args:
-            *args: CLI arguments in format "key=value" or "config=file.yaml".
-
-        Returns:
-            Validated Pydantic config instance.
-
-        Raises:
-            ValueError: If no config file is specified.
-            FileNotFoundError: If specified config file does not exist.
-        """
+    def parse_args(self, *args: str, **kwargs) -> T:
+        """Parse CLI arguments and load configs from YAML files."""
         configs_to_merge = [self.config_class().model_dump()]
 
         # Separate config file path from other arguments
@@ -183,6 +172,9 @@ class PydanticConfigParser:
         # Apply CLI overrides
         if filter_args:
             configs_to_merge.append(self.parse_dot_notation(filter_args))
+
+        if kwargs:
+            configs_to_merge.append(kwargs)
 
         # Merge all configs and validate
         self.config_dict = self.merge_configs(*configs_to_merge)

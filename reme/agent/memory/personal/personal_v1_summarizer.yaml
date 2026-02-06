@@ -15,65 +15,41 @@ user_message_s1: |
   - Extract all important information comprehensively—do not miss critical details, but avoid any fabrications or unfounded assumptions
   - The tool will retrieve similar historical memories via vector search to help you in Step 2
 
-  ### Step 2: Update and Add Memories
-  Review each memory draft from Step 1 and compare it with the retrieved historical memories, then use `update_memory` to manage all memories in one call:
+  ### Step 2: Add New Memories
+  Review each memory draft from Step 1 and compare it with the retrieved historical memories, then use `add_memory` to add new memories:
 
-  **For memories_to_update** (updating existing memories):
-  - For each memory to update, fill in the required parameters:
-    * `memory_id`: ID of the historical memory to update (from retrieved memories in Step 1)
-    * `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
-    * `memory_content`: updated or consolidated memory content
-  - Update memories when:
-    * The draft contains additional information that should be merged with existing memories
-    * Historical memories need to be corrected or refined based on new information
-
-  **For memories_to_add** (adding new memories):
-  - For each new memory, fill in the required parameters:
-    * `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
-    * `memory_content`: memory content
-  - Add memories when:
-    * The draft contains completely new information not present in historical memories
-    * The information cannot be merged into any existing memory
-
-  **General Guidelines:**
+  **Parameters for each memory:**
+  - `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
+  - `memory_content`: memory content
+  **When to skip:**
   - **Skip** drafts if their content is already fully covered by historical memories (avoid redundancy)
-  - You can update and add memories in a single `update_memory` tool call
 
 user_message_s2: |
-  You are a Profile Agent responsible for managing profiles about {memory_target}.
+  You are a User Profile Agent responsible for managing user profiles about {memory_target}.
 
   ## Latest Conversation
   Format: round<index> [<timestamp>] <role/name>: <content>
   {context}
 
-  ## Current Profiles
+  ## Current User Profiles
   {profiles}
 
   ## Task
-  Analyze the Latest Conversation and use `update_profiles` to manage profiles (both updates and additions in one call):
+  Analyze the Latest Conversation and use `update_profiles` to manage user profiles (both updates and additions in one call):
 
-  **For profiles_to_update** (updating existing profiles):
+  **For profiles_to_update** (updating existing user profiles):
   - For each profile to update, fill in the required parameters:
-    * `profile_id`: ID of the profile to update (from Current Profiles)
+    * `profile_id`: ID of the profile to update (from Current User Profiles)
     * `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
-    * `profile_key`: profile key or category (e.g., 'name', 'age', 'occupation')
-    * `profile_value`: updated profile value (e.g., 'John Smith')
-  - Update profiles when:
-    * Information in the conversation conflicts with or supersedes existing profiles
-    * Profiles need to be consolidated or merged with new information
-    * Existing profile values need to be corrected or refined
+    * `profile_key`: key (e.g., 'name', 'age', 'occupation')
+    * `profile_value`: value (e.g., 'John Smith')
 
-  **For profiles_to_add** (adding new profiles):
+  **For profiles_to_add** (adding new user profiles):
   - For each new profile, fill in the required parameters:
     * `message_time`: timestamp from the conversation (e.g., '2020-01-01 00:00:00')
-    * `profile_key`: profile key or category (e.g., 'name', 'age', 'occupation')
-    * `profile_value`: profile value (e.g., 'John Smith')
-  - Add profiles when:
-    * The information represents a new distinct profile not present in Current Profiles
-    * The profile key doesn't exist in Current Profiles
-    * The information cannot be merged into existing profiles
+    * `profile_key`: key (e.g., 'name', 'age', 'occupation')
+    * `profile_value`: value (e.g., 'John Smith')
 
   **General Guidelines:**
-  - Use actual names from the conversation (e.g., "Bob") instead of generic references (e.g., "user")
-  - Extract all important information comprehensively—do not miss critical details, but avoid any fabrications or unfounded assumptions
-  - You can update and add profiles in a single tool call
+  - Avoid any fabrications or unfounded assumptions
+  - You can update and add user profiles in a single tool call

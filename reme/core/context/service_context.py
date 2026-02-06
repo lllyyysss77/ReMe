@@ -118,9 +118,7 @@ class ServiceContext(BaseContext):
                 input_args.append(f"config={config_path}")
             if args:
                 input_args.extend(args)
-            if kwargs:
-                input_args.extend([f"{k}={v}" for k, v in kwargs.items()])
-            service_config = parser.parse_args(*input_args)
+            service_config = parser.parse_args(*input_args, **kwargs)
 
         service_config.enable_logo = enable_logo
         if llm:

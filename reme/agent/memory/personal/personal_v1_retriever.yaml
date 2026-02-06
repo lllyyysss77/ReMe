@@ -20,7 +20,6 @@ user_message: |
     * Entity-focused queries (extract and search specific names, places, events)
     * Keyword-based searches (core concepts, topics)
     * Related context queries (broader themes)
-  - Review all results before proceeding to next phase
 
   ### Phase 2(Optional): Temporal Search
   **Tool**: `retrieve_memory` (with time filter)
@@ -32,8 +31,7 @@ user_message: |
   - After date: `20200101,99999999` (from 20200101 onwards)
   **Approach**:
   - Identify temporal constraints from the user question
-  - Refine Phase 1 queries with appropriate time filters
-  - Try multiple time ranges if initial searches yield no results
+  - Refine Phase 1 queries with 3-5 diverse appropriate different time filters
 
   ### Phase 3: Deep Dive into History
   **Tool**: `read_history`
@@ -57,6 +55,4 @@ user_message: |
   - If you find sufficient information to answer the user's question, you may output directly without exhausting all search phases
   - Exhaust all search strategies before concluding information doesn't exist
 
-  ### Output any tangentially related findings, Format:
-  [timestamp] [memory/profile/history] [relevant content1]
-  [timestamp] [memory/profile/history] [relevant content2]
+  Output a summary of all retrieved memories, user profile, and history data.

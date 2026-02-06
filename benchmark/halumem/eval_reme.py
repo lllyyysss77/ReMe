@@ -220,7 +220,7 @@ async def answer_question_with_memories(
 
     result = await reme.llm.simple_request_for_json(
         prompt=prompt,
-        model_name="qwen-flash"
+        model_name=model_name,
     )
 
     return result

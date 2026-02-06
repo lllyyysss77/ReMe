@@ -20,7 +20,7 @@ from .agent.memory import (
 )
 from .config import ReMeConfigParser
 from .core import Application
-from .core.enumeration import MemoryType
+from .core.enumeration import MemoryType, Role
 from .core.schema import Message, MemoryNode
 from .tool.memory import (
     RetrieveMemory,
@@ -294,7 +294,8 @@ class ReMe(Application):
         if user_name:
             if isinstance(user_name, str):
                 for message in format_messages:
-                    message.name = user_name
+                    if message.role is Role.USER:
+                        message.name = user_name
                 self._add_meta_memory(MemoryType.PERSONAL, user_name)
             elif isinstance(user_name, list):
                 for name in user_name:

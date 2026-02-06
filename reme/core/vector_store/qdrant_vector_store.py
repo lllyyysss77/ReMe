@@ -325,33 +325,20 @@ class QdrantVectorStore(BaseVectorStore):
         self,
         query: str,
         limit: int = 5,
-        candidates: int | None = None,
         filters: dict | None = None,
-        threshold: float | None = None,
         **kwargs: Any,
     ) -> list[VectorNode]:
-        """Search for the most similar vectors based on a text query.
-
-        When threshold is None, uses default behavior.
-        When threshold is set, searches max(candidates, limit) nodes,
-        filters by threshold, then returns top limit results.
-        """
+        """Search for the most similar vectors based on a text query."""
         query_vector = await self.get_embedding(query)
         query_filter = self._create_filter(filters) if filters else None
-
-        # When threshold is set, search more candidates
-        if threshold is not None:
-            effective_candidates = candidates if candidates is not None else limit * 2
-            search_limit = max(effective_candidates, limit)
-        else:
-            search_limit = limit
+        score_threshold = kwargs.get("score_threshold", None)
 
         results = await self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
             query_filter=query_filter,
-            limit=search_limit,
-            score_threshold=threshold,
+            limit=limit,
+            score_threshold=score_threshold,
         )
 
         nodes = []
@@ -365,10 +352,6 @@ class QdrantVectorStore(BaseVectorStore):
             )
             node.metadata["score"] = point.score
             nodes.append(node)
-
-        # Apply limit after threshold filtering (Qdrant already filters by threshold)
-        if threshold is not None:
-            nodes = nodes[:limit]
 
         return nodes
 

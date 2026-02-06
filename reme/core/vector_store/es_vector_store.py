@@ -238,48 +238,31 @@ class ESVectorStore(BaseVectorStore):
         self,
         query: str,
         limit: int = 5,
-        candidates: int | None = None,
         filters: dict | None = None,
-        threshold: float | None = None,
         **kwargs,
     ) -> list[VectorNode]:
         """Perform a kNN similarity search based on a text query.
 
-        When threshold is None, uses default behavior.
-        When threshold is set, searches max(candidates, limit) nodes,
-        filters by threshold, then returns top limit results.
-
         Args:
             query: The text to search for.
             limit: Maximum number of nearest neighbors to return.
-            candidates: Number of candidates to consider during search.
-            filters: Metadata filters for exact match or range operations.
-            threshold: Minimum score threshold for results.
-            **kwargs: Additional search parameters.
+            filters: Metadata filters for exact match or 'IN' operations.
+            **kwargs: Search parameters like num_candidates or score_threshold.
 
         Returns:
             List of VectorNode objects ordered by similarity.
         """
         query_vector = await self.get_embedding(query)
-
-        # When threshold is set, search more candidates
-        if threshold is not None:
-            effective_candidates = candidates if candidates is not None else limit * 2
-            search_candidates = max(effective_candidates, limit)
-            search_limit = search_candidates
-        else:
-            effective_candidates = candidates if candidates is not None else limit * 2
-            search_candidates = effective_candidates
-            search_limit = limit
+        num_candidates = kwargs.get("num_candidates", limit * 2)
 
         search_query: dict = {
             "knn": {
                 "field": "vector",
                 "query_vector": query_vector,
-                "k": search_limit,
-                "num_candidates": search_candidates,
+                "k": limit,
+                "num_candidates": num_candidates,
             },
-            "size": search_limit,
+            "size": limit,
         }
 
         if filters:
@@ -316,11 +299,6 @@ class ESVectorStore(BaseVectorStore):
             )
             node.metadata["score"] = hit["_score"]
             results.append(node)
-
-        # Apply threshold filtering if specified
-        if threshold is not None:
-            results = [n for n in results if n.metadata.get("score", 0) >= threshold]
-            results = results[:limit]
 
         return results
 

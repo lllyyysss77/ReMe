@@ -333,17 +333,10 @@ class PGVectorStore(BaseVectorStore):
         self,
         query: str,
         limit: int = 5,
-        candidates: int | None = None,
         filters: dict | None = None,
-        threshold: float | None = None,
         **kwargs,
     ) -> list[VectorNode]:
-        """Perform vector similarity search with optional metadata filtering.
-
-        When threshold is None, uses default behavior.
-        When threshold is set, searches max(candidates, limit) nodes,
-        filters by threshold, then returns top limit results.
-        """
+        """Perform vector similarity search with optional metadata filtering."""
         await self._ensure_collection_exists()
 
         query_vector = await self.get_embedding(query)
@@ -358,13 +351,6 @@ class PGVectorStore(BaseVectorStore):
                 new_placeholder = f"${i + 1}"
                 filter_clause = re.sub(rf"\${i}\b", new_placeholder, filter_clause)
 
-        # When threshold is set, search more candidates
-        if threshold is not None:
-            effective_candidates = candidates if candidates is not None else limit * 2
-            search_limit = max(effective_candidates, limit)
-        else:
-            search_limit = limit
-
         async with pool.acquire() as conn:
             sql = f"""
                 SELECT id, content, vector, metadata, vector <=> $1::vector AS distance
@@ -373,17 +359,14 @@ class PGVectorStore(BaseVectorStore):
                 ORDER BY distance
                 LIMIT ${len(filter_params) + 2}
             """
-            rows = await conn.fetch(sql, vector_str, *filter_params, search_limit)
+            rows = await conn.fetch(sql, vector_str, *filter_params, limit)
 
         results = []
+        score_threshold = kwargs.get("score_threshold")
 
         for row in rows:
             distance = row["distance"]
-            # Convert distance to score (1 - distance for cosine)
-            score = 1 - distance
-
-            # Apply threshold filtering if specified
-            if threshold is not None and score < threshold:
+            if score_threshold is not None and distance > score_threshold:
                 continue
 
             vector_data = None
@@ -396,7 +379,7 @@ class PGVectorStore(BaseVectorStore):
             if isinstance(metadata, str):
                 metadata = json.loads(metadata)
 
-            metadata["score"] = score
+            metadata["score"] = 1 - distance
             metadata["_distance"] = distance
 
             node = VectorNode(
@@ -406,10 +389,6 @@ class PGVectorStore(BaseVectorStore):
                 metadata=metadata,
             )
             results.append(node)
-
-        # Apply limit after threshold filtering
-        if threshold is not None:
-            results = results[:limit]
 
         return results
 

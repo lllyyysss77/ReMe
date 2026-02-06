@@ -53,7 +53,12 @@ class BaseMemoryAgent(BaseReact, metaclass=ABCMeta):
     @property
     def memory_target_type_mapping(self) -> dict[str, MemoryType]:
         """Get the memory target type mapping from context."""
-        return self.context.service_context.memory_target_type_mapping
+        memory_targets = self.context.memory_targets
+        memory_target_type_mapping = self.context.service_context.memory_target_type_mapping.copy()
+        if memory_targets:
+            return {memory_target: memory_target_type_mapping[memory_target] for memory_target in memory_targets}
+        else:
+            return memory_target_type_mapping
 
     @property
     def meta_memory_info(self) -> str:

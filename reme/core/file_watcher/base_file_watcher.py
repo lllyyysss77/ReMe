@@ -25,21 +25,25 @@ class BaseFileWatcher:
     def __init__(
         self,
         watch_paths: list[str] | str,
+        suffix_filters: list[str] | None = None,
         recursive: bool = False,
         debounce: int = 500,  # Millisecond debounce
-        suffix_filters: list[str] | None = None,
-        callback: Callable[[set[tuple[Change, str]]], None | Coroutine[Any, Any, None]] | None = None,
+        chunk_tokens: int = 400,
+        chunk_overlap: int = 80,
         memory_store: BaseMemoryStore | None = None,
+        callback: Callable[[set[tuple[Change, str]]], None | Coroutine[Any, Any, None]] | None = None,
         **kwargs,
     ):
         """
         Initialize the file watcher"""
         self.watch_paths: list[str] = [watch_paths] if isinstance(watch_paths, str) else watch_paths
+        self.suffix_filters: list[str] = suffix_filters or []
         self.recursive: bool = recursive
         self.debounce: int = debounce
-        self.suffix_filters: list[str] = suffix_filters or []
-        self.callback = callback
+        self.chunk_tokens: int = chunk_tokens
+        self.chunk_overlap: int = chunk_overlap
         self.memory_store: BaseMemoryStore = memory_store
+        self.callback = callback
         self.kwargs: dict = kwargs
 
         self._stop_event = asyncio.Event()
@@ -81,6 +85,10 @@ class BaseFileWatcher:
 
     async def _watch_loop(self):
         """Core monitoring loop"""
+        if not self.watch_paths:
+            logger.warning("No watch paths specified")
+            return
+
         async for changes in awatch(
             *self.watch_paths,
             watch_filter=self.watch_filter,

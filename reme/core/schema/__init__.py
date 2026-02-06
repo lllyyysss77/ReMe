@@ -2,7 +2,6 @@
 
 from .file_metadata import FileMetadata
 from .memory_chunk import MemoryChunk
-from .memory_index_meta import MemoryIndexMeta
 from .memory_node import MemoryNode
 from .memory_search_result import MemorySearchResult
 from .message import ContentBlock, Message, Trajectory
@@ -34,7 +33,6 @@ __all__ = [
     "LLMConfig",
     "MCPConfig",
     "MemoryChunk",
-    "MemoryIndexMeta",
     "MemoryNode",
     "MemorySearchResult",
     "Message",

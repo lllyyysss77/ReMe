@@ -19,12 +19,10 @@ from ..utils import chunk_markdown, hash_text
 class FullFileWatcher(BaseFileWatcher):
     """Full file watcher implementation for full synchronization"""
 
-    def __init__(self, chunk_tokens: int = 400, chunk_overlap: int = 80, **kwargs):
+    def __init__(self, **kwargs):
         """
         Initialize full file watcher"""
         super().__init__(**kwargs)
-        self.chunk_tokens = chunk_tokens
-        self.chunk_overlap = chunk_overlap
         self.dirty = False
 
     @staticmethod

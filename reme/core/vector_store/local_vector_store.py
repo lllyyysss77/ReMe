@@ -193,10 +193,17 @@ class LocalVectorStore(BaseVectorStore):
         self,
         query: str,
         limit: int = 5,
+        candidates: int | None = None,
         filters: dict | None = None,
+        threshold: float | None = None,
         **kwargs,
     ) -> list[VectorNode]:
-        """Search for nodes similar to the query using brute-force cosine similarity."""
+        """Search for nodes similar to the query using brute-force cosine similarity.
+
+        When threshold is None, uses default behavior.
+        When threshold is set, searches max(candidates, limit) nodes,
+        filters by threshold, then returns top limit results.
+        """
         query_vector = await self.get_embedding(query)
         all_nodes = self._load_all_nodes()
         filtered_nodes = [node for node in all_nodes if self._match_filters(node, filters)]
@@ -215,11 +222,17 @@ class LocalVectorStore(BaseVectorStore):
 
         scored_nodes.sort(key=lambda x: x[1], reverse=True)
 
-        score_threshold = kwargs.get("score_threshold")
-        if score_threshold is not None:
-            scored_nodes = [(node, score) for node, score in scored_nodes if score >= score_threshold]
+        # Apply threshold filtering if specified
+        if threshold is not None:
+            # When threshold is set, consider more candidates
+            effective_candidates = candidates if candidates is not None else limit * 2
+            search_limit = max(effective_candidates, limit)
+            scored_nodes = scored_nodes[:search_limit]
+            scored_nodes = [(node, score) for node, score in scored_nodes if score >= threshold]
+            scored_nodes = scored_nodes[:limit]
+        else:
+            scored_nodes = scored_nodes[:limit]
 
-        scored_nodes = scored_nodes[:limit]
         results = []
         for node, score in scored_nodes:
             node.metadata["score"] = score

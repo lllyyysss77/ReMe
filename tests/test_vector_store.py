@@ -414,6 +414,180 @@ async def test_search_with_multiple_filters(store: BaseVectorStore, _store_name:
     logger.info("✓ Multiple filters search test passed")
 
 
+async def test_search_with_threshold(store: BaseVectorStore, _store_name: str):
+    """Test vector search with threshold parameter.
+
+    When threshold is None, uses default behavior.
+    When threshold is set, searches max(candidates, limit) nodes,
+    filters by threshold, then returns top limit results.
+    """
+    logger.info("=" * 20 + " SEARCH WITH THRESHOLD TEST " + "=" * 20)
+
+    # Clean up any existing test data first
+    try:
+        existing_nodes = await store.list(filters={"test_type": "threshold_test"})
+        if existing_nodes:
+            await store.delete([node.vector_id for node in existing_nodes])
+            logger.info(f"Cleaned up {len(existing_nodes)} existing test nodes")
+    except Exception as e:
+        logger.warning(f"Failed to clean up existing nodes: {e}")
+
+    # Insert test nodes with varied content for different similarity scores
+    threshold_nodes = [
+        VectorNode(
+            vector_id="threshold_node_1",
+            content="Machine learning and artificial intelligence are the future of technology.",
+            metadata={"test_type": "threshold_test", "relevance": "high"},
+        ),
+        VectorNode(
+            vector_id="threshold_node_2",
+            content="Deep learning uses neural networks for artificial intelligence applications.",
+            metadata={"test_type": "threshold_test", "relevance": "high"},
+        ),
+        VectorNode(
+            vector_id="threshold_node_3",
+            content="Natural language processing is a branch of AI technology.",
+            metadata={"test_type": "threshold_test", "relevance": "medium"},
+        ),
+        VectorNode(
+            vector_id="threshold_node_4",
+            content="Computer vision enables machines to interpret visual information.",
+            metadata={"test_type": "threshold_test", "relevance": "medium"},
+        ),
+        VectorNode(
+            vector_id="threshold_node_5",
+            content="Software development requires good coding practices.",
+            metadata={"test_type": "threshold_test", "relevance": "low"},
+        ),
+        VectorNode(
+            vector_id="threshold_node_6",
+            content="Database management systems store and retrieve data efficiently.",
+            metadata={"test_type": "threshold_test", "relevance": "low"},
+        ),
+        VectorNode(
+            vector_id="threshold_node_7",
+            content="Cloud computing provides scalable infrastructure for applications.",
+            metadata={"test_type": "threshold_test", "relevance": "low"},
+        ),
+        VectorNode(
+            vector_id="threshold_node_8",
+            content="Cooking pasta requires boiling water and adding salt.",
+            metadata={"test_type": "threshold_test", "relevance": "none"},
+        ),
+    ]
+
+    await store.insert(threshold_nodes)
+    logger.info(f"✓ Inserted {len(threshold_nodes)} test nodes")
+
+    # Test 1: Search without threshold (baseline)
+    results_baseline = await store.search(
+        query="artificial intelligence and machine learning",
+        limit=3,
+        candidates=10,
+        filters={"test_type": "threshold_test"},
+    )
+    logger.info(f"Test 1 - Search without threshold: {len(results_baseline)} results")
+    for i, r in enumerate(results_baseline, 1):
+        score = r.metadata.get("score", 0)
+        logger.info(f"  Result {i}: {r.vector_id}, score={score:.4f}")
+
+    assert len(results_baseline) <= 3, "Should return at most limit results"
+    logger.info("✓ Baseline search validated")
+
+    # Test 2: Search with threshold (should filter low-score results)
+    threshold_value = 0.5
+    results_with_threshold = await store.search(
+        query="artificial intelligence and machine learning",
+        limit=3,
+        candidates=10,
+        filters={"test_type": "threshold_test"},
+        threshold=threshold_value,
+    )
+    logger.info(
+        f"Test 2 - Search with threshold={threshold_value}: {len(results_with_threshold)} results",
+    )
+    for i, r in enumerate(results_with_threshold, 1):
+        score = r.metadata.get("score", 0)
+        logger.info(f"  Result {i}: {r.vector_id}, score={score:.4f}")
+        # Verify all results meet threshold
+        assert score >= threshold_value, f"Score {score} should be >= threshold {threshold_value}"
+
+    # Should return at most limit results
+    assert len(results_with_threshold) <= 3, "Should return at most limit results"
+    logger.info("✓ Threshold filtering validated")
+
+    # Test 3: Search with high threshold (should filter more strictly)
+    high_threshold = 0.7
+    results_high_threshold = await store.search(
+        query="artificial intelligence and machine learning",
+        limit=10,  # Use same limit as candidates to get all results above threshold
+        candidates=10,
+        filters={"test_type": "threshold_test"},
+        threshold=high_threshold,
+    )
+    logger.info(
+        f"Test 3 - Search with high threshold={high_threshold}: {len(results_high_threshold)} results",
+    )
+    for i, r in enumerate(results_high_threshold, 1):
+        score = r.metadata.get("score", 0)
+        logger.info(f"  Result {i}: {r.vector_id}, score={score:.4f}")
+        assert score >= high_threshold, f"Score {score} should be >= threshold {high_threshold}"
+
+    # Compare with same limit and lower threshold to verify stricter filtering
+    results_low_threshold = await store.search(
+        query="artificial intelligence and machine learning",
+        limit=10,
+        candidates=10,
+        filters={"test_type": "threshold_test"},
+        threshold=0.3,  # Lower threshold
+    )
+    # High threshold should return same or fewer results than low threshold
+    assert len(results_high_threshold) <= len(
+        results_low_threshold,
+    ), (
+        f"High threshold ({len(results_high_threshold)}) should return fewer results than low threshold "
+        f"({len(results_low_threshold)})"
+    )
+    logger.info("✓ High threshold filtering validated")
+
+    # Test 4: Search with threshold and large candidates
+    results_large_candidates = await store.search(
+        query="artificial intelligence and machine learning",
+        limit=2,
+        candidates=20,
+        filters={"test_type": "threshold_test"},
+        threshold=0.5,
+    )
+    logger.info(
+        f"Test 4 - Search with threshold and large candidates: {len(results_large_candidates)} results",
+    )
+    # Should search max(candidates, limit) = 20 nodes, filter by threshold, return top 2
+    assert len(results_large_candidates) <= 2, "Should return at most limit results"
+    for r in results_large_candidates:
+        score = r.metadata.get("score", 0)
+        assert score >= 0.5, f"Score {score} should be >= 0.5"
+    logger.info("✓ Large candidates with threshold validated")
+
+    # Test 5: Verify that threshold=None behaves same as no threshold
+    results_none_threshold = await store.search(
+        query="artificial intelligence and machine learning",
+        limit=3,
+        candidates=10,
+        filters={"test_type": "threshold_test"},
+        threshold=None,
+    )
+    logger.info(f"Test 5 - Search with threshold=None: {len(results_none_threshold)} results")
+    # Should behave same as baseline (Test 1)
+    assert len(results_none_threshold) <= 3, "Should return at most limit results"
+    logger.info("✓ threshold=None validated")
+
+    # Clean up test data
+    await store.delete([node.vector_id for node in threshold_nodes])
+    logger.info("Cleaned up test nodes")
+
+    logger.info("✓ Search with threshold test passed")
+
+
 async def test_get_by_id(store: BaseVectorStore, _store_name: str):
     """Test retrieving nodes by vector_id (single and batch)."""
     logger.info("=" * 20 + " GET BY ID TEST " + "=" * 20)
@@ -1671,6 +1845,7 @@ async def run_all_tests_for_store(store_type: str, store_name: str):
         await test_search_with_single_filter(store, store_name)
         await test_search_with_exact_match_filter(store, store_name)
         await test_search_with_multiple_filters(store, store_name)
+        await test_search_with_threshold(store, store_name)
         await test_get_by_id(store, store_name)
         await test_list_all(store, store_name)
         await test_list_with_filters(store, store_name)

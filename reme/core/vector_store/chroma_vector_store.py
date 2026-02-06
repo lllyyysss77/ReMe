@@ -307,13 +307,27 @@ class ChromaVectorStore(BaseVectorStore):
         self,
         query: str,
         limit: int = 5,
+        candidates: int | None = None,
         filters: dict | None = None,
+        threshold: float | None = None,
         **kwargs,
     ) -> list[VectorNode]:
-        """Search for the most similar vector nodes based on a text query."""
+        """Search for the most similar vector nodes based on a text query.
+
+        When threshold is None, uses default behavior.
+        When threshold is set, searches max(candidates, limit) nodes,
+        filters by threshold, then returns top limit results.
+        """
         query_vector = await self.get_embedding(query)
         where_clause = self._generate_where_clause(filters)
         include_embeddings = kwargs.get("include_embeddings", False)
+
+        # When threshold is set, search more candidates
+        if threshold is not None:
+            effective_candidates = candidates if candidates is not None else limit * 2
+            search_limit = max(effective_candidates, limit)
+        else:
+            search_limit = limit
 
         def _search():
             include: list = ["documents", "metadatas", "distances"]
@@ -321,7 +335,7 @@ class ChromaVectorStore(BaseVectorStore):
                 include.append("embeddings")
             return self.collection.query(
                 query_embeddings=[query_vector],
-                n_results=limit,
+                n_results=search_limit,
                 where=where_clause,
                 include=include,
             )
@@ -329,9 +343,11 @@ class ChromaVectorStore(BaseVectorStore):
         results = await self._run_sync_in_executor(_search)
         nodes = self._parse_results(results, include_score=True)
 
-        score_threshold = kwargs.get("score_threshold")
-        if score_threshold is not None:
-            nodes = [n for n in nodes if n.metadata.get("score", 0) >= score_threshold]
+        # Apply threshold filtering if specified
+        if threshold is not None:
+            nodes = [n for n in nodes if n.metadata.get("score", 0) >= threshold]
+            nodes = nodes[:limit]
+
         return nodes
 
     async def delete(self, vector_ids: str | list[str], **kwargs):

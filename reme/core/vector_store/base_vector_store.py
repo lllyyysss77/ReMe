@@ -73,8 +73,21 @@ class BaseVectorStore(ABC):
         """Add one or more vector nodes into the current collection."""
 
     @abstractmethod
-    async def search(self, query: str, limit: int = 5, filters: dict | None = None, **kwargs) -> list[VectorNode]:
-        """Find the most similar vector nodes based on a text query."""
+    async def search(
+        self,
+        query: str,
+        limit: int = 5,
+        candidates: int | None = None,
+        filters: dict | None = None,
+        threshold: float | None = None,
+        **kwargs,
+    ) -> list[VectorNode]:
+        """Find the most similar vector nodes based on a text query.
+
+        When threshold is None, uses default behavior.
+        When threshold is set, searches max(candidates, limit) nodes,
+        filters by threshold, then returns top limit results.
+        """
 
     @abstractmethod
     async def delete(self, vector_ids: str | list[str], **kwargs) -> None:

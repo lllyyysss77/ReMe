@@ -1,6 +1,7 @@
 """Common utility functions"""
 
 import asyncio
+import hashlib
 from collections.abc import AsyncGenerator, Coroutine
 from typing import Any
 
@@ -81,3 +82,15 @@ async def execute_stream_task(
         # Ensure task is cancelled if still running to avoid resource leaks
         if not task.done():
             task.cancel()
+
+
+def hash_text(text: str) -> str:
+    """Generate SHA-256 hash of text content.
+
+    Args:
+        text: Input text to hash
+
+    Returns:
+        Hexadecimal representation of the SHA-256 hash
+    """
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()

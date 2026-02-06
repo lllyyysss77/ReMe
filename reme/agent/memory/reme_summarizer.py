@@ -74,22 +74,25 @@ class ReMeSummarizer(BaseMemoryAgent):
     async def execute(self):
         result = await super().execute()
         tools: list[BaseTool] = result["tools"]
-        delegate_task_tool = tools[0]
-        agents: list[BaseMemoryAgent] = delegate_task_tool.response.metadata["agents"]
 
         success = True
         messages = []
-        tools = []
+        tools_result = []
         memory_nodes = []
-        for agent in agents:
-            success = success and agent.response.success
-            messages.extend(agent.response.metadata["messages"])
-            tools.extend(agent.response.metadata["tools"])
-            memory_nodes.extend(agent.response.metadata["memory_nodes"])
+
+        if tools:
+            delegate_task_tool = tools[0]
+            agents: list[BaseMemoryAgent] = delegate_task_tool.response.metadata["agents"]
+
+            for agent in agents:
+                success = success and agent.response.success
+                messages.extend(agent.response.metadata["messages"])
+                tools_result.extend(agent.response.metadata["tools"])
+                memory_nodes.extend(agent.response.metadata["memory_nodes"])
 
         return {
             "answer": memory_nodes,
             "success": True,
             "messages": messages,
-            "tools": tools,
+            "tools": tools_result,
         }

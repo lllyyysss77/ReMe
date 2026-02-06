@@ -36,10 +36,12 @@ class RegistryFactory:
         self.llm = Registry()
         self.embedding_model = Registry()
         self.vector_store = Registry()
+        self.memory_store = Registry()
         self.op = Registry()
         self.flow = Registry()
         self.service = Registry()
         self.token_counter = Registry()
+        self.file_watcher = Registry()
 
 
 R = RegistryFactory()

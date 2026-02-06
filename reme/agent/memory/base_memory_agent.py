@@ -66,7 +66,7 @@ class BaseMemoryAgent(BaseReact, metaclass=ABCMeta):
         lines = []
         for memory_target, memory_type in self.memory_target_type_mapping.items():
             line = {
-                "agent": f"Agent managing {memory_type} memories for {memory_target}",
+                "agent": f"Agent managing {memory_type.value} memories for {memory_target}",
                 "memory_target": memory_target,
             }
             lines.append(json.dumps(line, ensure_ascii=False))

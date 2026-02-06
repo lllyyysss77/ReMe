@@ -68,25 +68,27 @@ class ReMeRetriever(BaseMemoryAgent):
     async def execute(self):
         result = await super().execute()
         tools: list[BaseTool] = result["tools"]
-        delegate_task_tool = tools[0]
-        agents: list[BaseMemoryAgent] = delegate_task_tool.response.metadata["agents"]
 
         answer = []
         success = True
         messages = []
-        tools = []
+        tools_result = []
         retrieved_nodes = []
-        for agent in agents:
-            answer.append(agent.response.answer)
-            success = success and agent.response.success
-            messages.extend(agent.response.metadata["messages"])
-            tools.extend(agent.response.metadata["tools"])
-            retrieved_nodes.extend(agent.response.metadata["retrieved_nodes"])
+
+        if tools:
+            delegate_task_tool = tools[0]
+            agents: list[BaseMemoryAgent] = delegate_task_tool.response.metadata["agents"]
+            for agent in agents:
+                answer.append(agent.response.answer)
+                success = success and agent.response.success
+                messages.extend(agent.response.metadata["messages"])
+                tools_result.extend(agent.response.metadata["tools"])
+                retrieved_nodes.extend(agent.response.metadata["retrieved_nodes"])
 
         return {
             "answer": "\n".join(answer),
             "success": True,
             "messages": messages,
-            "tools": tools,
+            "tools": tools_result,
             "retrieved_nodes": retrieved_nodes,
         }

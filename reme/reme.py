@@ -20,7 +20,7 @@ from .agent.memory import (
 )
 from .config import ReMeConfigParser
 from .core import Application
-from .core.enumeration import MemoryType
+from .core.enumeration import MemoryType, Role
 from .core.schema import Message, MemoryNode
 from .tool.memory import (
     RetrieveMemory,
@@ -59,7 +59,7 @@ class ReMe(Application):
         target_user_names: list[str] | None = None,
         target_task_names: list[str] | None = None,
         target_tool_names: list[str] | None = None,
-        profile_dir: str = "reme_profile",
+        profile_dir: str = ".reme/profile",
         **kwargs,
     ):
         """Initialize ReMe with config.
@@ -83,11 +83,14 @@ class ReMe(Application):
 
         Example:
             ```python
-            reme = await ReMe(...).start()
+            reme = ReMe(...)
+            await reme.start()
             # reme = await ReMe.create(...)  # both ok
 
             await reme.summarize_memory(...)
             await reme.retrieve_memory(...)
+
+            await reme.close()
             ```
 
         """
@@ -308,7 +311,8 @@ class ReMe(Application):
         if user_name:
             if isinstance(user_name, str):
                 for message in format_messages:
-                    message.name = user_name
+                    if message.role is Role.USER:
+                        message.name = user_name
                 self._add_meta_memory(MemoryType.PERSONAL, user_name)
                 memory_targets.append(user_name)
             elif isinstance(user_name, list):

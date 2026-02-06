@@ -1,6 +1,10 @@
 """schema"""
 
+from .file_metadata import FileMetadata
+from .memory_chunk import MemoryChunk
+from .memory_index_meta import MemoryIndexMeta
 from .memory_node import MemoryNode
+from .memory_search_result import MemorySearchResult
 from .message import ContentBlock, Message, Trajectory
 from .request import Request
 from .response import Response
@@ -17,16 +21,22 @@ from .service_config import (
 )
 from .stream_chunk import StreamChunk
 from .tool_call import ToolAttr, ToolCall
+from .truncation_result import TruncationResult
 from .vector_node import VectorNode
 
 __all__ = [
-    "MemoryNode",
+    "CmdConfig",
     "ContentBlock",
     "EmbeddingModelConfig",
+    "FileMetadata",
     "FlowConfig",
     "HttpConfig",
     "LLMConfig",
     "MCPConfig",
+    "MemoryChunk",
+    "MemoryIndexMeta",
+    "MemoryNode",
+    "MemorySearchResult",
     "Message",
     "Request",
     "Response",
@@ -36,7 +46,7 @@ __all__ = [
     "Trajectory",
     "ToolAttr",
     "ToolCall",
+    "TruncationResult",
     "VectorNode",
     "VectorStoreConfig",
-    "CmdConfig",
 ]

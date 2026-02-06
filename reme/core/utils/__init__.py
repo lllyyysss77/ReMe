@@ -3,7 +3,7 @@
 from .cache_handler import CacheHandler
 from .case_converter import snake_to_camel, camel_to_snake
 from .chunking_utils import chunk_markdown
-from .common_utils import run_coro_safely, execute_stream_task, hash_text
+from .common_utils import run_coro_safely, execute_stream_task, hash_text, cosine_similarity, batch_cosine_similarity
 from .env_utils import load_env
 from .execute_utils import exec_code, run_shell_command
 from .http_client import HttpClient
@@ -24,6 +24,8 @@ __all__ = [
     "run_coro_safely",
     "execute_stream_task",
     "hash_text",
+    "cosine_similarity",
+    "batch_cosine_similarity",
     "load_env",
     "exec_code",
     "run_shell_command",

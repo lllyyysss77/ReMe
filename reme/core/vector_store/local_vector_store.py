@@ -9,6 +9,7 @@ from loguru import logger
 from .base_vector_store import BaseVectorStore
 from ..embedding import BaseEmbeddingModel
 from ..schema import VectorNode
+from ..utils import cosine_similarity
 
 
 class LocalVectorStore(BaseVectorStore):
@@ -78,21 +79,6 @@ class LocalVectorStore(BaseVectorStore):
                 logger.warning(f"Failed to load node from {file_path}: {e}")
 
         return nodes
-
-    @staticmethod
-    def _cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
-        """Calculate the cosine similarity between two numeric vectors."""
-        if len(vec1) != len(vec2):
-            raise ValueError(f"Vectors must have same length: {len(vec1)} != {len(vec2)}")
-
-        dot_product = sum(a * b for a, b in zip(vec1, vec2))
-        magnitude1 = sum(a * a for a in vec1) ** 0.5
-        magnitude2 = sum(b * b for b in vec2) ** 0.5
-
-        if magnitude1 == 0 or magnitude2 == 0:
-            return 0.0
-
-        return dot_product / (magnitude1 * magnitude2)
 
     @staticmethod
     def _match_filters(node: VectorNode, filters: dict | None) -> bool:
@@ -208,7 +194,7 @@ class LocalVectorStore(BaseVectorStore):
                 continue
 
             try:
-                score = self._cosine_similarity(query_vector, node.vector)
+                score = cosine_similarity(query_vector, node.vector)
                 scored_nodes.append((node, score))
             except ValueError as e:
                 logger.warning(f"Failed to calculate similarity for node {node.vector_id}: {e}")

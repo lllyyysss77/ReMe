@@ -3,7 +3,6 @@
 import os
 from typing import AsyncGenerator
 
-import litellm
 from loguru import logger
 
 from .base_llm import BaseLLM
@@ -88,6 +87,8 @@ class LiteLLM(BaseLLM):
         stream_kwargs: dict | None = None,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Execute async streaming chat requests and yield processed response chunks."""
+        import litellm
+
         stream_kwargs = stream_kwargs or {}
         completion = await litellm.acompletion(**stream_kwargs)
         ret_tool_calls: list[ToolCall] = []

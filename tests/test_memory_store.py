@@ -21,8 +21,8 @@ from loguru import logger
 
 from reme.core.embedding import OpenAIEmbeddingModel
 from reme.core.enumeration.memory_source import MemorySource
-from reme.core.memory_storage.base_memory_store import BaseMemoryStore
-from reme.core.memory_storage.sqlite_memory_store import SqliteMemoryStore
+from reme.core.memory_store.base_memory_store import BaseMemoryStore
+from reme.core.memory_store.sqlite_memory_store import SqliteMemoryStore
 from reme.core.schema.file_metadata import FileMetadata
 from reme.core.schema.memory_chunk import MemoryChunk
 from reme.core.utils import load_env

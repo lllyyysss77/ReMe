@@ -7,7 +7,7 @@ from .embedding import BaseEmbeddingModel
 from .file_watcher import BaseFileWatcher
 from .flow import BaseFlow
 from .llm import BaseLLM
-from .memory_storage import BaseMemoryStore
+from .memory_store import BaseMemoryStore
 from .schema import Response
 from .token_counter import BaseTokenCounter
 from .utils import execute_stream_task, PydanticConfigParser

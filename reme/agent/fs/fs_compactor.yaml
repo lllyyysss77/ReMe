@@ -210,3 +210,19 @@ turn_prefix_summarization_zh: |
   - [理解保留的最近工作所需的信息]
 
   保持简洁。专注于理解保留后缀所需的内容。
+
+# Format for wrapping the compaction summary when presenting to LLM
+# This matches the TypeScript format: COMPACTION_SUMMARY_PREFIX + summary + COMPACTION_SUMMARY_SUFFIX
+compaction_summary_format: |
+  The conversation history before this point was compacted into the following summary:
+
+  <summary>
+  {summary}
+  </summary>
+
+compaction_summary_format_zh: |
+  此点之前的对话历史已被压缩为以下摘要：
+
+  <summary>
+  {summary}
+  </summary>

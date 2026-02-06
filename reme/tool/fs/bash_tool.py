@@ -11,8 +11,8 @@ import platform
 import signal
 from pathlib import Path
 
+from .base_fs_tool import BaseFsTool
 from .truncate import DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncate_tail
-from ...core.op import BaseTool
 from ...core.schema import ToolCall, TruncationResult
 
 
@@ -53,7 +53,7 @@ def kill_process_tree(pid: int) -> None:
         pass  # Best effort
 
 
-class BashTool(BaseTool):
+class BashTool(BaseFsTool):
     """Production-grade tool for executing bash commands.
 
     Features:
@@ -118,41 +118,35 @@ class BashTool(BaseTool):
         shell, shell_args = get_shell_config()
 
         # Start process
-        try:
-            process = await asyncio.create_subprocess_exec(
-                shell,
-                *shell_args,
-                command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=self.cwd,
-                # Create process group for clean termination
-                preexec_fn=os.setpgrp if platform.system() != "Windows" else None,
-            )
-        except Exception as e:
-            raise RuntimeError(f"Failed to start process: {e}") from e
+        process = await asyncio.create_subprocess_exec(
+            shell,
+            *shell_args,
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=self.cwd,
+            # Create process group for clean termination
+            preexec_fn=os.setpgrp if platform.system() != "Windows" else None,
+        )
 
         # Execute command with optional timeout
-        try:
-            if timeout and timeout > 0:
+        if timeout and timeout > 0:
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(),
+                    timeout=timeout,
+                )
+            except asyncio.TimeoutError as e:
+                # Kill process tree on timeout
+                if process.pid:
+                    kill_process_tree(process.pid)
                 try:
-                    stdout, stderr = await asyncio.wait_for(
-                        process.communicate(),
-                        timeout=timeout,
-                    )
-                except asyncio.TimeoutError as e:
-                    # Kill process tree on timeout
-                    if process.pid:
-                        kill_process_tree(process.pid)
-                    try:
-                        await asyncio.wait_for(process.wait(), timeout=1.0)
-                    except asyncio.TimeoutError:
-                        process.kill()
-                    raise TimeoutError(f"Command timed out after {timeout} seconds") from e
-            else:
-                stdout, stderr = await process.communicate()
-        except TimeoutError as e:
-            raise RuntimeError(str(e)) from e
+                    await asyncio.wait_for(process.wait(), timeout=1.0)
+                except asyncio.TimeoutError:
+                    process.kill()
+                raise TimeoutError(f"Command timed out after {timeout} seconds") from e
+        else:
+            stdout, stderr = await process.communicate()
 
         # Decode output
         full_output = stdout.decode("utf-8", errors="ignore")

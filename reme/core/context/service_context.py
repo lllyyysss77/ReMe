@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from ..llm import BaseLLM
     from ..embedding import BaseEmbeddingModel
     from ..vector_store import BaseVectorStore
-    from ..memory_storage import BaseMemoryStore
+    from ..memory_store import BaseMemoryStore
     from ..token_counter import BaseTokenCounter
     from ..flow import BaseFlow
     from ..service import BaseService
@@ -45,24 +45,39 @@ class ServiceContext(BaseContext):
         **kwargs,
     ):
         super().__init__()
-        self.service_config: ServiceConfig = self._build_service_config(
-            *args,
-            llm_api_key=llm_api_key,
-            llm_api_base=llm_api_base,
-            embedding_api_key=embedding_api_key,
-            embedding_api_base=embedding_api_base,
-            service_config=service_config,
-            parser=parser,
-            config_path=config_path,
-            enable_logo=enable_logo,
-            llm=llm,
-            embedding_model=embedding_model,
-            vector_store=vector_store,
-            memory_store=memory_store,
-            token_counter=token_counter,
-            file_watcher=file_watcher,
-            **kwargs,
-        )
+
+        load_env()
+        self._update_env("REME_LLM_API_KEY", llm_api_key)
+        self._update_env("REME_LLM_BASE_URL", llm_api_base)
+        self._update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
+        self._update_env("REME_EMBEDDING_BASE_URL", embedding_api_base)
+
+        if service_config is None:
+            parser_class = parser if parser is not None else PydanticConfigParser
+            parser = parser_class(ServiceConfig)
+            input_args = []
+            if config_path:
+                input_args.append(f"config={config_path}")
+            if args:
+                input_args.extend(args)
+
+            if llm:
+                self._update_section_config(kwargs, "llm", **llm)
+            if embedding_model:
+                self._update_section_config(kwargs, "embedding_model", **embedding_model)
+            if token_counter:
+                self._update_section_config(kwargs, "token_counter", **token_counter)
+            if vector_store:
+                self._update_section_config(kwargs, "vector_store", **vector_store)
+            if memory_store:
+                self._update_section_config(kwargs, "memory_store", **memory_store)
+            if file_watcher:
+                self._update_section_config(kwargs, "file_watcher", **file_watcher)
+            kwargs["enable_logo"] = enable_logo
+            logger.info(f"update with args: {input_args} kwargs: {kwargs}")
+            service_config = parser.parse_args(*input_args, **kwargs)
+
+        self.service_config: ServiceConfig = service_config
 
         if self.service_config.init_logger:
             init_logger()
@@ -92,57 +107,6 @@ class ServiceContext(BaseContext):
 
         self._build_flows()
 
-    def _build_service_config(
-        self,
-        *args,
-        llm_api_key: str | None = None,
-        llm_api_base: str | None = None,
-        embedding_api_key: str | None = None,
-        embedding_api_base: str | None = None,
-        service_config: ServiceConfig | None = None,
-        parser: type[PydanticConfigParser] | None = None,
-        config_path: str | None = None,
-        enable_logo: bool = True,
-        llm: dict | None = None,
-        embedding_model: dict | None = None,
-        vector_store: dict | None = None,
-        memory_store: dict | None = None,
-        token_counter: dict | None = None,
-        file_watcher: dict | None = None,
-        **kwargs,
-    ) -> ServiceConfig:
-
-        load_env()
-        self._update_env("REME_LLM_API_KEY", llm_api_key)
-        self._update_env("REME_LLM_BASE_URL", llm_api_base)
-        self._update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
-        self._update_env("REME_EMBEDDING_BASE_URL", embedding_api_base)
-
-        if service_config is None:
-            parser_class = parser if parser is not None else PydanticConfigParser
-            parser = parser_class(ServiceConfig)
-            input_args = []
-            if config_path:
-                input_args.append(f"config={config_path}")
-            if args:
-                input_args.extend(args)
-            service_config = parser.parse_args(*input_args, **kwargs)
-
-        service_config.enable_logo = enable_logo
-        if llm:
-            self._update_section_config(service_config, "llm", **llm)
-        if embedding_model:
-            self._update_section_config(service_config, "embedding_model", **embedding_model)
-        if token_counter:
-            self._update_section_config(service_config, "token_counter", **token_counter)
-        if vector_store:
-            self._update_section_config(service_config, "vector_store", **vector_store)
-        if memory_store:
-            self._update_section_config(service_config, "memory_store", **memory_store)
-        if file_watcher:
-            self._update_section_config(service_config, "file_watcher", **file_watcher)
-        return service_config
-
     @staticmethod
     def _update_env(key: str, value: str | None):
         """Update environment variable if value is provided."""
@@ -150,13 +114,13 @@ class ServiceContext(BaseContext):
             os.environ[key] = value
 
     @staticmethod
-    def _update_section_config(service_config: ServiceConfig, section_name: str, **kwargs):
+    def _update_section_config(config: dict, section_name: str, **kwargs):
         """Update a specific section of the service config with new values."""
-        section_dict: dict = getattr(service_config, section_name)
-        if "default" not in section_dict:
-            raise KeyError(f"Default `{section_name}` config not found")
-        current_config = section_dict["default"]
-        section_dict["default"] = current_config.model_copy(update=kwargs, deep=True)
+        if section_name not in config:
+            config[section_name] = {}
+        if "default" not in config[section_name]:
+            config[section_name]["default"] = {}
+        config[section_name]["default"].update(kwargs)
 
     def _build_flows(self):
         expression_flow_cls = None

@@ -3,12 +3,12 @@
 import os
 from pathlib import Path
 
+from .base_fs_tool import BaseFsTool
 from .truncate import FIND_MAX_BYTES, FIND_MAX_LINES, format_size, truncate_head
-from ...core.op import BaseTool
 from ...core.schema import ToolCall
 
 
-class FindTool(BaseTool):
+class FindTool(BaseFsTool):
     """Search for files by glob pattern, respecting .gitignore."""
 
     def __init__(self, cwd: str | None = None):
@@ -131,28 +131,25 @@ class FindTool(BaseTool):
 
         # Search for files
         results = []
-        try:
-            for file_path in search_path.glob(pattern):
-                if len(results) >= limit:
-                    break
+        for file_path in search_path.glob(pattern):
+            if len(results) >= limit:
+                break
 
-                # Skip if matches ignore patterns
-                if self._should_ignore(file_path, ignore_patterns):
-                    continue
+            # Skip if matches ignore patterns
+            if self._should_ignore(file_path, ignore_patterns):
+                continue
 
-                # Get relative path
-                try:
-                    rel_path = file_path.relative_to(search_path)
-                    # Add trailing slash for directories
-                    if file_path.is_dir():
-                        results.append(f"{rel_path}/")
-                    else:
-                        results.append(str(rel_path))
-                except ValueError:
-                    # If relative_to fails, use the path as-is
-                    results.append(str(file_path))
-        except Exception as e:
-            raise RuntimeError(f"Error searching for files: {e}") from e
+            # Get relative path
+            try:
+                rel_path = file_path.relative_to(search_path)
+                # Add trailing slash for directories
+                if file_path.is_dir():
+                    results.append(f"{rel_path}/")
+                else:
+                    results.append(str(rel_path))
+            except ValueError:
+                # If relative_to fails, use the path as-is
+                results.append(str(file_path))
 
         # Handle no results
         if not results:

@@ -1,4 +1,4 @@
-"""Memory storage module for persistent memory management.
+"""Memory store module for persistent memory management.
 
 This module provides storage backends for memory chunks and file metadata,
 including SQLite-based implementations with vector and full-text search.

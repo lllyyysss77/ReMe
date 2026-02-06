@@ -1,5 +1,6 @@
 """schema"""
 
+from .compaction_result import CutPointResult
 from .file_metadata import FileMetadata
 from .memory_chunk import MemoryChunk
 from .memory_node import MemoryNode
@@ -26,6 +27,7 @@ from .vector_node import VectorNode
 __all__ = [
     "CmdConfig",
     "ContentBlock",
+    "CutPointResult",
     "EmbeddingModelConfig",
     "FileMetadata",
     "FlowConfig",

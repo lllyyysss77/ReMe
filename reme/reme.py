@@ -251,7 +251,7 @@ class ReMe(Application):
                         enable_when_to_use=False,
                         enable_multiple=True,
                     ),
-                    UpdateMemoryV1(
+                    AddMemory(
                         enable_thinking_params=enable_thinking_params,
                         enable_memory_target=False,
                         enable_when_to_use=False,

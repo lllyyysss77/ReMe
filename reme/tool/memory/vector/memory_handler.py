@@ -1,8 +1,12 @@
 """Memory handler"""
 
+import numpy as np
+from loguru import logger
+
 from ....core.context import ServiceContext
 from ....core.enumeration import MemoryType
 from ....core.schema import MemoryNode
+from ....core.utils.common_utils import batch_cosine_similarity
 from ....core.vector_store import BaseVectorStore
 
 
@@ -195,17 +199,77 @@ class MemoryHandler:
 
         return list(seen_ids.values())
 
-    async def batch_search(self, searches: list[dict]) -> list[MemoryNode]:
+    async def batch_search(self, searches: list[dict], hybrid_threshold: float = None) -> list[MemoryNode]:
         """Execute multiple search queries in batch and return deduplicated results."""
-        seen_ids: dict[str, MemoryNode] = {}
+        if hybrid_threshold is not None:
+            # Extract query list from searches
+            query_list: list[str] = [search["query"] for search in searches]
 
-        for search_params in searches:
-            search_result = await self.search(**search_params)
-            for memory_node in search_result:
-                if memory_node.memory_id not in seen_ids:
-                    seen_ids[memory_node.memory_id] = memory_node
+            # Step 1: Get embeddings for all queries using the embedding model
+            # Shape: [query_size X emb_size]
+            embedding_model = self.vector_store.embedding_model
+            query_embeddings_list: list[list[float]] = await embedding_model.get_embeddings(query_list)
+            query_embeddings = np.array(query_embeddings_list)  # Convert to numpy array
 
-        return list(seen_ids.values())
+            # Step 2: Use self.search to get search results for each query and deduplicate
+            seen_ids: dict[str, MemoryNode] = {}
+            for search_params in searches:
+                search_result = await self.search(**search_params)
+                for memory_node in search_result:
+                    if memory_node.memory_id not in seen_ids:
+                        seen_ids[memory_node.memory_id] = memory_node
+
+            # Step 3: Get deduplicated results
+            deduplicated_results = list(seen_ids.values())
+
+            # If no results, return empty list
+            if not deduplicated_results:
+                return []
+
+            # Step 4: Extract embeddings from results
+            # Shape: [result_size X emb_size]
+            result_embeddings_list = [node.vector for node in deduplicated_results if node.vector]
+
+            # Filter out nodes without embeddings
+            results_with_embeddings = [node for node in deduplicated_results if node.vector]
+
+            if not result_embeddings_list:
+                logger.warning("No results with embeddings found")
+                return deduplicated_results
+
+            result_embeddings = np.array(result_embeddings_list)
+
+            # Step 5: Compute cosine similarity matrix
+            # Shape: [query_size X result_size]
+            similarity_matrix = batch_cosine_similarity(query_embeddings, result_embeddings)
+
+            # Step 6: Calculate average score for each result across all queries
+            # Shape: [result_size]
+            avg_scores = np.mean(similarity_matrix, axis=0)
+
+            # Step 7: Filter results by hybrid_threshold and sort by average score
+            filtered_results = []
+            for idx, node in enumerate(results_with_embeddings):
+                if avg_scores[idx] >= hybrid_threshold:
+                    node.score = float(avg_scores[idx])
+                    filtered_results.append(node)
+
+            # Sort by score in descending order
+            filtered_results.sort(key=lambda x: x.score, reverse=True)
+
+            return filtered_results
+
+        else:
+            # Original behavior: simple deduplication without hybrid scoring
+            seen_ids: dict[str, MemoryNode] = {}
+
+            for search_params in searches:
+                search_result = await self.search(**search_params)
+                for memory_node in search_result:
+                    if memory_node.memory_id not in seen_ids:
+                        seen_ids[memory_node.memory_id] = memory_node
+
+            return list(seen_ids.values())
 
     async def list(
         self,

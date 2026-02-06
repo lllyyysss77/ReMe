@@ -15,10 +15,11 @@ if TYPE_CHECKING:
     from ..llm import BaseLLM
     from ..embedding import BaseEmbeddingModel
     from ..vector_store import BaseVectorStore
+    from ..memory_storage import BaseMemoryStore
     from ..token_counter import BaseTokenCounter
     from ..flow import BaseFlow
     from ..service import BaseService
-    from ..memory_storage import BaseMemoryStore
+    from ..file_watcher import BaseFileWatcher
 
 
 class ServiceContext(BaseContext):
@@ -38,7 +39,9 @@ class ServiceContext(BaseContext):
         llm: dict | None = None,
         embedding_model: dict | None = None,
         vector_store: dict | None = None,
+        memory_store: dict | None = None,
         token_counter: dict | None = None,
+        file_watcher: dict | None = None,
         **kwargs,
     ):
         super().__init__()
@@ -55,7 +58,9 @@ class ServiceContext(BaseContext):
             llm=llm,
             embedding_model=embedding_model,
             vector_store=vector_store,
+            memory_store=memory_store,
             token_counter=token_counter,
+            file_watcher=file_watcher,
             **kwargs,
         )
 
@@ -79,6 +84,7 @@ class ServiceContext(BaseContext):
         self.token_counters: dict[str, "BaseTokenCounter"] = {}
         self.vector_stores: dict[str, "BaseVectorStore"] = {}
         self.memory_stores: dict[str, "BaseMemoryStore"] = {}
+        self.file_watchers: dict[str, "BaseFileWatcher"] = {}
 
         self.flows: dict[str, "BaseFlow"] = {}
         self.mcp_server_mapping: dict[str, dict] = {}
@@ -100,7 +106,9 @@ class ServiceContext(BaseContext):
         llm: dict | None = None,
         embedding_model: dict | None = None,
         vector_store: dict | None = None,
+        memory_store: dict | None = None,
         token_counter: dict | None = None,
+        file_watcher: dict | None = None,
         **kwargs,
     ) -> ServiceConfig:
 
@@ -118,9 +126,7 @@ class ServiceContext(BaseContext):
                 input_args.append(f"config={config_path}")
             if args:
                 input_args.extend(args)
-            if kwargs:
-                input_args.extend([f"{k}={v}" for k, v in kwargs.items()])
-            service_config = parser.parse_args(*input_args)
+            service_config = parser.parse_args(*input_args, **kwargs)
 
         service_config.enable_logo = enable_logo
         if llm:
@@ -131,6 +137,10 @@ class ServiceContext(BaseContext):
             self._update_section_config(service_config, "token_counter", **token_counter)
         if vector_store:
             self._update_section_config(service_config, "vector_store", **vector_store)
+        if memory_store:
+            self._update_section_config(service_config, "memory_store", **memory_store)
+        if file_watcher:
+            self._update_section_config(service_config, "file_watcher", **file_watcher)
         return service_config
 
     @staticmethod
@@ -200,9 +210,24 @@ class ServiceContext(BaseContext):
             self.memory_stores[name] = R.memory_store[config.backend](
                 store_name=config.store_name,
                 embedding_model=self.embedding_models[config.embedding_model],
+                fts_enabled=config.fts_enabled,
+                snippet_max_chars=config.snippet_max_chars,
                 **config.model_extra,
             )
             await self.memory_stores[name].start()
+
+        for name, config in self.service_config.file_watcher.items():
+            self.file_watchers[name] = R.file_watcher[config.backend](
+                watch_paths=config.watch_paths,
+                suffix_filters=config.suffix_filters,
+                recursive=config.recursive,
+                debounce=config.debounce,
+                chunk_tokens=config.chunk_tokens,
+                chunk_overlap=config.chunk_overlap,
+                memory_store=self.memory_stores[config.memory_store],
+                **config.model_extra,
+            )
+            await self.file_watchers[name].start()
 
         if self.service_config.mcp_servers:
             await self.prepare_mcp_servers()

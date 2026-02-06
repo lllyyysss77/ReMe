@@ -85,6 +85,8 @@ class MemoryStoreConfig(BaseModel):
     backend: str = Field(default="sqlite")
     store_name: str = Field(default="reme")
     embedding_model: str = Field(default="default")
+    fts_enabled: bool = Field(default=True)
+    snippet_max_chars: int = Field(default=700)
 
 
 class TokenCounterConfig(BaseModel):
@@ -94,6 +96,20 @@ class TokenCounterConfig(BaseModel):
 
     backend: str = Field(default="base")
     model_name: str = Field(default="")
+
+
+class FileWatcherConfig(BaseModel):
+    """Configuration for file watcher service."""
+
+    model_config = ConfigDict(extra="allow")
+
+    watch_paths: list[str] = Field(default_factory=list)
+    suffix_filters: list[str] = Field(default_factory=list)
+    recursive: bool = Field(default=False)
+    debounce: int = Field(default=500)
+    chunk_tokens: int = Field(default=400)
+    chunk_overlap: int = Field(default=80)
+    memory_store: str = Field(default="default")
 
 
 class ServiceConfig(BaseModel):
@@ -121,3 +137,4 @@ class ServiceConfig(BaseModel):
     vector_store: dict[str, VectorStoreConfig] = Field(default_factory=dict)
     memory_store: dict[str, MemoryStoreConfig] = Field(default_factory=dict)
     token_counter: dict[str, TokenCounterConfig] = Field(default_factory=dict)
+    file_watcher: dict[str, FileWatcherConfig] = Field(default_factory=dict)

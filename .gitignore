@@ -42,3 +42,4 @@ meta_memory/*
 **/data/*.json
 *.db
 memories/*
+.reme/*

@@ -4,8 +4,10 @@ import asyncio
 
 from .context import PromptHandler, ServiceContext
 from .embedding import BaseEmbeddingModel
+from .file_watcher import BaseFileWatcher
 from .flow import BaseFlow
 from .llm import BaseLLM
+from .memory_storage import BaseMemoryStore
 from .schema import Response
 from .token_counter import BaseTokenCounter
 from .utils import execute_stream_task, PydanticConfigParser
@@ -27,7 +29,9 @@ class Application:
         llm: dict | None = None,
         embedding_model: dict | None = None,
         vector_store: dict | None = None,
+        memory_store: dict | None = None,
         token_counter: dict | None = None,
+        file_watcher: dict | None = None,
         **kwargs,
     ):
         self.service_context = ServiceContext(
@@ -43,7 +47,9 @@ class Application:
             llm=llm,
             embedding_model=embedding_model,
             vector_store=vector_store,
+            memory_store=memory_store,
             token_counter=token_counter,
+            file_watcher=file_watcher,
             **kwargs,
         )
         self.prompt_handler = PromptHandler(language=self.service_context.language)
@@ -62,7 +68,9 @@ class Application:
         llm: dict | None = None,
         embedding_model: dict | None = None,
         vector_store: dict | None = None,
+        memory_store: dict | None = None,
         token_counter: dict | None = None,
+        file_watcher: dict | None = None,
         **kwargs,
     ) -> "Application":
         """Create and start an Application instance asynchronously."""
@@ -77,7 +85,9 @@ class Application:
             llm=llm,
             embedding_model=embedding_model,
             vector_store=vector_store,
+            memory_store=memory_store,
             token_counter=token_counter,
+            file_watcher=file_watcher,
             **kwargs,
         )
         await instance.start()
@@ -144,6 +154,16 @@ class Application:
     def vector_store(self) -> BaseVectorStore:
         """Get the default vector store instance."""
         return self.service_context.vector_stores.get("default")
+
+    @property
+    def memory_store(self) -> BaseMemoryStore:
+        """Get the default memory store instance."""
+        return self.service_context.memory_stores.get("default")
+
+    @property
+    def file_watcher(self) -> BaseFileWatcher:
+        """Get the default file watcher instance."""
+        return self.service_context.file_watchers.get("default")
 
     @property
     def token_counter(self) -> BaseTokenCounter:

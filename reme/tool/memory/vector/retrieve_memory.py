@@ -11,11 +11,19 @@ from ....core.utils import deduplicate_memories
 class RetrieveMemory(BaseMemoryTool):
     """Tool to retrieve memories using similarity search"""
 
-    def __init__(self, top_k: int = 20, enable_memory_target: bool = False, enable_time_filter: bool = False, **kwargs):
+    def __init__(
+        self,
+        top_k: int = 20,
+        enable_memory_target: bool = False,
+        enable_time_filter: bool = False,
+        hybrid_threshold: float | None = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.top_k: int = top_k
         self.enable_memory_target: bool = enable_memory_target
         self.enable_time_filter: bool = enable_time_filter
+        self.hybrid_threshold: float | None = hybrid_threshold
 
     def _build_query_parameters(self) -> dict:
         """Build the query parameters schema based on enabled features."""
@@ -111,7 +119,11 @@ class RetrieveMemory(BaseMemoryTool):
         memory_nodes: list[MemoryNode] = []
         for target, searches in queries_by_target.items():
             handler = MemoryHandler(target, self.service_context)
-            nodes = await handler.batch_search(searches)
+            if self.hybrid_threshold is not None:
+                nodes = await handler.batch_search(searches, self.hybrid_threshold)
+                nodes = nodes[: self.top_k]
+            else:
+                nodes = await handler.batch_search(searches)
             memory_nodes.extend(nodes)
 
         memory_nodes = deduplicate_memories(memory_nodes)

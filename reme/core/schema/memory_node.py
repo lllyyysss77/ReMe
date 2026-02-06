@@ -42,6 +42,7 @@ class MemoryNode(BaseModel):
         time_modified: Last modification timestamp.
         author: Author or source of this memory.
         score: Relevance or importance score.
+        vector: Vector embedding of the memory content.
         metadata: Additional metadata for extensibility.
     """
 
@@ -58,6 +59,7 @@ class MemoryNode(BaseModel):
     author: str = Field(default="", description="Author or source of the memory")
     score: float = Field(default=0, description="Relevance or importance score")
 
+    vector: list[float] | None = Field(default=None, description="Vector embedding of the memory content")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     def _update_modified_time(self) -> "MemoryNode":
@@ -145,6 +147,7 @@ class MemoryNode(BaseModel):
         return VectorNode(
             vector_id=self.memory_id,
             content=vector_content,
+            vector=self.vector,
             metadata=metadata,
         )
 
@@ -226,5 +229,6 @@ class MemoryNode(BaseModel):
             time_modified=metadata.pop("time_modified", ""),
             author=metadata.pop("author", ""),
             score=metadata.pop("score", 0),
+            vector=node.vector,
             metadata=metadata,
         )

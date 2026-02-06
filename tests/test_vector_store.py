@@ -26,7 +26,7 @@ from loguru import logger
 
 from reme.core.embedding import OpenAIEmbeddingModel
 from reme.core.schema import VectorNode
-from reme.core.utils import load_env
+from reme.core.utils import load_env, cosine_similarity
 from reme.core.vector_store import (
     BaseVectorStore,
     ChromaVectorStore,
@@ -657,19 +657,19 @@ async def test_cosine_similarity(store_name: str):
     vec3 = [1.0, 0.0, 0.0]
 
     # Test perpendicular vectors (similarity = 0)
-    sim1 = LocalVectorStore._cosine_similarity(vec1, vec2)  # pylint: disable=protected-access
+    sim1 = cosine_similarity(vec1, vec2)  # pylint: disable=protected-access
     logger.info(f"Similarity between perpendicular vectors: {sim1:.4f}")
     assert abs(sim1) < 0.0001, "Perpendicular vectors should have similarity close to 0"
 
     # Test identical vectors (similarity = 1)
-    sim2 = LocalVectorStore._cosine_similarity(vec1, vec3)  # pylint: disable=protected-access
+    sim2 = cosine_similarity(vec1, vec3)  # pylint: disable=protected-access
     logger.info(f"Similarity between identical vectors: {sim2:.4f}")
     assert abs(sim2 - 1.0) < 0.0001, "Identical vectors should have similarity close to 1"
 
     # Test with real-world like vectors
     vec4 = [0.5, 0.5, 0.5]
     vec5 = [0.6, 0.4, 0.5]
-    sim3 = LocalVectorStore._cosine_similarity(vec4, vec5)  # pylint: disable=protected-access
+    sim3 = cosine_similarity(vec4, vec5)  # pylint: disable=protected-access
     logger.info(f"Similarity between similar vectors: {sim3:.4f}")
     assert sim3 > 0.9, "Similar vectors should have high similarity"
 

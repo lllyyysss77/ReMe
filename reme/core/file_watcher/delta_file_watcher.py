@@ -29,7 +29,7 @@ class DeltaFileWatcher(BaseFileWatcher):
     - Delete affected old chunks and insert new chunks
     """
 
-    def __init__(self, chunk_tokens: int = 400, chunk_overlap: int = 80, overlap_lines: int = 2, **kwargs):
+    def __init__(self, overlap_lines: int = 2, **kwargs):
         """
         Initialize delta file watcher.
 
@@ -38,10 +38,7 @@ class DeltaFileWatcher(BaseFileWatcher):
             chunk_overlap: Overlap tokens between chunks
         """
         super().__init__(**kwargs)
-        self.chunk_tokens = chunk_tokens
-        self.chunk_overlap = chunk_overlap
         self.overlap_lines = overlap_lines
-
         self.dirty = False
 
     @staticmethod

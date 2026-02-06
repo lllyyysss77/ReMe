@@ -6,7 +6,7 @@ from loguru import logger
 
 from ..base_memory_tool import BaseMemoryTool
 from ....core.schema import MemoryNode, ToolCall, Message
-from ....core.utils import format_messages
+from ....core.utils import format_messages, cosine_similarity
 
 
 class ReadHistoryV2(BaseMemoryTool):
@@ -103,7 +103,7 @@ class ReadHistoryV2(BaseMemoryTool):
             for block in message_blocks:
                 block_text = format_messages(block, add_index=False)
                 block_embedding = await self.embedding_model.get_embedding(block_text)
-                similarity = self._calculate_cosine_similarity(query_embedding, block_embedding)
+                similarity = cosine_similarity(query_embedding, block_embedding)
                 block_similarities.append((similarity, block_text))
 
             block_similarities.sort(key=lambda x: x[0], reverse=True)
@@ -121,22 +121,3 @@ class ReadHistoryV2(BaseMemoryTool):
         history_ids = [item["history_id"] for item in history_items]
         logger.info(f"Successfully read {len(all_results)} history result(s): {history_ids}")
         return output
-
-    @staticmethod
-    def _calculate_cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
-        """Calculate cosine similarity between two vectors"""
-        if len(vec1) != len(vec2):
-            raise ValueError(f"Vectors must have same length: {len(vec1)} != {len(vec2)}")
-
-        try:
-            dot_product = sum(a * b for a, b in zip(vec1, vec2))
-            magnitude1 = sum(a * a for a in vec1) ** 0.5
-            magnitude2 = sum(b * b for b in vec2) ** 0.5
-
-            if magnitude1 == 0 or magnitude2 == 0:
-                return 0.0
-
-            return dot_product / (magnitude1 * magnitude2)
-        except Exception as e:
-            logger.error(f"Error calculating cosine similarity: {e}")
-            return 0.0

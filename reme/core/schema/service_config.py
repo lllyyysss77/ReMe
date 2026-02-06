@@ -98,8 +98,8 @@ class TokenCounterConfig(BaseModel):
     model_name: str = Field(default="")
 
 
-class FileWatchConfig(BaseModel):
-    """Configuration for file watch service."""
+class FileWatcherConfig(BaseModel):
+    """Configuration for file watcher service."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -137,4 +137,4 @@ class ServiceConfig(BaseModel):
     vector_store: dict[str, VectorStoreConfig] = Field(default_factory=dict)
     memory_store: dict[str, MemoryStoreConfig] = Field(default_factory=dict)
     token_counter: dict[str, TokenCounterConfig] = Field(default_factory=dict)
-    file_watch: dict[str, FileWatchConfig] = Field(default_factory=dict)
+    file_watcher: dict[str, FileWatcherConfig] = Field(default_factory=dict)

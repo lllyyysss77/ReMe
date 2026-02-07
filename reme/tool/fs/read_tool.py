@@ -9,8 +9,8 @@ Features:
 import os
 from pathlib import Path
 
+from .base_fs_tool import BaseFsTool
 from .truncate import DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, format_size, truncate_head
-from ...core.op import BaseTool
 from ...core.schema import ToolCall
 
 # Supported image extensions
@@ -29,7 +29,7 @@ def is_image_file(path: str) -> bool:
     return Path(path).suffix.lower() in IMAGE_EXTENSIONS
 
 
-class ReadTool(BaseTool):
+class ReadTool(BaseFsTool):
     """Read file contents with smart truncation.
 
     Features:
@@ -163,24 +163,32 @@ class ReadTool(BaseTool):
         all_lines = content.split("\n")
         total_file_lines = len(all_lines)
 
-        # Apply offset if specified (convert 1-indexed to 0-indexed)
-        start_line = max(0, (offset - 1)) if offset else 0
+        # Validate and apply offset (1-indexed to 0-indexed)
+        if offset is not None:
+            if offset < 1:
+                raise ValueError(f"offset must be >= 1, got {offset}")
+            start_line = offset - 1
+        else:
+            start_line = 0
+
         start_line_display = start_line + 1
 
         # Check offset bounds
-        if start_line >= len(all_lines):
+        if start_line >= total_file_lines:
             raise IndexError(
-                f"Offset {offset} is beyond end of file ({len(all_lines)} lines total)",
+                f"Offset {offset} is beyond end of file ({total_file_lines} lines total)",
             )
 
-        # Apply user limit if specified
+        # Validate and apply limit
         if limit is not None:
-            end_line = min(start_line + limit, len(all_lines))
-            selected_content = "\n".join(all_lines[start_line:end_line])
-            user_limited_lines = end_line - start_line
+            if limit <= 0:
+                raise ValueError(f"limit must be positive, got {limit}")
+            end_line = min(start_line + limit, total_file_lines)
         else:
-            selected_content = "\n".join(all_lines[start_line:])
-            user_limited_lines = None
+            end_line = total_file_lines
+
+        # Extract selected lines
+        selected_content = "\n".join(all_lines[start_line:end_line])
 
         # Apply truncation
         truncation = truncate_head(selected_content)
@@ -205,15 +213,15 @@ class ReadTool(BaseTool):
                     f"of {total_file_lines} ({max_kb}KB limit). "
                     f"Use offset={next_offset} to continue.]"
                 )
-        elif user_limited_lines is not None and start_line + user_limited_lines < len(all_lines):
-            # User limit exceeded, but no truncation
-            remaining = len(all_lines) - (start_line + user_limited_lines)
-            next_offset = start_line + user_limited_lines + 1
+        elif end_line < total_file_lines:
+            # User limit reached but no truncation
+            remaining = total_file_lines - end_line
+            next_offset = end_line + 1
 
             output_text = truncation.content
             output_text += f"\n\n[{remaining} more lines in file. " f"Use offset={next_offset} to continue.]"
         else:
-            # No truncation or user limit exceeded
+            # No truncation or limit
             output_text = truncation.content
 
         return output_text

@@ -11,6 +11,6 @@ __all__ = [
     "OpenAITokenCounter",
 ]
 
-R.token_counter.register("base")(BaseTokenCounter)
-R.token_counter.register("hf")(HFTokenCounter)
-R.token_counter.register("openai")(OpenAITokenCounter)
+R.token_counters.register("base")(BaseTokenCounter)
+R.token_counters.register("hf")(HFTokenCounter)
+R.token_counters.register("openai")(OpenAITokenCounter)

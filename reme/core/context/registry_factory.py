@@ -33,15 +33,15 @@ class RegistryFactory:
     """A factory class for creating registries."""
 
     def __init__(self):
-        self.llm = Registry()
-        self.embedding_model = Registry()
-        self.vector_store = Registry()
-        self.memory_store = Registry()
-        self.op = Registry()
-        self.flow = Registry()
-        self.service = Registry()
-        self.token_counter = Registry()
-        self.file_watcher = Registry()
+        self.llms = Registry()
+        self.embedding_models = Registry()
+        self.vector_stores = Registry()
+        self.memory_stores = Registry()
+        self.ops = Registry()
+        self.flows = Registry()
+        self.services = Registry()
+        self.token_counters = Registry()
+        self.file_watchers = Registry()
 
 
 R = RegistryFactory()

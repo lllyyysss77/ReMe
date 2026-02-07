@@ -9,5 +9,5 @@ __all__ = [
     "SimpleChat",
 ]
 
-R.op.register(SimpleChat)
-R.op.register(StreamChat)
+R.ops.register(SimpleChat)
+R.ops.register(StreamChat)

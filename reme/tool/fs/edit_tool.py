@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from .base_fs_tool import BaseFsTool
 from .edit_diff import (
     detect_line_ending,
     fuzzy_find_text,
@@ -12,11 +13,10 @@ from .edit_diff import (
     restore_line_endings,
     strip_bom,
 )
-from ...core.op import BaseTool
 from ...core.schema import ToolCall
 
 
-class EditTool(BaseTool):
+class EditTool(BaseFsTool):
     """Edit a file by replacing exact text."""
 
     def __init__(self, cwd: str | None = None):
@@ -77,11 +77,8 @@ class EditTool(BaseTool):
             raise PermissionError(f"File not readable/writable: {path}")
 
         # Read file
-        try:
-            with open(absolute_path, "r", encoding="utf-8") as f:
-                raw_content = f.read()
-        except Exception as e:
-            raise IOError(f"Failed to read file {path}: {e}") from e
+        with open(absolute_path, "r", encoding="utf-8") as f:
+            raw_content = f.read()
 
         # Strip BOM (LLM won't include invisible BOM in oldText)
         bom, content = strip_bom(raw_content)
@@ -129,11 +126,8 @@ class EditTool(BaseTool):
 
         # Write file
         final_content = bom + restore_line_endings(new_content, original_ending)
-        try:
-            with open(absolute_path, "w", encoding="utf-8") as f:
-                f.write(final_content)
-        except Exception as e:
-            raise IOError(f"Failed to write file {path}: {e}") from e
+        with open(absolute_path, "w", encoding="utf-8") as f:
+            f.write(final_content)
 
         # Generate diff
         diff_result = generate_diff_string(base_content, new_content)

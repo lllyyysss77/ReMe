@@ -13,6 +13,7 @@ import os
 import shutil
 from pathlib import Path
 
+from .base_fs_tool import BaseFsTool
 from .truncate import (
     DEFAULT_MAX_BYTES,
     GREP_MAX_LINE_LENGTH,
@@ -20,14 +21,13 @@ from .truncate import (
     truncate_head,
     truncate_line,
 )
-from ...core.op import BaseTool
 from ...core.schema import ToolCall
 
 # Default limits
 DEFAULT_LIMIT = 100  # Maximum number of matches
 
 
-class GrepTool(BaseTool):
+class GrepTool(BaseFsTool):
     """Tool for searching file contents using ripgrep.
 
     Features:
@@ -145,15 +145,12 @@ class GrepTool(BaseTool):
         args.extend([pattern, search_path])
 
         # Execute ripgrep
-        try:
-            process = await asyncio.create_subprocess_exec(
-                *args,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=self.cwd,
-            )
-        except Exception as e:
-            raise RuntimeError(f"Failed to run ripgrep: {e}") from e
+        process = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=self.cwd,
+        )
 
         stdout, stderr = await process.communicate()
 

@@ -11,7 +11,7 @@ from typing import Any, Callable
 from loguru import logger
 from watchfiles import awatch, Change
 
-from ..memory_storage import BaseMemoryStore
+from ..memory_store import BaseMemoryStore
 
 
 class BaseFileWatcher:

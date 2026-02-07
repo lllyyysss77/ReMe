@@ -3,8 +3,10 @@
 from . import context
 from . import embedding
 from . import enumeration
+from . import file_watcher
 from . import flow
 from . import llm
+from . import memory_store
 from . import op
 from . import schema
 from . import service
@@ -18,8 +20,10 @@ __all__ = [
     "context",
     "embedding",
     "enumeration",
+    "file_watcher",
     "flow",
     "llm",
+    "memory_store",
     "op",
     "schema",
     "service",

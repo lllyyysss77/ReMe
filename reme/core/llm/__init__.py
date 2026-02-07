@@ -15,7 +15,7 @@ __all__ = [
     "OpenAILLMSync",
 ]
 
-R.llm.register("litellm")(LiteLLM)
-R.llm.register("litellm_sync")(LiteLLMSync)
-R.llm.register("openai")(OpenAILLM)
-R.llm.register("openai_sync")(OpenAILLMSync)
+R.llms.register("litellm")(LiteLLM)
+R.llms.register("litellm_sync")(LiteLLMSync)
+R.llms.register("openai")(OpenAILLM)
+R.llms.register("openai_sync")(OpenAILLMSync)

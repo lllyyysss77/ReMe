@@ -8,11 +8,11 @@ This module provides a tool for writing content to files with:
 
 import os
 
-from ...core.op import BaseTool
+from .base_fs_tool import BaseFsTool
 from ...core.schema import ToolCall
 
 
-class WriteTool(BaseTool):
+class WriteTool(BaseFsTool):
     """Tool for writing content to files.
 
     Features:

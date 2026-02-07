@@ -11,4 +11,4 @@ __all__ = [
 
 for name in __all__:
     agent_class = globals()[name]
-    R.op.register(agent_class)
+    R.ops.register(agent_class)

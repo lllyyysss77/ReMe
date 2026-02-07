@@ -208,14 +208,17 @@ class SqliteMemoryStore(BaseMemoryStore):
                     ),
                 )
 
-                # Insert vector
+                # Insert vector (vec0 doesn't support OR REPLACE, use DELETE + INSERT)
                 if self.vector_available:
                     assert chunk.embedding, "Embedding is required for vector insert"
+                    # Delete existing vector first
                     cursor.execute(
-                        f"""
-                        INSERT OR REPLACE INTO {self.vector_table_name} (id, embedding)
-                        VALUES (?, ?)
-                    """,
+                        f"DELETE FROM {self.vector_table_name} WHERE id = ?",
+                        (chunk.id,),
+                    )
+                    # Then insert new vector
+                    cursor.execute(
+                        f"INSERT INTO {self.vector_table_name} (id, embedding) VALUES (?, ?)",
                         (chunk.id, self.vector_to_blob(chunk.embedding)),
                     )
 
@@ -372,14 +375,17 @@ class SqliteMemoryStore(BaseMemoryStore):
                     ),
                 )
 
-                # Insert/update vector
+                # Insert/update vector (vec0 doesn't support OR REPLACE, use DELETE + INSERT)
                 if self.vector_available:
                     assert chunk.embedding, "Embedding is required for vector insert"
+                    # Delete existing vector first
                     cursor.execute(
-                        f"""
-                        INSERT OR REPLACE INTO {self.vector_table_name} (id, embedding)
-                        VALUES (?, ?)
-                    """,
+                        f"DELETE FROM {self.vector_table_name} WHERE id = ?",
+                        (chunk.id,),
+                    )
+                    # Then insert new vector
+                    cursor.execute(
+                        f"INSERT INTO {self.vector_table_name} (id, embedding) VALUES (?, ?)",
                         (chunk.id, self.vector_to_blob(chunk.embedding)),
                     )
 

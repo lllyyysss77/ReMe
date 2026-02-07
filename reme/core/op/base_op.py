@@ -13,7 +13,7 @@ from tqdm import tqdm
 from ..context import RuntimeContext, PromptHandler, ServiceContext
 from ..embedding import BaseEmbeddingModel
 from ..llm import BaseLLM
-from ..memory_storage import BaseMemoryStore
+from ..memory_store import BaseMemoryStore
 from ..schema import Response
 from ..token_counter import BaseTokenCounter
 from ..utils import camel_to_snake, CacheHandler, timer

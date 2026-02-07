@@ -3,11 +3,11 @@
 import os
 from pathlib import Path
 
-from reme.core.op import BaseTool
 from reme.core.schema import ToolCall
+from .base_fs_tool import BaseFsTool
 
 
-class FsMemoryGet(BaseTool):
+class FsMemoryGet(BaseFsTool):
     """Read specific snippets from memory files."""
 
     def __init__(self, workspace_dir: str | None = None, **kwargs):
@@ -20,7 +20,7 @@ class FsMemoryGet(BaseTool):
         return ToolCall(
             **{
                 "description": (
-                    "Safe snippet read from MEMORY.md, memory/*.md with optional from/lines; "
+                    "Safe snippet read from MEMORY.md, memory/*.md with optional offset/limit; "
                     "use after memory_search to pull only the needed lines and keep context small."
                 ),
                 "parameters": {
@@ -30,11 +30,11 @@ class FsMemoryGet(BaseTool):
                             "type": "string",
                             "description": "Path to the memory file to read (relative or absolute)",
                         },
-                        "from": {
+                        "offset": {
                             "type": "integer",
                             "description": "Starting line number (1-indexed, optional)",
                         },
-                        "lines": {
+                        "limit": {
                             "type": "integer",
                             "description": "Number of lines to read from the starting line (optional)",
                         },
@@ -47,8 +47,8 @@ class FsMemoryGet(BaseTool):
     async def execute(self) -> str:
         """Execute the memory get operation."""
         raw_path: str = self.context.path.strip()
-        from_param: int | None = self.context.get("from", None)
-        lines_param: int | None = self.context.get("lines", None)
+        offset: int | None = self.context.get("offset", None)
+        limit: int | None = self.context.get("limit", None)
 
         if os.path.isabs(raw_path):
             abs_path = os.path.abspath(raw_path)
@@ -65,15 +65,25 @@ class FsMemoryGet(BaseTool):
         with open(abs_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        if from_param is None and lines_param is None:
+        if offset is None and limit is None:
             return content
 
-        else:
-            lines = content.split("\n")
-            start = max(1, from_param if from_param is not None else 1)
-            count = max(1, lines_param if lines_param is not None else len(lines))
+        lines = content.split("\n")
+        total_lines = len(lines)
 
-            # Extract slice (1-indexed to 0-indexed conversion)
-            selected = lines[start - 1 : start - 1 + count]
-            text = "\n".join(selected)
-            return text
+        # Validate and normalize offset (1-indexed)
+        start = offset if offset is not None else 1
+        assert start >= 1, f"offset must be >= 1, got {start}"
+        assert start <= total_lines, f"offset {start} exceeds total lines {total_lines}"
+
+        # Validate and calculate count
+        if limit is not None:
+            assert limit > 0, f"limit must be positive, got {limit}"
+            count = limit
+        else:
+            # Read from start to end of file
+            count = total_lines - start + 1
+
+        # Extract slice (1-indexed to 0-indexed conversion)
+        selected = lines[start - 1 : start - 1 + count]
+        return "\n".join(selected)

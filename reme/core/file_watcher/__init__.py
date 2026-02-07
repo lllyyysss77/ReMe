@@ -15,5 +15,5 @@ __all__ = [
     "FullFileWatcher",
 ]
 
-R.file_watcher.register("full")(FullFileWatcher)
-R.file_watcher.register("delta")(DeltaFileWatcher)
+R.file_watchers.register("full")(FullFileWatcher)
+R.file_watchers.register("delta")(DeltaFileWatcher)

@@ -3,14 +3,14 @@
 import os
 from pathlib import Path
 
+from .base_fs_tool import BaseFsTool
 from .truncate import DEFAULT_MAX_BYTES, truncate_head
-from ...core.op import BaseTool
 from ...core.schema import ToolCall
 
 DEFAULT_LIMIT = 500
 
 
-class LsTool(BaseTool):
+class LsTool(BaseFsTool):
     """List directory contents with smart truncation.
 
     Features:
@@ -75,10 +75,7 @@ class LsTool(BaseTool):
             raise NotADirectoryError(f"Not a directory: {dir_path}")
 
         # Read directory entries
-        try:
-            entries = list(dir_path.iterdir())
-        except Exception as e:
-            raise PermissionError(f"Cannot read directory: {e}") from e
+        entries = list(dir_path.iterdir())
 
         # Sort alphabetically (case-insensitive)
         entries.sort(key=lambda e: e.name.lower())

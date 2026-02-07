@@ -24,7 +24,7 @@ from reme.core.embedding import OpenAIEmbeddingModel
 from reme.core.enumeration import MemorySource
 from reme.core.file_watcher.delta_file_watcher import DeltaFileWatcher
 from reme.core.file_watcher.full_file_watcher import FullFileWatcher
-from reme.core.memory_storage import SqliteMemoryStore
+from reme.core.memory_store import SqliteMemoryStore
 from reme.core.utils import load_env
 
 load_env()

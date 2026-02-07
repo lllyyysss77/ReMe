@@ -3,11 +3,11 @@
 import json
 
 from reme.core.enumeration import MemorySource
-from reme.core.op import BaseTool
 from reme.core.schema import MemorySearchResult, ToolCall
+from .base_fs_tool import BaseFsTool
 
 
-class FsMemorySearch(BaseTool):
+class FsMemorySearch(BaseFsTool):
     """Semantically search MEMORY.md and memory files."""
 
     def __init__(
@@ -48,11 +48,11 @@ class FsMemorySearch(BaseTool):
                             "type": "string",
                             "description": "The semantic search query to find relevant memory snippets",
                         },
-                        "maxResults": {
+                        "max_results": {
                             "type": "integer",
                             "description": "Maximum number of search results to return (optional)",
                         },
-                        "minScore": {
+                        "min_score": {
                             "type": "number",
                             "description": "Minimum similarity score threshold for results (optional)",
                         },
@@ -65,8 +65,8 @@ class FsMemorySearch(BaseTool):
     async def execute(self) -> str:
         """Execute the memory search operation."""
         query: str = self.context.query.strip()
-        min_score = self.context.get("minScore", self.min_score)
-        max_results = self.context.get("maxResults", self.max_results)
+        min_score = self.context.get("min_score", self.min_score)
+        max_results = self.context.get("max_results", self.max_results)
         candidates = min(200, max(1, int(max_results * self.hybrid_candidate_multiplier)))
 
         # Perform hybrid search (vector + keyword)

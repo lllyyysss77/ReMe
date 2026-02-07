@@ -38,4 +38,4 @@ for name in __all__:
         and issubclass(agent_class, BaseMemoryAgent)
         and agent_class is not BaseMemoryAgent
     ):
-        R.op.register(agent_class)
+        R.ops.register(agent_class)

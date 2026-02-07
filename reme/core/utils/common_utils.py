@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 from collections.abc import AsyncGenerator, Coroutine
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from loguru import logger
@@ -31,8 +31,8 @@ async def execute_stream_task(
     stream_queue: asyncio.Queue,
     task: asyncio.Task,
     task_name: str | None = None,
-    as_bytes: bool = False,
-) -> AsyncGenerator[str | bytes, None]:
+    output_format: Literal["str", "bytes", "chunk"] = "str",
+) -> AsyncGenerator[str | bytes | StreamChunk, None]:
     """
     Core stream flow execution logic.
 
@@ -43,12 +43,19 @@ async def execute_stream_task(
         stream_queue: Queue to receive StreamChunk objects from
         task: Background task executing the flow
         task_name: Optional flow name for logging purposes
-        as_bytes: If True, yield bytes for HTTP responses; if False, yield strings
+        output_format: Output format control
+            - "str": SSE-formatted string (default)
+            - "bytes": SSE-formatted bytes for HTTP responses
+            - "chunk": Raw StreamChunk objects
 
     Yields:
-        SSE-formatted data chunks (either str or bytes based on as_bytes)
+        - str: SSE-formatted data when output_format="str"
+        - bytes: SSE-formatted data when output_format="bytes"
+        - StreamChunk: Raw chunk objects when output_format="chunk"
     """
-    done_msg = b"data:[DONE]\n\n" if as_bytes else "data:[DONE]\n\n"
+    is_raw_chunk = output_format == "chunk"
+    is_bytes = output_format == "bytes"
+    done_msg = b"data:[DONE]\n\n" if is_bytes else "data:[DONE]\n\n"
 
     try:
         while True:
@@ -58,16 +65,29 @@ async def execute_stream_task(
 
             if get_chunk in done:
                 chunk: StreamChunk = get_chunk.result()
+
+                # Handle raw chunk mode
+                if is_raw_chunk:
+                    yield chunk
+                    if chunk.done:
+                        break
+                    continue
+
+                # Handle SSE format mode
                 if chunk.done:
                     yield done_msg
                     break
 
                 data = f"data:{chunk.model_dump_json()}\n\n"
-                yield data.encode() if as_bytes else data
+                yield data.encode() if is_bytes else data
             else:
                 # Task finished unexpectedly or raised exception
                 await task
-                yield done_msg
+                if is_raw_chunk:
+                    # Yield a DONE chunk in raw mode
+                    yield StreamChunk(chunk_type=ChunkEnum.DONE, chunk="", done=True)
+                else:
+                    yield done_msg
                 break
 
     except Exception as e:
@@ -75,9 +95,13 @@ async def execute_stream_task(
         logger.exception(log_msg)
 
         err = StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e), done=True)
-        err_data = f"data:{err.model_dump_json()}\n\n"
-        yield err_data.encode() if as_bytes else err_data
-        yield done_msg
+
+        if is_raw_chunk:
+            yield err
+        else:
+            err_data = f"data:{err.model_dump_json()}\n\n"
+            yield err_data.encode() if is_bytes else err_data
+            yield done_msg
 
     finally:
         # Ensure task is cancelled if still running to avoid resource leaks

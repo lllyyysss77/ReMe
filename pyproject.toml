@@ -35,6 +35,8 @@ keywords = ["llm", "memory", "experience", "memoryscope", "ai", "mcp", "http"]
 dependencies = [
     "flowllm[reme]>=0.2.0.10",
     "sqlite-vec>=0.1.6",
+    "prompt_toolkit>=3.0.52",
+    "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
@@ -85,6 +87,7 @@ Repository = "https://github.com/agentscope-ai/ReMe"
 [project.scripts]
 reme = "reme_ai.main:main"
 reme2 = "reme.reme:main"
+remefs = "reme.reme_fs:main"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

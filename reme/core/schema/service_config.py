@@ -123,7 +123,7 @@ class ServiceConfig(BaseModel):
     language: str = Field(default="")
     thread_pool_max_workers: int = Field(default=16)
     ray_max_workers: int = Field(default=-1)
-    init_logger: bool = Field(default=True)
+    log_to_console: bool = Field(default=True)
     disabled_flows: list[str] = Field(default_factory=list)
     enabled_flows: list[str] = Field(default_factory=list)
     mcp_servers: dict[str, dict] = Field(default_factory=dict)

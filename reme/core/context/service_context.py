@@ -36,6 +36,7 @@ class ServiceContext(BaseContext):
         parser: type[PydanticConfigParser] | None = None,
         config_path: str | None = None,
         enable_logo: bool = True,
+        log_to_console: bool = True,
         default_llm_config: dict | None = None,
         default_embedding_model_config: dict | None = None,
         default_vector_store_config: dict | None = None,
@@ -74,13 +75,12 @@ class ServiceContext(BaseContext):
             if default_file_watcher_config:
                 self._update_section_config(kwargs, "file_watchers", **default_file_watcher_config)
             kwargs["enable_logo"] = enable_logo
+            kwargs["log_to_console"] = log_to_console
             logger.info(f"update with args: {input_args} kwargs: {kwargs}")
             service_config = parser.parse_args(*input_args, **kwargs)
 
         self.service_config: ServiceConfig = service_config
-
-        if self.service_config.init_logger:
-            init_logger()
+        init_logger(log_to_console=self.service_config.log_to_console)
 
         if self.service_config.enable_logo:
             print_logo(service_config=self.service_config)

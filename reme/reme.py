@@ -52,6 +52,7 @@ class ReMe(Application):
         embedding_api_key: str | None = None,
         embedding_api_base: str | None = None,
         enable_logo: bool = True,
+        log_to_console: bool = True,
         default_llm_config: dict | None = None,
         default_embedding_model_config: dict | None = None,
         default_vector_store_config: dict | None = None,
@@ -71,6 +72,7 @@ class ReMe(Application):
             embedding_api_key: API key for embedding provider
             embedding_api_base: API base for embedding provider
             enable_logo: Enable logo
+            log_to_console: Log to console
             default_llm_config: LLM configuration
             default_embedding_model_config: Embedding model configuration
             default_vector_store_config: Vector store configuration
@@ -101,6 +103,7 @@ class ReMe(Application):
             embedding_api_key=embedding_api_key,
             embedding_api_base=embedding_api_base,
             enable_logo=enable_logo,
+            log_to_console=log_to_console,
             parser=ReMeConfigParser,
             default_llm_config=default_llm_config,
             default_embedding_model_config=default_embedding_model_config,

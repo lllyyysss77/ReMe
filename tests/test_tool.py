@@ -182,7 +182,7 @@ async def test_stream_chat(app):
         stream_queue=context.stream_queue,
         task=asyncio.create_task(task()),
         task_name="test_stream_chat",
-        as_bytes=False,
+        output_format="str",
     ):
         print(chunk, end="")
 

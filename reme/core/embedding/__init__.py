@@ -11,5 +11,5 @@ __all__ = [
     "OpenAIEmbeddingModelSync",
 ]
 
-R.embedding_model.register("openai")(OpenAIEmbeddingModel)
-R.embedding_model.register("openai_sync")(OpenAIEmbeddingModelSync)
+R.embedding_models.register("openai")(OpenAIEmbeddingModel)
+R.embedding_models.register("openai_sync")(OpenAIEmbeddingModelSync)

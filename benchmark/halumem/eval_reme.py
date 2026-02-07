@@ -35,6 +35,7 @@ from reme.reme import ReMe
 @dataclass
 class EvalConfig:
     """Evaluation configuration parameters."""
+
     data_path: str
     top_k: int = 20
     user_num: int = 1
@@ -48,6 +49,7 @@ class EvalConfig:
 
 
 # ==================== Utilities ====================
+
 
 class DataLoader:
     """Handles loading and parsing of HaluMem data."""
@@ -74,7 +76,8 @@ class DataLoader:
                 "role": turn["role"],
                 "content": turn["content"],
                 "time_created": datetime.strptime(
-                    turn["timestamp"], "%b %d, %Y, %H:%M:%S"
+                    turn["timestamp"],
+                    "%b %d, %Y, %H:%M:%S",
                 )
                 .replace(tzinfo=timezone.utc)
                 .strftime("%Y-%m-%d %H:%M:%S"),
@@ -88,17 +91,20 @@ class DataLoader:
         """Format dialogue into string for evaluation."""
         formatted_turns = []
         for turn in dialogue:
-            timestamp = datetime.strptime(
-                turn["timestamp"], "%b %d, %Y, %H:%M:%S"
-            ).replace(tzinfo=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = (
+                datetime.strptime(
+                    turn["timestamp"],
+                    "%b %d, %Y, %H:%M:%S",
+                )
+                .replace(tzinfo=timezone.utc)
+                .strftime("%Y-%m-%d %H:%M:%S")
+            )
 
             # Use user_name if role is 'user' and user_name is provided
-            role = user_name if turn['role'] == 'user' and user_name else turn['role']
+            role = user_name if turn["role"] == "user" and user_name else turn["role"]
 
             formatted_turns.append(
-                f"Role: {role}\n"
-                f"Content: {turn['content']}\n"
-                f"Time: {timestamp}"
+                f"Role: {role}\n" f"Content: {turn['content']}\n" f"Time: {timestamp}",
             )
         return "\n\n".join(formatted_turns)
 
@@ -139,8 +145,7 @@ class FileManager:
     def user_has_cache(self, user_name: str) -> bool:
         """Check if user has cached results."""
         user_dir = self.get_user_dir(user_name)
-        return any(f.name.startswith("session_") and f.suffix == ".json"
-                   for f in user_dir.iterdir())
+        return any(f.name.startswith("session_") and f.suffix == ".json" for f in user_dir.iterdir())
 
     def combine_results(self, output_file: str):
         """Combine all user session files into a single JSONL file."""
@@ -149,10 +154,9 @@ class FileManager:
                 if not user_dir.is_dir():
                     continue
 
-                session_files = sorted([
-                    f for f in user_dir.iterdir()
-                    if f.name.startswith("session_") and f.suffix == ".json"
-                ])
+                session_files = sorted(
+                    [f for f in user_dir.iterdir() if f.name.startswith("session_") and f.suffix == ".json"],
+                )
 
                 if not session_files:
                     continue
@@ -164,7 +168,7 @@ class FileManager:
                 user_data = {
                     "uuid": first_session["uuid"],
                     "user_name": first_session["user_name"],
-                    "sessions": []
+                    "sessions": [],
                 }
 
                 # Load all sessions
@@ -181,12 +185,13 @@ class FileManager:
 
 # ==================== Evaluation Functions ====================
 
+
 async def answer_question_with_memories(
-        reme: ReMe,
-        question: str,
-        memories: str,
-        user_id: str = None,
-        model_name: str = "qwen3-30b-a3b-instruct-2507"
+    reme: ReMe,
+    question: str,
+    memories: str,
+    user_id: str = None,
+    model_name: str = "qwen3-30b-a3b-instruct-2507",
 ):
     """
     Answer a question using retrieved memories with PROMPT_MEMZERO_JSON template.
@@ -206,7 +211,7 @@ async def answer_question_with_memories(
         context = reme.prompt_handler.prompt_format(
             "TEMPLATE_MEMOS",
             user_id=user_id,
-            memories=memories
+            memories=memories,
         )
     else:
         context = f"Memories:\n{memories}"
@@ -215,10 +220,10 @@ async def answer_question_with_memories(
     prompt = reme.prompt_handler.prompt_format(
         "PROMPT_MEMZERO_JSON",
         context=context,
-        question=question
+        question=question,
     )
 
-    result = await reme.llm.simple_request_for_json(
+    result = await reme.get_llm("qwen3_max_instruct").simple_request_for_json(
         prompt=prompt,
         model_name=model_name,
     )
@@ -227,13 +232,13 @@ async def answer_question_with_memories(
 
 
 async def evaluation_for_question(
-        reme: ReMe,
-        question: str,
-        reference_answer: str,
-        key_memory_points: str,
-        response: str,
-        dialogue: str = None,
-        model_name: str = "qwen3-max"
+    reme: ReMe,
+    question: str,
+    reference_answer: str,
+    key_memory_points: str,
+    response: str,
+    dialogue: str = None,
+    model_name: str = "qwen3-max",
 ):
     """
     Question-Answering Evaluation with optional Dialogue Context.
@@ -256,12 +261,12 @@ async def evaluation_for_question(
         reference_answer=reference_answer,
         key_memory_points=key_memory_points,
         response=response,
-        dialogue=dialogue if dialogue else ""
+        dialogue=dialogue if dialogue else "",
     )
 
-    result = await reme.llm.simple_request_for_json(
+    result = await reme.get_llm("qwen3_max_instruct").simple_request_for_json(
         prompt=prompt,
-        model_name=model_name
+        model_name=model_name,
     )
 
     return result
@@ -269,10 +274,18 @@ async def evaluation_for_question(
 
 # ==================== Memory Operations ====================
 
+
 class MemoryProcessor:
     """Handles ReMe memory operations."""
 
-    def __init__(self, reme: ReMe, reme_model_name:str="qwen3-max",eval_model_name: str = "qwen3-max", algo_version: str = "halumem", enable_thinking_params: bool = False):
+    def __init__(
+        self,
+        reme: ReMe,
+        reme_model_name: str = "qwen3-max",
+        eval_model_name: str = "qwen3-max",
+        algo_version: str = "halumem",
+        enable_thinking_params: bool = False,
+    ):
         self.reme = reme
         self.reme_model_name = reme_model_name
         self.eval_model_name = eval_model_name
@@ -280,10 +293,10 @@ class MemoryProcessor:
         self.enable_thinking_params = enable_thinking_params
 
     async def add_memories(
-            self,
-            user_id: str,
-            messages: list[dict],
-            batch_size: int = 10000
+        self,
+        user_id: str,
+        messages: list[dict],
+        batch_size: int = 10000,
     ) -> tuple[list[str], list, float]:
         """
         Add memories in batches using ReMe and return extracted memory contents.
@@ -296,7 +309,7 @@ class MemoryProcessor:
         total_duration_ms = 0
 
         for i in range(0, len(messages), batch_size):
-            batch = messages[i:i + batch_size]
+            batch = messages[i : i + batch_size]
             start = time.time()
 
             # Use new summary API
@@ -306,7 +319,8 @@ class MemoryProcessor:
                 version=self.algo_version,
                 return_dict=True,
                 enable_time_filter=True,
-                enable_thinking_params=self.enable_thinking_params
+                enable_thinking_params=self.enable_thinking_params,
+                llm_config_name="qwen-plus-t",
             )
 
             duration_ms = (time.time() - start) * 1000
@@ -318,10 +332,10 @@ class MemoryProcessor:
         return extracted_memories, summary_messages, total_duration_ms
 
     async def search_memory(
-            self,
-            query: str,
-            user_id: str,
-            top_k: int = 20
+        self,
+        query: str,
+        user_id: str,
+        top_k: int = 20,
     ) -> tuple[dict, list, float]:
         """
         Search memory using ReMe and return structured answer with reasoning.
@@ -340,7 +354,8 @@ class MemoryProcessor:
             version=self.algo_version,
             return_dict=True,
             enable_time_filter=True,
-            enable_thinking_params=self.enable_thinking_params
+            enable_thinking_params=self.enable_thinking_params,
+            llm_config_name="qwen-plus-t",
         )
 
         # Extract memories from response
@@ -367,6 +382,7 @@ class MemoryProcessor:
 
 # ==================== Evaluation ====================
 
+
 class QuestionAnsweringEvaluator:
     """Evaluates question answering performance."""
 
@@ -377,12 +393,12 @@ class QuestionAnsweringEvaluator:
         self.eval_model_name = eval_model_name
 
     async def evaluate_questions(
-            self,
-            questions: list[dict],
-            user_name: str,
-            uuid: str,
-            session_id: int,
-            formatted_dialogue: str
+        self,
+        questions: list[dict],
+        user_name: str,
+        uuid: str,
+        session_id: int,
+        formatted_dialogue: str,
     ) -> list[dict]:
         """Evaluate all questions for a session."""
         results = []
@@ -391,7 +407,7 @@ class QuestionAnsweringEvaluator:
             answer_dict, agent_messages, duration_ms = await self.memory_processor.search_memory(
                 query=qa["question"],
                 user_id=user_name,
-                top_k=self.top_k
+                top_k=self.top_k,
             )
 
             # Extract answer and reasoning from the structured response
@@ -409,7 +425,7 @@ class QuestionAnsweringEvaluator:
                 key_memory_points=evidence_text,
                 response=system_answer,
                 dialogue=formatted_dialogue,
-                model_name=self.eval_model_name
+                model_name=self.eval_model_name,
             )
 
             eval_result_original_answer = await evaluation_for_question(
@@ -419,7 +435,7 @@ class QuestionAnsweringEvaluator:
                 key_memory_points=evidence_text,
                 response=retrieved_memories,
                 dialogue=formatted_dialogue,
-                model_name=self.eval_model_name
+                model_name=self.eval_model_name,
             )
 
             # Build result record
@@ -459,7 +475,7 @@ class MetricsAggregator:
                 "hallucination_qa_ratio(valid)": 0,
                 "omission_qa_ratio(valid)": 0,
                 "qa_valid_num": 0,
-                "qa_num": 0
+                "qa_num": 0,
             }
 
         correct = 0
@@ -484,21 +500,25 @@ class MetricsAggregator:
             "hallucination_qa_ratio(all)": hallucination / total,
             "omission_qa_ratio(all)": omission / total,
             "qa_valid_num": valid,
-            "qa_num": total
+            "qa_num": total,
         }
 
         if valid > 0:
-            metrics.update({
-                "correct_qa_ratio(valid)": correct / valid,
-                "hallucination_qa_ratio(valid)": hallucination / valid,
-                "omission_qa_ratio(valid)": omission / valid
-            })
+            metrics.update(
+                {
+                    "correct_qa_ratio(valid)": correct / valid,
+                    "hallucination_qa_ratio(valid)": hallucination / valid,
+                    "omission_qa_ratio(valid)": omission / valid,
+                },
+            )
         else:
-            metrics.update({
-                "correct_qa_ratio(valid)": 0,
-                "hallucination_qa_ratio(valid)": 0,
-                "omission_qa_ratio(valid)": 0
-            })
+            metrics.update(
+                {
+                    "correct_qa_ratio(valid)": 0,
+                    "hallucination_qa_ratio(valid)": 0,
+                    "omission_qa_ratio(valid)": 0,
+                },
+            )
 
         return metrics
 
@@ -507,7 +527,7 @@ class MetricsAggregator:
         """Compute question answering metrics for both result_type and original_result_type."""
         return {
             "with_llm_answer": MetricsAggregator._compute_single_metric(qa_records, "result_type"),
-            "with_original_memories": MetricsAggregator._compute_single_metric(qa_records, "original_result_type")
+            "with_original_memories": MetricsAggregator._compute_single_metric(qa_records, "original_result_type"),
         }
 
     @staticmethod
@@ -533,18 +553,32 @@ class MetricsAggregator:
         return {
             "add_dialogue_duration_time": add_duration / 1000 / 60,
             "search_memory_duration_time": search_duration / 1000 / 60,
-            "total_duration_time": (add_duration + search_duration) / 1000 / 60
+            "total_duration_time": (add_duration + search_duration) / 1000 / 60,
         }
 
 
 # ==================== Main Pipeline ====================
+
 
 class HaluMemEvaluator:
     """HaluMem evaluator with proper resource management."""
 
     def __init__(self, config: EvalConfig):
         self.config = config
-        self.reme = ReMe(llm={"model_name": self.config.reme_model_name})
+        self.reme = ReMe(
+            default_llm_config={
+                "model_name": self.config.reme_model_name,
+            },
+            llms={
+                "qwen-plus-t": {
+                    "backend": "openai",
+                    "model_name": "qwen-plus",
+                    "extra_body": {
+                        "enable_thinking": True,
+                    },
+                },
+            },
+        )
 
         # Load evaluation prompts into ReMe's prompt handler
         prompts_yaml_path = Path(__file__).parent / "eval_reme.yaml"
@@ -556,13 +590,13 @@ class HaluMemEvaluator:
             config.reme_model_name,
             config.eval_model_name,
             config.algo_version,
-            config.enable_thinking_params
+            config.enable_thinking_params,
         )
         self.qa_evaluator = QuestionAnsweringEvaluator(
             self.memory_processor,
             self.reme,
             config.top_k,
-            config.eval_model_name
+            config.eval_model_name,
         )
         self.data_loader = DataLoader()
 
@@ -581,18 +615,18 @@ class HaluMemEvaluator:
         return False
 
     async def process_session(
-            self,
-            session: dict,
-            session_id: int,
-            user_name: str,
-            uuid: str
+        self,
+        session: dict,
+        session_id: int,
+        user_name: str,
+        uuid: str,
     ) -> dict:
         """Process a single session using ReMe."""
         session_data = {
             "uuid": uuid,
             "user_name": user_name,
             "session_id": session_id,
-            "memory_points": session["memory_points"]
+            "memory_points": session["memory_points"],
         }
 
         # Skip generated QA sessions
@@ -606,15 +640,17 @@ class HaluMemEvaluator:
         extracted_memories, agent_messages, duration_ms = await self.memory_processor.add_memories(
             user_id=user_name,
             messages=formatted_messages,
-            batch_size=self.config.batch_size
+            batch_size=self.config.batch_size,
         )
 
-        session_data.update({
-            "dialogue": dialogue,
-            "extracted_memories": extracted_memories,
-            "summary_messages": agent_messages,
-            "add_dialogue_duration_ms": duration_ms
-        })
+        session_data.update(
+            {
+                "dialogue": dialogue,
+                "extracted_memories": extracted_memories,
+                "summary_messages": agent_messages,
+                "add_dialogue_duration_ms": duration_ms,
+            },
+        )
 
         # Evaluate questions if present
         if "questions" in session:
@@ -624,11 +660,11 @@ class HaluMemEvaluator:
                 user_name=user_name,
                 uuid=uuid,
                 session_id=session_id,
-                formatted_dialogue=formatted_dialogue
+                formatted_dialogue=formatted_dialogue,
             )
 
             session_data["evaluation_results"] = {
-                "question_answering_records": qa_results
+                "question_answering_records": qa_results,
             }
 
         return session_data
@@ -647,7 +683,7 @@ class HaluMemEvaluator:
                 session=session,
                 session_id=idx,
                 user_name=user_name,
-                uuid=uuid
+                uuid=uuid,
             )
 
             self.file_manager.save_session(user_name, idx, session_data)
@@ -672,23 +708,20 @@ class HaluMemEvaluator:
 
         # Load user data first to get user names
         all_users = self.data_loader.load_jsonl(self.config.data_path)
-        users_to_process = all_users[:self.config.user_num]
+        users_to_process = all_users[: self.config.user_num]
 
         # Extract all user names and delete all profiles
-        all_user_names = [
-            self.data_loader.extract_user_name(user_data["persona_info"])
-            for user_data in all_users
-        ]
+        all_user_names = [self.data_loader.extract_user_name(user_data["persona_info"]) for user_data in all_users]
         if all_user_names:
             for user_name in all_user_names:
                 self.reme.get_profile_handler(user_name).delete_all()
             logger.info(f"Deleted all profiles for {len(all_user_names)} users")
 
         # Clear existing data
-        await self.reme.vector_store.delete_all()
+        await self.reme.default_vector_store.delete_all()
 
         # Clear meta_memory directory
-        meta_memory_path = Path(f"meta_memory/{self.reme.vector_store.collection_name}")
+        meta_memory_path = Path(f"meta_memory/{self.reme.default_vector_store.collection_name}")
         if meta_memory_path.exists():
             shutil.rmtree(meta_memory_path)
             logger.info(f"Cleared meta_memory directory: {meta_memory_path}")
@@ -725,10 +758,7 @@ class HaluMemEvaluator:
 
                 return result
 
-        tasks = [
-            process_with_cache_check(idx, user)
-            for idx, user in enumerate(users_to_process, 1)
-        ]
+        tasks = [process_with_cache_check(idx, user) for idx, user in enumerate(users_to_process, 1)]
         await asyncio.gather(*tasks)
 
         elapsed = time.time() - start_time
@@ -758,7 +788,7 @@ class HaluMemEvaluator:
 
                         eval_results = session.get("evaluation_results", {})
                         qa_records.extend(
-                            eval_results.get("question_answering_records", [])
+                            eval_results.get("question_answering_records", []),
                         )
         except (json.JSONDecodeError, KeyError):
             return
@@ -773,9 +803,9 @@ class HaluMemEvaluator:
         final_results = {
             "overall_score": {
                 "question_answering": qa_metrics,
-                "time_consuming": time_metrics
+                "time_consuming": time_metrics,
             },
-            "question_answering_records": qa_records
+            "question_answering_records": qa_records,
         }
 
         # Save statistics
@@ -803,7 +833,7 @@ class HaluMemEvaluator:
 
                     eval_results = session.get("evaluation_results", {})
                     qa_records.extend(
-                        eval_results.get("question_answering_records", [])
+                        eval_results.get("question_answering_records", []),
                     )
 
         # Compute metrics
@@ -813,9 +843,9 @@ class HaluMemEvaluator:
         final_results = {
             "overall_score": {
                 "question_answering": qa_metrics,
-                "time_consuming": time_metrics
+                "time_consuming": time_metrics,
             },
-            "question_answering_records": qa_records
+            "question_answering_records": qa_records,
         }
 
         # Save final report
@@ -856,7 +886,7 @@ class HaluMemEvaluator:
         print(f"  Omission (valid):    {orig_metrics['omission_qa_ratio(valid)']:.4f}")
         print(f"  Valid/Total:         {orig_metrics['qa_valid_num']}/{orig_metrics['qa_num']}")
 
-        print(f"\n⏱️  Time Metrics:")
+        print("\n⏱️  Time Metrics:")
         print(f"  Memory Addition:  {time_metrics['add_dialogue_duration_time']:.2f} min")
         print(f"  Memory Search:    {time_metrics['search_memory_duration_time']:.2f} min")
         print(f"  Total:            {time_metrics['total_duration_time']:.2f} min")
@@ -865,16 +895,17 @@ class HaluMemEvaluator:
 
 # ==================== Entry Point ====================
 
+
 async def main_async(
-        data_path: str,
-        top_k: int,
-        batch_size: int,
-        user_num: int,
-        max_concurrency: int,
-        reme_model_name: str= "qwen-flash",
-        eval_model_name: str = "qwen3-max",
-        algo_version: str = "halumem",
-        enable_thinking_params: bool = False
+    data_path: str,
+    top_k: int,
+    batch_size: int,
+    user_num: int,
+    max_concurrency: int,
+    reme_model_name: str = "qwen-flash",
+    eval_model_name: str = "qwen3-max",
+    algo_version: str = "halumem",
+    enable_thinking_params: bool = False,
 ):
     """Main async entry point for ReMe evaluation with proper resource cleanup."""
     config = EvalConfig(
@@ -886,7 +917,7 @@ async def main_async(
         reme_model_name=reme_model_name,
         eval_model_name=eval_model_name,
         algo_version=algo_version,
-        enable_thinking_params=enable_thinking_params
+        enable_thinking_params=enable_thinking_params,
     )
 
     # Use async context manager for automatic cleanup
@@ -895,90 +926,92 @@ async def main_async(
 
 
 def main(
-        data_path: str,
-        top_k: int,
-        batch_size: int,
-        user_num: int,
-        max_concurrency: int,
-        reme_model_name: str= "qwen-flash",
-        eval_model_name: str = "qwen3-max",
-        algo_version: str = "halumem",
-        enable_thinking_params: bool = False
+    data_path: str,
+    top_k: int,
+    batch_size: int,
+    user_num: int,
+    max_concurrency: int,
+    reme_model_name: str = "qwen-flash",
+    eval_model_name: str = "qwen3-max",
+    algo_version: str = "halumem",
+    enable_thinking_params: bool = False,
 ):
     """Main entry point for ReMe evaluation."""
-    asyncio.run(main_async(
-        data_path=data_path,
-        top_k=top_k,
-        batch_size=batch_size,
-        user_num=user_num,
-        max_concurrency=max_concurrency,
-        reme_model_name=reme_model_name,
-        eval_model_name=eval_model_name,
-        algo_version=algo_version,
-        enable_thinking_params=enable_thinking_params
-    ))
+    asyncio.run(
+        main_async(
+            data_path=data_path,
+            top_k=top_k,
+            batch_size=batch_size,
+            user_num=user_num,
+            max_concurrency=max_concurrency,
+            reme_model_name=reme_model_name,
+            eval_model_name=eval_model_name,
+            algo_version=algo_version,
+            enable_thinking_params=enable_thinking_params,
+        ),
+    )
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Evaluate ReMe on HaluMem benchmark (Question Answering)"
+        description="Evaluate ReMe on HaluMem benchmark (Question Answering)",
     )
     parser.add_argument(
         "--data_path",
         type=str,
         # required=True,
         default="/Users/zhouwk/PycharmProjects/MemAgent/dataset/halumem/HaluMem-Medium.jsonl",
-        help="Path to HaluMem JSONL file"
+        help="Path to HaluMem JSONL file",
     )
     parser.add_argument(
         "--top_k",
         type=int,
         default=20,
-        help="Number of memories to retrieve (default: 20)"
+        help="Number of memories to retrieve (default: 20)",
     )
     parser.add_argument(
         "--user_num",
         type=int,
         default=1,
-        help="Number of users to evaluate (default: 1)"
+        help="Number of users to evaluate (default: 1)",
     )
     parser.add_argument(
         "--max_concurrency",
         type=int,
         default=1,
-        help="Maximum concurrent user processing (default: 100)"
+        help="Maximum concurrent user processing (default: 100)",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
         default=40,
-        help="Batch size for memory summary processing of each conversation (default: 40)"
+        help="Batch size for memory summary processing of each conversation (default: 40)",
     )
     parser.add_argument(
         "--reme_model_name",
         type=str,
         default="qwen-flash",
-        help="Model name for ReMe (default: qwen-flash)"
+        help="Model name for ReMe (default: qwen-flash)",
     )
     parser.add_argument(
         "--eval_model_name",
         type=str,
         default="qwen3-max",
-        help="Model name for evaluation (default: qwen3-max)"
+        help="Model name for evaluation (default: qwen3-max)",
     )
     parser.add_argument(
         "--algo_version",
         type=str,
         default="v1",
-        help="Algorithm version for summary and retrieval (default: v1)"
+        help="Algorithm version for summary and retrieval (default: v1)",
     )
     parser.add_argument(
         "--enable_thinking_params",
         action="store_true",
         default=False,
-        help="Enable thinking parameters for summary and retrieval (default: False)"
+        help="Enable thinking parameters for summary and retrieval (default: False)",
     )
 
     args = parser.parse_args()
@@ -993,5 +1026,5 @@ if __name__ == "__main__":
         reme_model_name=args.reme_model_name,
         eval_model_name=args.eval_model_name,
         algo_version=args.algo_version,
-        enable_thinking_params=args.enable_thinking_params
+        enable_thinking_params=args.enable_thinking_params,
     )

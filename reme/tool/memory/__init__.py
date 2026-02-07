@@ -56,4 +56,4 @@ __all__ = [
 for name in __all__:
     tool_class = globals()[name]
     if isinstance(tool_class, type) and issubclass(tool_class, BaseMemoryTool) and tool_class is not BaseMemoryTool:
-        R.op.register(tool_class)
+        R.ops.register(tool_class)

@@ -11,4 +11,4 @@ __all__ = [
     "ExpressionFlow",
 ]
 
-R.flow.register(ExpressionFlow)
+R.flows.register(ExpressionFlow)

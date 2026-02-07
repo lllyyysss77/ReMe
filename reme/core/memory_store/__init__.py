@@ -13,4 +13,4 @@ __all__ = [
     "SqliteMemoryStore",
 ]
 
-R.memory_store.register("sqlite")(SqliteMemoryStore)
+R.memory_stores.register("sqlite")(SqliteMemoryStore)

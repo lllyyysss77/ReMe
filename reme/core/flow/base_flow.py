@@ -129,9 +129,9 @@ class BaseFlow(ABC):
             raise ValueError("Expression is empty")
 
         if len(lines) > 1:
-            exec("\n".join(lines[:-1]), {"__builtins__": {}}, R.op)
+            exec("\n".join(lines[:-1]), {"__builtins__": {}}, R.ops)
 
-        result = eval(lines[-1], {"__builtins__": {}}, R.op)
+        result = eval(lines[-1], {"__builtins__": {}}, R.ops)
         if not isinstance(result, BaseOp):
             raise TypeError(f"Expression evaluated to {type(result)}, expected BaseOp")
         return result

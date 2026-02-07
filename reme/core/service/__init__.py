@@ -13,6 +13,6 @@ __all__ = [
     "MCPService",
 ]
 
-R.service.register("cmd")(CmdService)
-R.service.register("http")(HttpService)
-R.service.register("mcp")(MCPService)
+R.services.register("cmd")(CmdService)
+R.services.register("http")(HttpService)
+R.services.register("mcp")(MCPService)

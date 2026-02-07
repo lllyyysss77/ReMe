@@ -17,8 +17,8 @@ __all__ = [
     "QdrantVectorStore",
 ]
 
-R.vector_store.register("chroma")(ChromaVectorStore)
-R.vector_store.register("es")(ESVectorStore)
-R.vector_store.register("local")(LocalVectorStore)
-R.vector_store.register("pgvector")(PGVectorStore)
-R.vector_store.register("qdrant")(QdrantVectorStore)
+R.vector_stores.register("chroma")(ChromaVectorStore)
+R.vector_stores.register("es")(ESVectorStore)
+R.vector_stores.register("local")(LocalVectorStore)
+R.vector_stores.register("pgvector")(PGVectorStore)
+R.vector_stores.register("qdrant")(QdrantVectorStore)

@@ -32,11 +32,11 @@ class ReMeFs(Application):
         embedding_api_key: str | None = None,
         embedding_api_base: str | None = None,
         enable_logo: bool = True,
-        llm: dict | None = None,
-        embedding_model: dict | None = None,
-        memory_store: dict | None = None,
-        token_counter: dict | None = None,
-        file_watcher: dict | None = None,
+        default_llm_config: dict | None = None,
+        default_embedding_model_config: dict | None = None,
+        default_memory_store_config: dict | None = None,
+        default_token_counter_config: dict | None = None,
+        default_file_watcher_config: dict | None = None,
         working_dir: str = ".reme",
         **kwargs,
     ):
@@ -49,11 +49,11 @@ class ReMeFs(Application):
             embedding_api_base=embedding_api_base,
             enable_logo=enable_logo,
             parser=ReMeConfigParser,
-            llm=llm,
-            embedding_model=embedding_model,
-            memory_store=memory_store,
-            token_counter=token_counter,
-            file_watcher=file_watcher,
+            default_llm_config=default_llm_config,
+            default_embedding_model_config=default_embedding_model_config,
+            default_memory_store_config=default_memory_store_config,
+            default_token_counter_config=default_token_counter_config,
+            default_file_watcher_config=default_file_watcher_config,
             **kwargs,
         )
 
@@ -137,5 +137,5 @@ class ReMeFs(Application):
 
     async def memory_get(self, path: str, offset: int | None = None, limit: int | None = None) -> str:
         """Read specific snippets from memory files."""
-        get_tool = FsMemoryGet(workspace_dir=self.working_dir, memory_store=self.memory_store)
+        get_tool = FsMemoryGet(workspace_dir=self.working_dir)
         return await get_tool.call(path=path, offset=offset, limit=limit, service_context=self.service_context)

@@ -26,12 +26,12 @@ class Application:
         embedding_api_base: str | None = None,
         enable_logo: bool = True,
         parser: type[PydanticConfigParser] | None = None,
-        llm: dict | None = None,
-        embedding_model: dict | None = None,
-        vector_store: dict | None = None,
-        memory_store: dict | None = None,
-        token_counter: dict | None = None,
-        file_watcher: dict | None = None,
+        default_llm_config: dict | None = None,
+        default_embedding_model_config: dict | None = None,
+        default_vector_store_config: dict | None = None,
+        default_memory_store_config: dict | None = None,
+        default_token_counter_config: dict | None = None,
+        default_file_watcher_config: dict | None = None,
         **kwargs,
     ):
         self.service_context = ServiceContext(
@@ -44,12 +44,12 @@ class Application:
             parser=parser,
             config_path=None,
             enable_logo=enable_logo,
-            llm=llm,
-            embedding_model=embedding_model,
-            vector_store=vector_store,
-            memory_store=memory_store,
-            token_counter=token_counter,
-            file_watcher=file_watcher,
+            default_llm_config=default_llm_config,
+            default_embedding_model_config=default_embedding_model_config,
+            default_vector_store_config=default_vector_store_config,
+            default_memory_store_config=default_memory_store_config,
+            default_token_counter_config=default_token_counter_config,
+            default_file_watcher_config=default_file_watcher_config,
             **kwargs,
         )
         self.prompt_handler = PromptHandler(language=self.service_context.language)
@@ -82,12 +82,12 @@ class Application:
             embedding_api_base=embedding_api_base,
             enable_logo=enable_logo,
             parser=parser,
-            llm=llm,
-            embedding_model=embedding_model,
-            vector_store=vector_store,
-            memory_store=memory_store,
-            token_counter=token_counter,
-            file_watcher=file_watcher,
+            default_llm_config=llm,
+            default_embedding_model_config=embedding_model,
+            default_vector_store_config=vector_store,
+            default_memory_store_config=memory_store,
+            default_token_counter_config=token_counter,
+            default_file_watcher_config=file_watcher,
             **kwargs,
         )
         await instance.start()
@@ -141,34 +141,58 @@ class Application:
             yield chunk
 
     @property
-    def llm(self) -> BaseLLM:
+    def default_llm(self) -> BaseLLM:
         """Get the default LLM instance."""
         return self.service_context.llms.get("default")
 
+    def get_llm(self, name: str):
+        """Get an LLM instance by name."""
+        return self.service_context.llms.get(name)
+
     @property
-    def embedding_model(self) -> BaseEmbeddingModel:
+    def default_embedding_model(self) -> BaseEmbeddingModel:
         """Get the default embedding model instance."""
         return self.service_context.embedding_models.get("default")
 
+    def get_embedding_model(self, name: str):
+        """Get an embedding model instance by name."""
+        return self.service_context.embedding_models.get(name)
+
     @property
-    def vector_store(self) -> BaseVectorStore:
+    def default_vector_store(self) -> BaseVectorStore:
         """Get the default vector store instance."""
         return self.service_context.vector_stores.get("default")
 
+    def get_vector_store(self, name: str):
+        """Get a vector store instance by name."""
+        return self.service_context.vector_stores.get(name)
+
     @property
-    def memory_store(self) -> BaseMemoryStore:
+    def default_memory_store(self) -> BaseMemoryStore:
         """Get the default memory store instance."""
         return self.service_context.memory_stores.get("default")
 
+    def get_memory_store(self, name: str):
+        """Get a memory store instance by name."""
+        return self.service_context.memory_stores.get(name)
+
     @property
-    def file_watcher(self) -> BaseFileWatcher:
+    def default_file_watcher(self) -> BaseFileWatcher:
         """Get the default file watcher instance."""
         return self.service_context.file_watchers.get("default")
 
+    def get_file_watcher(self, name: str):
+        """Get a file watcher instance by name."""
+        return self.service_context.file_watchers.get(name)
+
     @property
-    def token_counter(self) -> BaseTokenCounter:
+    def default_token_counter(self) -> BaseTokenCounter:
         """Get the default token counter instance."""
         return self.service_context.token_counters.get("default")
+
+    def get_token_counter(self, name: str):
+        """Get a token counter instance by name."""
+        return self.service_context.token_counters.get(name)
 
     def run_service(self):
         """Run the configured service (HTTP, MCP, or CMD)."""

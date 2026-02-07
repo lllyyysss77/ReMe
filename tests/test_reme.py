@@ -9,11 +9,11 @@ from reme.core.schema import VectorNode, MemoryNode
 async def test_reme():
     """Tests ReMe memory system with personal information storage and retrieval."""
     # 构建一段包含个人信息的对话
-    reme = ReMe(vector_store={"collection_name": "reme"})
+    reme = ReMe(default_vector_store_config={"collection_name": "reme"})
     await reme.start()
     # reme = await ReMe.create(vector_store={"collection_name": "reme"})
 
-    await reme.vector_store.delete_all()
+    await reme.default_vector_store.delete_all()
 
     messages = [
         {
@@ -76,7 +76,7 @@ async def test_reme():
     print("=" * 60)
 
     # 列出所有存储的记忆节点
-    nodes: list[VectorNode] = await reme.vector_store.list()
+    nodes: list[VectorNode] = await reme.default_vector_store.list()
     for i, node in enumerate(nodes, 1):
         memory_node = MemoryNode.from_vector_node(node)
         print(f"{i} {memory_node.model_dump_json()}")

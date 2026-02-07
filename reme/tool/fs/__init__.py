@@ -27,4 +27,4 @@ __all__ = [
 
 for name in __all__:
     tool_class = globals()[name]
-    R.op.register(tool_class)
+    R.ops.register(tool_class)

@@ -340,13 +340,6 @@ async def test_memory_search_with_source_filter():
     reme_fs = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
-            "backend": "sqlite",
-            "store_name": "test_source_filter",
-            "embedding_model": "default",
-            "fts_enabled": True,
-            "snippet_max_chars": 700,
-        },
     )
     await reme_fs.start()
 
@@ -382,11 +375,19 @@ async def test_memory_search_with_source_filter():
 
     # Search only MEMORY source
     print(f"\n--- Searching MEMORY source for: '{query}' ---")
-    result_json = await reme_fs.memory_search(
+    # Create a new instance with MEMORY source filter
+    reme_fs_memory = ReMeFs(
+        enable_logo=False,
+        working_dir=TestConfig.WORKING_DIR,
+        search_params={"sources": [MemorySource.MEMORY]},
+    )
+    await reme_fs_memory.start()
+    result_json = await reme_fs_memory.memory_search(
         query=query,
         max_results=5,
-        sources=[MemorySource.MEMORY],
     )
+    await reme_fs_memory.close()
+
     import json
 
     memory_results = json.loads(result_json)
@@ -396,11 +397,18 @@ async def test_memory_search_with_source_filter():
 
     # Search only SESSIONS source
     print(f"\n--- Searching SESSIONS source for: '{query}' ---")
-    result_json = await reme_fs.memory_search(
+    # Create a new instance with SESSIONS source filter
+    reme_fs_sessions = ReMeFs(
+        enable_logo=False,
+        working_dir=TestConfig.WORKING_DIR,
+        search_params={"sources": [MemorySource.SESSIONS]},
+    )
+    await reme_fs_sessions.start()
+    result_json = await reme_fs_sessions.memory_search(
         query=query,
         max_results=5,
-        sources=[MemorySource.SESSIONS],
     )
+    await reme_fs_sessions.close()
     session_results = json.loads(result_json)
     print(f"Found {len(session_results)} results in SESSIONS source")
     for result in session_results:
@@ -597,13 +605,29 @@ async def test_memory_search_hybrid_mode():
 
     # Test with hybrid enabled
     print(f"\n--- Hybrid search (enabled) for: '{query}' ---")
-    result_json_hybrid = await reme_fs.memory_search(
+    # Create instance with hybrid enabled
+    reme_fs_hybrid = ReMeFs(
+        enable_logo=False,
+        working_dir=TestConfig.WORKING_DIR,
+        default_memory_store_config={
+            "backend": "sqlite",
+            "store_name": "test_hybrid",
+            "embedding_model": "default",
+            "fts_enabled": True,
+            "snippet_max_chars": 700,
+        },
+        search_params={
+            "hybrid_enabled": True,
+            "hybrid_vector_weight": 0.7,
+            "hybrid_text_weight": 0.3,
+        },
+    )
+    await reme_fs_hybrid.start()
+    result_json_hybrid = await reme_fs_hybrid.memory_search(
         query=query,
         max_results=5,
-        hybrid_enabled=True,
-        hybrid_vector_weight=0.7,
-        hybrid_text_weight=0.3,
     )
+    await reme_fs_hybrid.close()
 
     import json
 
@@ -613,11 +637,25 @@ async def test_memory_search_hybrid_mode():
 
     # Test with hybrid disabled (vector only)
     print(f"\n--- Vector-only search for: '{query}' ---")
-    result_json_vector = await reme_fs.memory_search(
+    # Create instance with hybrid disabled
+    reme_fs_vector = ReMeFs(
+        enable_logo=False,
+        working_dir=TestConfig.WORKING_DIR,
+        default_memory_store_config={
+            "backend": "sqlite",
+            "store_name": "test_hybrid",
+            "embedding_model": "default",
+            "fts_enabled": True,
+            "snippet_max_chars": 700,
+        },
+        search_params={"hybrid_enabled": False},
+    )
+    await reme_fs_vector.start()
+    result_json_vector = await reme_fs_vector.memory_search(
         query=query,
         max_results=5,
-        hybrid_enabled=False,
     )
+    await reme_fs_vector.close()
 
     vector_results = json.loads(result_json_vector)
     print(f"Vector search found {len(vector_results)} results")
@@ -632,13 +670,29 @@ async def test_memory_search_hybrid_mode():
     ]
 
     for vec_weight, text_weight in weight_configs:
-        result_json = await reme_fs.memory_search(
+        # Create instance with specific weights
+        reme_fs_weights = ReMeFs(
+            enable_logo=False,
+            working_dir=TestConfig.WORKING_DIR,
+            default_memory_store_config={
+                "backend": "sqlite",
+                "store_name": "test_hybrid",
+                "embedding_model": "default",
+                "fts_enabled": True,
+                "snippet_max_chars": 700,
+            },
+            search_params={
+                "hybrid_enabled": True,
+                "hybrid_vector_weight": vec_weight,
+                "hybrid_text_weight": text_weight,
+            },
+        )
+        await reme_fs_weights.start()
+        result_json = await reme_fs_weights.memory_search(
             query=query,
             max_results=5,
-            hybrid_enabled=True,
-            hybrid_vector_weight=vec_weight,
-            hybrid_text_weight=text_weight,
         )
+        await reme_fs_weights.close()
         results = json.loads(result_json)
         print(f"  Vector:{vec_weight}/Text:{text_weight} -> {len(results)} results")
 

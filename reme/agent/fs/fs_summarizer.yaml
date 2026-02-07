@@ -17,7 +17,23 @@ user_message_v2: |
   1. Check if {memory_dir}/ exists; if not, create it via bash
   2. Check if {memory_dir}/YYYY-MM-DD.md exists (use actual date)
   3. If file is NEW: Write memories directly (be concise)
-  4. If file EXISTS: Read it first, then UPDATE with new memories (keep concise, merge/deduplicate)
+  4. If file EXISTS:
+     a) Read the existing file content
+     b) Compare conversation history with existing content
+     c) Identify NEW/UPDATED information not yet captured
+     d) Use edit_tool to add/update only the new information (preserve existing content)
+     e) If conversation contains NO new information, skip writing
   5. If NO valuable information to store: Reply with reason and [SILENT]
+
+  IMPORTANT for updates:
+  - Only add information that is NOT already in the file
+  - Preserve all existing entries
+  - Merge duplicate information intelligently
+  - Use edit_tool for surgical updates, not write_tool (which overwrites)
+
+  Example of what counts as NEW information:
+  - Existing: "Alice: Software engineer"
+  - Conversation: "Alice loves Python and AI projects"
+  - Action: ADD "Enjoys Python programming and AI project work" to Alice's entry
 
   Store durable memories. Keep entries concise and well-organized.

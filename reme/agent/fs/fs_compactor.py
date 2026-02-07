@@ -17,12 +17,14 @@ class FsCompactor(BaseReact):
         context_window_tokens: int = 128000,
         reserve_tokens: int = 36000,
         keep_recent_tokens: int = 20000,
+        force_compact: bool = False,
         **kwargs,
     ):
         super().__init__(tools=[], **kwargs)
         self.context_window_tokens: int = context_window_tokens
         self.reserve_tokens: int = reserve_tokens
         self.keep_recent_tokens: int = keep_recent_tokens
+        self.force_compact: bool = force_compact
 
     @staticmethod
     def _normalize_messages(messages: list[Message | dict]) -> list[Message]:
@@ -178,16 +180,20 @@ class FsCompactor(BaseReact):
         token_count: int = self.token_counter.count_token(original_messages)
         threshold = self.context_window_tokens - self.reserve_tokens
 
-        if token_count < threshold:
+        if not self.force_compact and token_count < threshold:
             logger.info(f"Token count {token_count} below threshold ({threshold}), skipping compaction")
             return {
                 "compacted": False,
                 "tokens_before": token_count,
                 "is_split_turn": False,
                 "messages": original_messages,
+                "summary_content": "",
             }
 
-        logger.info(f"Starting compaction, token count: {token_count}, threshold: {threshold}")
+        if self.force_compact:
+            logger.info(f"Force compaction enabled, token count: {token_count}, threshold: {threshold}")
+        else:
+            logger.info(f"Starting compaction, token count: {token_count}, threshold: {threshold}")
 
         history_prompt_messages = self.build_messages_s1()
 
@@ -198,6 +204,7 @@ class FsCompactor(BaseReact):
                 "tokens_before": token_count,
                 "is_split_turn": False,
                 "messages": original_messages,
+                "summary_content": "",
             }
 
         history_summary = await self._generate_summary(history_prompt_messages) if history_prompt_messages else ""
@@ -222,4 +229,5 @@ class FsCompactor(BaseReact):
             "tokens_before": token_count,
             "is_split_turn": self.context.is_split_turn,
             "messages": final_messages,
+            "summary_content": summary_content,
         }

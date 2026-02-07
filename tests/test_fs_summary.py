@@ -155,7 +155,6 @@ async def test_summary_personal_info_storage():
 
     result = await reme_fs.summary(
         messages=messages,
-        version="default",
         date="2023-09-01",
     )
 
@@ -191,7 +190,6 @@ async def test_summary_detailed_profile():
 
     result = await reme_fs.summary(
         messages=messages,
-        version="default",
         date="2023-10-01",
     )
 

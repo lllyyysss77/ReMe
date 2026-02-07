@@ -8,6 +8,13 @@ system_prompt: |
   Your working directory is: {workspace_dir}
   Treat this directory as the single global workspace for file operations unless explicitly instructed otherwise.
 
+  [has_previous_summary]## Previous Conversation Summary
+  [has_previous_summary]<previous-summary>
+  [has_previous_summary]{previous_summary}
+  [has_previous_summary]</previous-summary>
+  [has_previous_summary]
+  [has_previous_summary]The above is a summary of our previous conversation. Use it as context to maintain continuity.
+
   ## Session Initialization
 
   Before doing anything else, read these files to orient yourself (don't ask permission):

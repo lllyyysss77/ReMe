@@ -118,7 +118,15 @@ async def test_compact_below_threshold():
     print("TEST 1: Compact - Below Threshold (No Compaction)")
     print("=" * 80)
 
-    reme_fs = ReMeFs(enable_logo=False, vector_store=None)
+    reme_fs = ReMeFs(
+        enable_logo=False,
+        vector_store=None,
+        compact_params={
+            "context_window_tokens": 5000,
+            "reserve_tokens": 2000,
+            "keep_recent_tokens": 1000,
+        },
+    )
     await reme_fs.start()
 
     messages = create_test_messages(num_messages=4)
@@ -129,12 +137,7 @@ async def test_compact_below_threshold():
     print("  reserve_tokens: 2000 (threshold = 3000)")
     print("  keep_recent_tokens: 1000")
 
-    result = await reme_fs.compact(
-        messages=messages,
-        context_window_tokens=5000,
-        reserve_tokens=2000,
-        keep_recent_tokens=1000,
-    )
+    result = await reme_fs.compact(messages=messages)
 
     print(f"\n{'='*80}")
     print("RESULT:")
@@ -161,7 +164,15 @@ async def test_compact_above_threshold():
     print("TEST 2: Compact - Above Threshold (With Compaction & LLM Summary)")
     print("=" * 80)
 
-    reme_fs = ReMeFs(enable_logo=False, vector_store=None)
+    reme_fs = ReMeFs(
+        enable_logo=False,
+        vector_store=None,
+        compact_params={
+            "context_window_tokens": 3000,
+            "reserve_tokens": 1500,
+            "keep_recent_tokens": 500,
+        },
+    )
     await reme_fs.start()
 
     messages = create_test_messages(num_messages=12)
@@ -172,12 +183,7 @@ async def test_compact_above_threshold():
     print("  reserve_tokens: 1500 (threshold = 1500)")
     print("  keep_recent_tokens: 500 (keep only recent messages)")
 
-    result = await reme_fs.compact(
-        messages=messages,
-        context_window_tokens=3000,
-        reserve_tokens=1500,
-        keep_recent_tokens=500,
-    )
+    result = await reme_fs.compact(messages=messages)
 
     print(f"\n{'='*80}")
     print("RESULT:")
@@ -208,7 +214,15 @@ async def test_compact_split_turn_scenario():
     print("TEST 3: Compact - Split Turn Scenario (Cut in Middle of Assistant Response)")
     print("=" * 80)
 
-    reme_fs = ReMeFs(enable_logo=False, vector_store=None)
+    reme_fs = ReMeFs(
+        enable_logo=False,
+        vector_store=None,
+        compact_params={
+            "context_window_tokens": 2000,
+            "reserve_tokens": 300,
+            "keep_recent_tokens": 600,
+        },
+    )
     await reme_fs.start()
 
     messages = []
@@ -242,16 +256,11 @@ async def test_compact_split_turn_scenario():
     print_messages(messages, "INPUT MESSAGES", max_content_len=80)
 
     print("\nParameters:")
-    print("  context_window_tokens: 3000")
-    print("  reserve_tokens: 1000 (threshold = 2000)")
-    print("  keep_recent_tokens: 800 (should cut in middle of assistant responses)")
+    print("  context_window_tokens: 2000")
+    print("  reserve_tokens: 300 (threshold = 1700)")
+    print("  keep_recent_tokens: 600 (should cut in middle of assistant responses)")
 
-    result = await reme_fs.compact(
-        messages=messages,
-        context_window_tokens=3000,
-        reserve_tokens=1000,
-        keep_recent_tokens=800,
-    )
+    result = await reme_fs.compact(messages=messages)
 
     print(f"\n{'='*80}")
     print("RESULT:")

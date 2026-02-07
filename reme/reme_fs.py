@@ -12,7 +12,7 @@ from .agent.chat import FsCli
 from .agent.fs import FsCompactor, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
-from .core.enumeration import MemorySource, ChunkEnum
+from .core.enumeration import ChunkEnum
 from .core.op import BaseTool
 from .core.schema import Message, StreamChunk
 from .tool.fs import (
@@ -38,6 +38,7 @@ class ReMeFs(Application):
         llm_api_base: str | None = None,
         embedding_api_key: str | None = None,
         embedding_api_base: str | None = None,
+        config_path: str = "fs",
         enable_logo: bool = True,
         log_to_console: bool = True,
         default_llm_config: dict | None = None,
@@ -46,6 +47,9 @@ class ReMeFs(Application):
         default_token_counter_config: dict | None = None,
         default_file_watcher_config: dict | None = None,
         working_dir: str = ".reme",
+        compact_params: dict | None = None,
+        summary_params: dict | None = None,
+        search_params: dict | None = None,
         **kwargs,
     ):
         """Initialize ReMe with config."""
@@ -55,6 +59,7 @@ class ReMeFs(Application):
             llm_api_base=llm_api_base,
             embedding_api_key=embedding_api_key,
             embedding_api_base=embedding_api_base,
+            config_path=config_path,
             enable_logo=enable_logo,
             log_to_console=log_to_console,
             parser=ReMeConfigParser,
@@ -67,6 +72,12 @@ class ReMeFs(Application):
         )
 
         self.working_dir: str = working_dir
+        Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+        self.compact_params: dict = compact_params or {}
+        self.summary_params: dict = summary_params or {}
+        self.search_params: dict = search_params or {}
+
+        # Setup file system tools
         self.fs_tools: list[BaseTool] = [
             BashTool(cwd=self.working_dir),
             EditTool(cwd=self.working_dir),
@@ -76,72 +87,34 @@ class ReMeFs(Application):
             ReadTool(cwd=self.working_dir),
             WriteTool(cwd=self.working_dir),
         ]
-        self.working_path: Path = Path(self.working_dir)
-        self.working_path.mkdir(parents=True, exist_ok=True)
 
+        # Commands
         self.commands = [
             "/new",
+            "/compact",
             "/exit",
+            "/help",
         ]
 
-    async def compact(
-        self,
-        messages: list[Message | dict],
-        context_window_tokens: int = 128000,
-        reserve_tokens: int = 36000,
-        keep_recent_tokens: int = 20000,
-    ):
+    async def compact(self, messages: list[Message | dict], previous_summary: str = ""):
         """Compact messages."""
         messages = [Message(**message) if isinstance(message, dict) else message for message in messages]
-        compactor = FsCompactor(
-            context_window_tokens=context_window_tokens,
-            reserve_tokens=reserve_tokens,
-            keep_recent_tokens=keep_recent_tokens,
+        compactor = FsCompactor(**(self.compact_params or {}))
+        return await compactor.call(
+            messages=messages,
+            previous_summary=previous_summary,
+            service_context=self.service_context,
         )
 
-        return await compactor.call(messages=messages, service_context=self.service_context)
-
-    async def summary(
-        self,
-        messages: list[Message | dict],
-        date: str,
-        version: str = "default",
-        context_window_tokens: int = 128000,
-        reserve_tokens: int = 32000,
-        soft_threshold_tokens: int = 4000,
-    ):
+    async def summary(self, messages: list[Message | dict], date: str):
         """Summarize messages."""
         messages = [Message(**message) if isinstance(message, dict) else message for message in messages]
-        summarizer = FsSummarizer(
-            tools=self.fs_tools,
-            version=version,
-            context_window_tokens=context_window_tokens,
-            reserve_tokens=reserve_tokens,
-            soft_threshold_tokens=soft_threshold_tokens,
-        )
-
+        summarizer = FsSummarizer(tools=self.fs_tools, **(self.summary_params or {}))
         return await summarizer.call(messages=messages, date=date, service_context=self.service_context)
 
-    async def memory_search(
-        self,
-        query: str,
-        max_results: int = 20,
-        min_score: float = 0.1,
-        sources: list[MemorySource] | None = None,
-        hybrid_enabled: bool = True,
-        hybrid_vector_weight: float = 0.7,
-        hybrid_text_weight: float = 0.3,
-        hybrid_candidate_multiplier: float = 3.0,
-    ) -> str:
+    async def memory_search(self, query: str, max_results: int = 10, min_score: float = 0.3) -> str:
         """Semantically search memory files."""
-        search_tool = FsMemorySearch(
-            sources=sources,
-            hybrid_enabled=hybrid_enabled,
-            hybrid_vector_weight=hybrid_vector_weight,
-            hybrid_text_weight=hybrid_text_weight,
-            hybrid_candidate_multiplier=hybrid_candidate_multiplier,
-        )
-
+        search_tool = FsMemorySearch(**(self.search_params or {}))
         return await search_tool.call(
             query=query,
             max_results=max_results,
@@ -156,7 +129,13 @@ class ReMeFs(Application):
 
     async def chat_with_remy(self, tool_result_max_size: int = 100):
         """Interactive CLI chat with Remy using simple streaming output."""
-        fs_cli = FsCli(working_dir=self.working_dir, tools=self.fs_tools)
+        fs_cli = FsCli(
+            working_dir=self.working_dir,
+            tools=self.fs_tools,
+            summary_params=self.summary_params,
+            search_params=self.search_params,
+            compact_params=self.compact_params,
+        )
         session = PromptSession()
 
         # Print welcome banner
@@ -191,8 +170,19 @@ class ReMeFs(Application):
                     break
 
                 if user_input.strip() == "/new":
-                    fs_cli.reset_history()
-                    print("Conversation reset.\n")
+                    result = await fs_cli.reset_history()
+                    print(f"{result}\nConversation reset\n")
+                    continue
+
+                if user_input.strip() == "/compact":
+                    result = await fs_cli.compact_history()
+                    print(f"{result}\nHistory compacted.\n")
+                    continue
+
+                if user_input.strip() == "/help":
+                    print("\nCommands:")
+                    for command in self.commands:
+                        print(f"  {command}")
                     continue
 
                 # Stream processing state

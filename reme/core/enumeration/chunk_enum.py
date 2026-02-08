@@ -21,5 +21,11 @@ class ChunkEnum(str, Enum):
     # Error messages or exception details
     ERROR = "error"
 
+    # Signal indicating the start of a new ReAct step
+    STEP_START = "step_start"
+
+    # Tool execution result
+    TOOL_RESULT = "tool_result"
+
     # Final signal indicating the completion of the stream
     DONE = "done"

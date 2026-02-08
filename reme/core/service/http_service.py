@@ -66,7 +66,7 @@ class HttpService(BaseService):
                     stream_queue=stream_queue,
                     task=task,
                     task_name=tool_call.name,
-                    as_bytes=True,
+                    output_format="bytes",
                 ):
                     yield chunk
 

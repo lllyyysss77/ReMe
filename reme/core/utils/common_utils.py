@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 from collections.abc import AsyncGenerator, Coroutine
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from loguru import logger
@@ -31,8 +31,8 @@ async def execute_stream_task(
     stream_queue: asyncio.Queue,
     task: asyncio.Task,
     task_name: str | None = None,
-    as_bytes: bool = False,
-) -> AsyncGenerator[str | bytes, None]:
+    output_format: Literal["str", "bytes", "chunk"] = "str",
+) -> AsyncGenerator[str | bytes | StreamChunk, None]:
     """
     Core stream flow execution logic.
 
@@ -43,46 +43,83 @@ async def execute_stream_task(
         stream_queue: Queue to receive StreamChunk objects from
         task: Background task executing the flow
         task_name: Optional flow name for logging purposes
-        as_bytes: If True, yield bytes for HTTP responses; if False, yield strings
+        output_format: Output format control
+            - "str": SSE-formatted string (default)
+            - "bytes": SSE-formatted bytes for HTTP responses
+            - "chunk": Raw StreamChunk objects
 
     Yields:
-        SSE-formatted data chunks (either str or bytes based on as_bytes)
-    """
-    done_msg = b"data:[DONE]\n\n" if as_bytes else "data:[DONE]\n\n"
+        - str: SSE-formatted data when output_format="str"
+        - bytes: SSE-formatted data when output_format="bytes"
+        - StreamChunk: Raw chunk objects when output_format="chunk"
 
+    Raises:
+        Exception: Re-raises any exception from the background task
+    """
     try:
         while True:
             # Wait for next chunk or check if task failed
             get_chunk = asyncio.create_task(stream_queue.get())
-            done, _ = await asyncio.wait({get_chunk, task}, return_when=asyncio.FIRST_COMPLETED)
+            done, _pending = await asyncio.wait({get_chunk, task}, return_when=asyncio.FIRST_COMPLETED)
 
-            if get_chunk in done:
+            # Priority 1: Check if main task finished (may have exception)
+            if task in done:
+                # Task finished - check for exceptions first
+                exc = task.exception()
+                if exc:
+                    log_msg = f"Task error in {task_name}: {exc}" if task_name else f"Task error: {exc}"
+                    logger.exception(log_msg)
+                    raise exc
+
+                # Task completed successfully - drain remaining chunks if any
+                if get_chunk in done:
+                    chunk: StreamChunk = get_chunk.result()
+                    if output_format == "chunk":
+                        yield chunk
+                        if chunk.done:
+                            break
+                    else:
+                        if chunk.done:
+                            yield b"data:[DONE]\n\n" if output_format == "bytes" else "data:[DONE]\n\n"
+                            break
+                        data = f"data:{chunk.model_dump_json()}\n\n"
+                        yield data.encode() if output_format == "bytes" else data
+                else:
+                    # No more chunks, task completed
+                    get_chunk.cancel()
+                    if output_format == "chunk":
+                        yield StreamChunk(chunk_type=ChunkEnum.DONE, chunk="", done=True)
+                    else:
+                        yield b"data:[DONE]\n\n" if output_format == "bytes" else "data:[DONE]\n\n"
+                    break
+
+            elif get_chunk in done:
+                # Got a chunk from the queue (task still running)
                 chunk: StreamChunk = get_chunk.result()
+
+                # Handle raw chunk mode
+                if output_format == "chunk":
+                    yield chunk
+                    if chunk.done:
+                        break
+                    continue
+
+                # Handle SSE format mode (str or bytes)
                 if chunk.done:
-                    yield done_msg
+                    yield b"data:[DONE]\n\n" if output_format == "bytes" else "data:[DONE]\n\n"
                     break
 
                 data = f"data:{chunk.model_dump_json()}\n\n"
-                yield data.encode() if as_bytes else data
-            else:
-                # Task finished unexpectedly or raised exception
-                await task
-                yield done_msg
-                break
-
-    except Exception as e:
-        log_msg = f"Stream error in {task_name}: {e}" if task_name else f"Stream error: {e}"
-        logger.exception(log_msg)
-
-        err = StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e), done=True)
-        err_data = f"data:{err.model_dump_json()}\n\n"
-        yield err_data.encode() if as_bytes else err_data
-        yield done_msg
+                yield data.encode() if output_format == "bytes" else data
 
     finally:
         # Ensure task is cancelled if still running to avoid resource leaks
         if not task.done():
             task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 
 def hash_text(text: str) -> str:

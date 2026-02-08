@@ -36,6 +36,7 @@ class ServiceContext(BaseContext):
         parser: type[PydanticConfigParser] | None = None,
         config_path: str | None = None,
         enable_logo: bool = True,
+        log_to_console: bool = True,
         default_llm_config: dict | None = None,
         default_embedding_model_config: dict | None = None,
         default_vector_store_config: dict | None = None,
@@ -74,13 +75,12 @@ class ServiceContext(BaseContext):
             if default_file_watcher_config:
                 self._update_section_config(kwargs, "file_watchers", **default_file_watcher_config)
             kwargs["enable_logo"] = enable_logo
+            kwargs["log_to_console"] = log_to_console
             logger.info(f"update with args: {input_args} kwargs: {kwargs}")
             service_config = parser.parse_args(*input_args, **kwargs)
 
         self.service_config: ServiceConfig = service_config
-
-        if self.service_config.init_logger:
-            init_logger()
+        init_logger(log_to_console=self.service_config.log_to_console)
 
         if self.service_config.enable_logo:
             print_logo(service_config=self.service_config)
@@ -162,35 +162,25 @@ class ServiceContext(BaseContext):
             )
 
         for name, config in self.service_config.vector_stores.items():
-            self.vector_stores[name] = R.vector_stores[config.backend](
-                collection_name=config.collection_name,
-                embedding_model=self.embedding_models[config.embedding_model],
-                thread_pool=self.thread_pool,
-                **config.model_extra,
-            )
+            # Extract config dict and replace special fields with actual instances
+            config_dict = config.model_dump(exclude={"backend", "embedding_model"})
+            config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
+            config_dict["thread_pool"] = self.thread_pool
+            self.vector_stores[name] = R.vector_stores[config.backend](**config_dict)
             await self.vector_stores[name].create_collection(config.collection_name)
 
         for name, config in self.service_config.memory_stores.items():
-            self.memory_stores[name] = R.memory_stores[config.backend](
-                store_name=config.store_name,
-                embedding_model=self.embedding_models[config.embedding_model],
-                fts_enabled=config.fts_enabled,
-                snippet_max_chars=config.snippet_max_chars,
-                **config.model_extra,
-            )
+            # Extract config dict and replace embedding_model string with actual instance
+            config_dict = config.model_dump(exclude={"backend", "embedding_model"})
+            config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
+            self.memory_stores[name] = R.memory_stores[config.backend](**config_dict)
             await self.memory_stores[name].start()
 
         for name, config in self.service_config.file_watchers.items():
-            self.file_watchers[name] = R.file_watchers[config.backend](
-                watch_paths=config.watch_paths,
-                suffix_filters=config.suffix_filters,
-                recursive=config.recursive,
-                debounce=config.debounce,
-                chunk_tokens=config.chunk_tokens,
-                chunk_overlap=config.chunk_overlap,
-                memory_store=self.memory_stores[config.memory_store],
-                **config.model_extra,
-            )
+            # Extract config dict and replace memory_store string with actual instance
+            config_dict = config.model_dump(exclude={"backend", "memory_store"})
+            config_dict["memory_store"] = self.memory_stores[config.memory_store]
+            self.file_watchers[name] = R.file_watchers[config.backend](**config_dict)
             await self.file_watchers[name].start()
 
         if self.service_config.mcp_servers:
@@ -228,6 +218,9 @@ class ServiceContext(BaseContext):
 
         for _, memory_store in self.memory_stores.items():
             await memory_store.close()
+
+        for _, file_watcher in self.file_watchers.items():
+            await file_watcher.close()
 
         for _, llm in self.llms.items():
             await llm.close()

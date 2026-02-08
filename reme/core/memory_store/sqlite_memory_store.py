@@ -558,6 +558,38 @@ class SqliteMemoryStore(BaseMemoryStore):
         finally:
             cursor.close()
 
+    def _sanitize_fts_query(self, query: str) -> str:
+        """Sanitize query string for FTS5 search.
+
+        Removes or escapes special characters that have special meaning in FTS5:
+        - * (prefix match)
+        - ? (not used in FTS5, but can cause issues)
+        - " (phrase search, needs escaping)
+        - : (column filter)
+        - ^ (start of line anchor, not standard FTS5)
+        - Other special chars that may interfere
+
+        Args:
+            query: Raw query string
+
+        Returns:
+            Sanitized query string safe for FTS5
+        """
+        if not query:
+            return ""
+
+        # Remove FTS5 special characters that we don't want users to use
+        # Keep only alphanumeric, spaces, and some safe punctuation
+        special_chars = ["*", "?", ":", "^", "(", ")", "[", "]", "{", "}"]
+        cleaned = query
+        for char in special_chars:
+            cleaned = cleaned.replace(char, " ")
+
+        # Normalize whitespace
+        cleaned = " ".join(cleaned.split())
+
+        return cleaned
+
     async def keyword_search(
         self,
         query: str,
@@ -568,14 +600,12 @@ class SqliteMemoryStore(BaseMemoryStore):
         if not self.fts_available:
             return []
 
-        # Build FTS5 query
-        # Split query into tokens and join with OR for better recall
-        # Individual words are automatically stemmed and matched by FTS5
-        cleaned = query.strip()
+        # Sanitize and prepare query
+        cleaned = self._sanitize_fts_query(query)
         if not cleaned:
             return []
 
-        # Split into words and escape each
+        # Split into words and escape double quotes for FTS5 phrase matching
         words = cleaned.split()
         if not words:
             return []

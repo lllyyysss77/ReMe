@@ -50,7 +50,7 @@ class BaseOp(metaclass=ABCMeta):
         sub_ops: dict[str, "BaseOp"] | list["BaseOp"] | Optional["BaseOp"] = None,
         input_mapping: dict[str, str] | None = None,
         output_mapping: dict[str, str] | None = None,
-        enable_sync_thread_pool: bool = True,
+        enable_parallel: bool = False,
         max_retries: int = 1,
         raise_exception: bool = False,
         **kwargs,
@@ -76,7 +76,7 @@ class BaseOp(metaclass=ABCMeta):
 
         self.input_mapping = input_mapping
         self.output_mapping = output_mapping
-        self.enable_sync_thread_pool = enable_sync_thread_pool
+        self.enable_parallel = enable_parallel  # Control whether to execute tasks in parallel
         self.max_retries = max(1, max_retries)
         self.raise_exception = raise_exception
         self.op_params = kwargs
@@ -233,7 +233,7 @@ class BaseOp(metaclass=ABCMeta):
 
     def submit_sync_task(self, fn: Callable, *args, **kwargs) -> "BaseOp":
         """Submit a task to the thread pool or local queue."""
-        if self.enable_sync_thread_pool:
+        if self.enable_parallel:
             task = self.service_context.thread_pool.submit(fn, *args, **kwargs)
         else:
             task = (fn, args, kwargs)
@@ -250,7 +250,7 @@ class BaseOp(metaclass=ABCMeta):
         """Wait for all pending sync tasks and return flattened results."""
         results = []
         for task in tqdm(self._pending_tasks, desc=task_desc or self.name):
-            if self.enable_sync_thread_pool:
+            if self.enable_parallel:
                 result = task.result()
             else:
                 result = task[0](*task[1], **task[2])
@@ -264,7 +264,20 @@ class BaseOp(metaclass=ABCMeta):
 
     async def join_async_tasks(self, return_exceptions: bool = True) -> list:
         """Wait for all pending async tasks and aggregate results."""
-        raw_results = await asyncio.gather(*self._pending_tasks, return_exceptions=return_exceptions)
+        if self.enable_parallel:
+            raw_results = await asyncio.gather(*self._pending_tasks, return_exceptions=return_exceptions)
+        else:
+            raw_results = []
+            for task in self._pending_tasks:
+                try:
+                    result = await task
+                    raw_results.append(result)
+                except Exception as e:
+                    if return_exceptions:
+                        raw_results.append(e)
+                    else:
+                        raise
+
         results = []
         for result in raw_results:
             if isinstance(result, Exception):

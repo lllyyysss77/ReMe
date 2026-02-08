@@ -5,8 +5,14 @@ import sys
 from datetime import datetime
 
 
-def init_logger(log_dir: str = "logs", level: str = "INFO") -> None:
-    """Initialize the logger with both file and console handlers."""
+def init_logger(log_dir: str = "logs", level: str = "INFO", log_to_console: bool = True) -> None:
+    """Initialize the logger with both file and console handlers.
+
+    Args:
+        log_dir: Directory path for log files
+        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_to_console: Whether to print logs to console/screen
+    """
     from loguru import logger
 
     # Remove default handler to avoid duplicate logs
@@ -31,10 +37,11 @@ def init_logger(log_dir: str = "logs", level: str = "INFO") -> None:
         format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} | {function} | {message}",
     )
 
-    # Configure colorized standard output logging
-    logger.add(
-        sink=sys.stdout,
-        level=level,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} | {function} | {message}",
-        colorize=True,
-    )
+    # Configure colorized standard output logging if enabled
+    if log_to_console:
+        logger.add(
+            sink=sys.stdout,
+            level=level,
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} | {function} | {message}",
+            colorize=True,
+        )

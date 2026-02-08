@@ -24,7 +24,9 @@ class Application:
         llm_api_base: str | None = None,
         embedding_api_key: str | None = None,
         embedding_api_base: str | None = None,
+        config_path: str | None = None,
         enable_logo: bool = True,
+        log_to_console: bool = True,
         parser: type[PydanticConfigParser] | None = None,
         default_llm_config: dict | None = None,
         default_embedding_model_config: dict | None = None,
@@ -42,8 +44,9 @@ class Application:
             embedding_api_base=embedding_api_base,
             service_config=None,
             parser=parser,
-            config_path=None,
+            config_path=config_path,
             enable_logo=enable_logo,
+            log_to_console=log_to_console,
             default_llm_config=default_llm_config,
             default_embedding_model_config=default_embedding_model_config,
             default_vector_store_config=default_vector_store_config,
@@ -136,7 +139,7 @@ class Application:
             stream_queue=stream_queue,
             task=task,
             task_name=name,
-            as_bytes=False,
+            output_format="str",
         ):
             yield chunk
 

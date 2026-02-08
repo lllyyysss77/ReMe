@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from ..enumeration import Role
+from ..enumeration import Role, ChunkEnum
 from ..op import BaseOp
-from ..schema import Message
+from ..schema import Message, StreamChunk
 
 if TYPE_CHECKING:
     from . import BaseTool
 
 
-class BaseReact(BaseOp):
+class BaseReactStream(BaseOp):
     """ReAct agent that performs reasoning and acting cycles with tools."""
 
     def __init__(
@@ -64,16 +64,40 @@ class BaseReact(BaseOp):
         **kwargs,
     ) -> tuple[Message, bool]:
         """Execute one reasoning step where LLM decides whether to use tools."""
-        # Get tool definitions for LLM
         tool_calls = [t.tool_call for t in tools]
 
-        # Generate assistant response with potential tool calls
-        assistant_message: Message = await self.llm.chat(messages=messages, tools=tool_calls, **kwargs)
-        messages.append(assistant_message)
-        assistant_content: str = assistant_message.simple_dump(as_dict=False)
-        logger.info(f"[{self.__class__.__name__} {stage or ''} step{step}] assistant={assistant_content}")
+        start_chunk = StreamChunk(chunk_type=ChunkEnum.STEP_START, metadata={"step": step, "stage": stage})
+        await self.context.add_stream_chunk(start_chunk)
 
-        # Determine if tools should be called
+        # State for accumulating message content from stream
+        state = {
+            "reasoning_content": "",
+            "content": "",
+            "tool_calls": [],
+        }
+
+        async for stream_chunk in self.llm.stream_chat(messages=messages, tools=tool_calls, **kwargs):  # noqa
+            if stream_chunk.chunk_type in [ChunkEnum.ANSWER, ChunkEnum.THINK, ChunkEnum.ERROR]:
+                await self.context.add_stream_chunk(stream_chunk)
+
+            # Accumulate content based on chunk type
+            if stream_chunk.chunk_type is ChunkEnum.THINK:
+                state["reasoning_content"] += stream_chunk.chunk
+
+            elif stream_chunk.chunk_type is ChunkEnum.ANSWER:
+                state["content"] += stream_chunk.chunk
+
+            elif stream_chunk.chunk_type is ChunkEnum.TOOL:
+                state["tool_calls"].append(stream_chunk.chunk)
+
+        # Build the final assistant message from accumulated state
+        assistant_message = Message(role=Role.ASSISTANT, **state)
+        messages.append(assistant_message)
+        logger.info(
+            f"[{self.__class__.__name__} {stage or ''} step{step}] "
+            f"assistant={assistant_message.simple_dump(as_dict=False)}",
+        )
+
         should_act = bool(assistant_message.tool_calls)
         return assistant_message, should_act
 
@@ -85,7 +109,7 @@ class BaseReact(BaseOp):
         stage: str = "",
         **kwargs,
     ) -> tuple[list["BaseTool"], list[Message]]:
-        """Execute tool calls requested by the assistant and collect results."""
+        """Execute tool calls serially and collect results with streaming output."""
         tool_list: list["BaseTool"] = []
         tool_messages: list[Message] = []
 
@@ -94,13 +118,37 @@ class BaseReact(BaseOp):
 
         # Create tool name to tool instance mapping
         tool_dict = {t.tool_call.name: t for t in tools}
+
+        # Execute tools serially for better streaming experience
         for j, tool_call in enumerate(assistant_message.tool_calls):
             prefix: str = f"[{self.__class__.__name__} {stage or ''} step{step}.{j}]"
             if tool_call.name not in tool_dict:
                 logger.warning(f"{prefix} unknown tool_call={tool_call.name}")
+                # Emit error chunk for unknown tool
+                await self.context.add_stream_chunk(
+                    StreamChunk(
+                        chunk_type=ChunkEnum.ERROR,
+                        chunk=f"Unknown tool: {tool_call.name}",
+                        metadata={"step": step, "tool_index": j, "tool_name": tool_call.name},
+                    ),
+                )
                 continue
 
             logger.info(f"{prefix} submit tool_call[{tool_call.name}] arguments={tool_call.arguments}")
+
+            # Emit tool execution start signal
+            await self.context.add_stream_chunk(
+                StreamChunk(
+                    chunk_type=ChunkEnum.TOOL,
+                    chunk=f"Executing tool: {tool_call.name} {tool_call.arguments}",
+                    metadata={
+                        "step": step,
+                        "tool_index": j,
+                        "tool_name": tool_call.name,
+                        "arguments": tool_call.arguments,
+                    },
+                ),
+            )
 
             # Create independent tool copy with unique ID
             tool_copy: BaseTool = tool_dict[tool_call.name].copy()
@@ -109,24 +157,38 @@ class BaseReact(BaseOp):
 
             # Create isolated kwargs for each tool call to avoid parameter conflicts
             tool_kwargs = {**kwargs, **tool_call.argument_dict}
-            self.submit_async_task(tool_copy.call, service_context=self.service_context, **tool_kwargs)
-            if self.tool_call_interval > 0:
-                await asyncio.sleep(self.tool_call_interval)
 
-        # Wait for all tool executions to complete
-        await self.join_async_tasks()
+            # Execute tool serially (wait for completion before next tool)
+            await tool_copy.call(service_context=self.service_context, **tool_kwargs)
 
-        # Collect tool results as messages
-        for j, tool in enumerate(tool_list):
+            # Get tool result immediately after execution
+            tool_result = tool_copy.response.answer
             tool_messages.append(
                 Message(
                     role=Role.TOOL,
-                    content=tool.response.answer,
-                    tool_call_id=tool.tool_call.id,
+                    content=tool_result,
+                    tool_call_id=tool_copy.tool_call.id,
                 ),
             )
-            prefix: str = f"[{self.__class__.__name__} {stage or ''} step{step}.{j}]"
-            logger.info(f"{prefix} join tool={tool.name} result={tool.response.answer}")
+            logger.info(f"{prefix} tool={tool_copy.name} result={tool_result}")
+
+            await self.context.add_stream_chunk(
+                StreamChunk(
+                    chunk_type=ChunkEnum.TOOL_RESULT,
+                    chunk=tool_result,
+                    metadata={
+                        "step": step,
+                        "tool_index": j,
+                        "tool_name": tool_copy.name,
+                        "tool_call_id": tool_copy.tool_call.id,
+                    },
+                ),
+            )
+
+            # Optional interval between tool calls
+            if self.tool_call_interval > 0 and j < len(assistant_message.tool_calls) - 1:
+                await asyncio.sleep(self.tool_call_interval)
+
         return tool_list, tool_messages
 
     async def react(self, messages: list[Message], tools: list["BaseTool"], stage: str = ""):
@@ -150,8 +212,7 @@ class BaseReact(BaseOp):
         return used_tools, messages, success
 
     async def execute(self):
-        """Execute the ReAct agent and return final results."""
-        # Log available tools
+        """Execute the ReAct agent with streaming output and return final results."""
         for i, tool in enumerate(self.tools):
             logger.info(f"[{self.__class__.__name__}] {i}.tool_call={tool.tool_call.simple_input_dump(as_dict=False)}")
 
@@ -161,8 +222,20 @@ class BaseReact(BaseOp):
             role = message.name or message.role
             logger.info(f"[{self.__class__.__name__}] role={role} {message.simple_dump(as_dict=False)}")
 
-        # Run ReAct loop
+        # Run ReAct loop with streaming
         t_tools, messages, success = await self.react(messages, self.tools)
+
+        # Emit final done signal
+        await self.context.add_stream_chunk(
+            StreamChunk(
+                chunk_type=ChunkEnum.DONE,
+                chunk="",
+                metadata={
+                    "success": success,
+                    "total_steps": len(t_tools),
+                },
+            ),
+        )
 
         # Get the last assistant message as the final answer
         assistant_messages = [m for m in messages if m.role == Role.ASSISTANT]

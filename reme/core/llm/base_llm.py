@@ -99,7 +99,6 @@ class BaseLLM(ABC):
         stream_kwargs: dict,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Async generator for streaming response chunks."""
-        raise NotImplementedError
 
     def _stream_chat_sync(
         self,
@@ -108,7 +107,6 @@ class BaseLLM(ABC):
         stream_kwargs: dict | None = None,
     ) -> Generator[StreamChunk, None, None]:
         """Sync generator for streaming response chunks."""
-        raise NotImplementedError
 
     async def stream_chat(
         self,
@@ -117,7 +115,7 @@ class BaseLLM(ABC):
         model_name: str | None = None,
         **kwargs,
     ) -> AsyncGenerator[StreamChunk, None]:
-        """Stream chat completions with retries."""
+        """Stream chat completions with retries and return final message."""
         if self.request_interval > 0:
             async with self._request_lock:
                 current_time = time.time()
@@ -143,7 +141,8 @@ class BaseLLM(ABC):
             try:
                 async for chunk in self._stream_chat(messages=messages, tools=tools, stream_kwargs=stream_kwargs):
                     yield chunk
-                return
+
+                break
 
             except Exception as e:
                 logger.exception(f"Stream chat error (model={self.model_name}): {e.args}")
@@ -152,7 +151,7 @@ class BaseLLM(ABC):
                     if self.raise_exception:
                         raise e
                     yield StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e))
-                    return
+                    break
 
                 yield StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e))
                 await asyncio.sleep(i + 1)
@@ -170,7 +169,7 @@ class BaseLLM(ABC):
         for i in range(self.max_retries):
             try:
                 yield from self._stream_chat_sync(messages=messages, tools=tools, stream_kwargs=stream_kwargs)
-                return
+                break
 
             except Exception as e:
                 logger.exception(f"Stream chat sync error (model={self.model_name}): {e.args}")
@@ -179,7 +178,7 @@ class BaseLLM(ABC):
                     if self.raise_exception:
                         raise e
                     yield StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e))
-                    return
+                    break
 
                 yield StreamChunk(chunk_type=ChunkEnum.ERROR, chunk=str(e))
                 time.sleep(i + 1)

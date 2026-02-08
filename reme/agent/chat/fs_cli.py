@@ -1,6 +1,7 @@
 """FsCli system prompt"""
 
 from datetime import datetime
+from pathlib import Path
 
 from ...core.enumeration import Role, ChunkEnum
 from ...core.op import BaseReactStream
@@ -13,19 +14,30 @@ class FsCli(BaseReactStream):
     def __init__(
         self,
         working_dir: str,
-        summary_params: dict | None = None,
-        compact_params: dict | None = None,
+        context_window_tokens: int = 128000,
+        reserve_tokens: int = 36000,
+        keep_recent_tokens: int = 20000,
+        hybrid_enabled: bool = True,
+        hybrid_vector_weight: float = 0.7,
+        hybrid_text_weight: float = 0.3,
+        hybrid_candidate_multiplier: float = 3.0,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.working_dir: str = working_dir
-        self.summary_params: dict = summary_params or {}
-        self.compact_params: dict = compact_params or {}
+        Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+        self.context_window_tokens: int = context_window_tokens
+        self.reserve_tokens: int = reserve_tokens
+        self.keep_recent_tokens: int = keep_recent_tokens
+        self.hybrid_enabled: bool = hybrid_enabled
+        self.hybrid_vector_weight: float = hybrid_vector_weight
+        self.hybrid_text_weight: float = hybrid_text_weight
+        self.hybrid_candidate_multiplier: float = hybrid_candidate_multiplier
 
         self.messages: list[Message] = []
         self.previous_summary: str = ""
 
-    async def reset_history(self) -> str:
+    async def reset(self) -> str:
         """Reset conversation history using summary.
 
         Summarizes current messages to memory files and clears history.
@@ -40,25 +52,37 @@ class FsCli(BaseReactStream):
 
         # Summarize current conversation and save to memory files
         current_date = datetime.now().strftime("%Y-%m-%d")
-        summarizer = FsSummarizer(tools=self.tools, **(self.summary_params or {}))
+        summarizer = FsSummarizer(tools=self.tools, working_dir=self.working_dir)
 
-        result = await summarizer.call(
-            messages=self.messages,
-            date=current_date,
-            service_context=self.service_context,
-        )
-
-        # Clear messages (no previous_summary update, as summarizer saves to files)
+        result = await summarizer.call(messages=self.messages, date=current_date, service_context=self.service_context)
         self.messages.clear()
         self.previous_summary = ""
-
         return f"History saved to memory files and reset. Result: {result.get('answer', 'Done')}"
 
-    async def compact_history(self) -> str:
+    async def context_check(self) -> dict:
+        """Check if messages exceed token limits."""
+        # Import required modules
+        from ..fs import FsContextChecker
+
+        # Step 1: Check and find cut point
+        checker = FsContextChecker(
+            context_window_tokens=self.context_window_tokens,
+            reserve_tokens=self.reserve_tokens,
+            keep_recent_tokens=self.keep_recent_tokens,
+        )
+        return await checker.call(messages=self.messages, service_context=self.service_context)
+
+    async def compact(self, force_compact: bool = False) -> str:
         """Compact history then reset.
 
         First compacts messages if they exceed token limits (generating a summary),
         then calls reset_history to save to files and clear.
+
+        Args:
+            force_compact: If True, force compaction of all messages into summary
+
+        Returns:
+            str: Summary of compaction result
         """
         if not self.messages:
             return "No history to compact."
@@ -66,33 +90,40 @@ class FsCli(BaseReactStream):
         # Import required modules
         from ..fs import FsCompactor
 
-        # Step 1: Compact messages
-        compactor = FsCompactor(**(self.compact_params or {}))
-        compact_result = await compactor.call(
-            messages=self.messages,
+        # Step 1: Check and find cut point
+        cut_result = await self.context_check()
+        tokens_before = cut_result.get("token_count", 0)
+
+        if force_compact:
+            # Force compact: summarize all messages, leave only summary
+            messages_to_summarize = self.messages
+            turn_prefix_messages = []
+            left_messages = []
+        elif not cut_result.get("needs_compaction", False):
+            # No compaction needed
+            return "History is within token limits, no compaction needed."
+        else:
+            # Normal compaction: use cut point result
+            messages_to_summarize = cut_result.get("messages_to_summarize", [])
+            turn_prefix_messages = cut_result.get("turn_prefix_messages", [])
+            left_messages = cut_result.get("left_messages", [])
+
+        # Step 2: Generate summary via Compactor
+        compactor = FsCompactor()
+        summary_content = await compactor.call(
+            messages_to_summarize=messages_to_summarize,
+            turn_prefix_messages=turn_prefix_messages,
             previous_summary=self.previous_summary,
             service_context=self.service_context,
         )
 
-        compacted_messages = compact_result.get("messages", self.messages)
-        is_compacted = compact_result.get("compacted", False)
+        # Step 3: Assemble final messages
+        summary_message = Message(role=Role.USER, content=summary_content)
+        self.messages = [summary_message] + left_messages
+        self.previous_summary = summary_content
 
-        if not is_compacted:
-            return "History is within token limits, no compaction needed."
-
-        # Step 2: Extract summary from compacted messages
-        # The first message contains the summary wrapped in compaction_summary_format
-        tokens_before = compact_result.get("tokens_before", 0)
-
-        if compacted_messages and compacted_messages[0].role == Role.USER:
-            # Extract summary content from the first message
-            summary_content = compacted_messages[0].content
-            self.previous_summary = summary_content
-
-        # Step 3: Update messages and call reset_history to save and clear
-        self.messages = compacted_messages
-        reset_result = await self.reset_history()
-
+        # Step 4: Call reset_history to save and clear
+        reset_result = await self.reset()
         return f"History compacted from {tokens_before} tokens. {reset_result}"
 
     async def build_messages(self) -> list[Message]:

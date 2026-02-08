@@ -162,35 +162,25 @@ class ServiceContext(BaseContext):
             )
 
         for name, config in self.service_config.vector_stores.items():
-            self.vector_stores[name] = R.vector_stores[config.backend](
-                collection_name=config.collection_name,
-                embedding_model=self.embedding_models[config.embedding_model],
-                thread_pool=self.thread_pool,
-                **config.model_extra,
-            )
+            # Extract config dict and replace special fields with actual instances
+            config_dict = config.model_dump(exclude={"backend", "embedding_model"})
+            config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
+            config_dict["thread_pool"] = self.thread_pool
+            self.vector_stores[name] = R.vector_stores[config.backend](**config_dict)
             await self.vector_stores[name].create_collection(config.collection_name)
 
         for name, config in self.service_config.memory_stores.items():
-            self.memory_stores[name] = R.memory_stores[config.backend](
-                store_name=config.store_name,
-                embedding_model=self.embedding_models[config.embedding_model],
-                fts_enabled=config.fts_enabled,
-                snippet_max_chars=config.snippet_max_chars,
-                **config.model_extra,
-            )
+            # Extract config dict and replace embedding_model string with actual instance
+            config_dict = config.model_dump(exclude={"backend", "embedding_model"})
+            config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
+            self.memory_stores[name] = R.memory_stores[config.backend](**config_dict)
             await self.memory_stores[name].start()
 
         for name, config in self.service_config.file_watchers.items():
-            self.file_watchers[name] = R.file_watchers[config.backend](
-                watch_paths=config.watch_paths,
-                suffix_filters=config.suffix_filters,
-                recursive=config.recursive,
-                debounce=config.debounce,
-                chunk_tokens=config.chunk_tokens,
-                chunk_overlap=config.chunk_overlap,
-                memory_store=self.memory_stores[config.memory_store],
-                **config.model_extra,
-            )
+            # Extract config dict and replace memory_store string with actual instance
+            config_dict = config.model_dump(exclude={"backend", "memory_store"})
+            config_dict["memory_store"] = self.memory_stores[config.memory_store]
+            self.file_watchers[name] = R.file_watchers[config.backend](**config_dict)
             await self.file_watchers[name].start()
 
         if self.service_config.mcp_servers:

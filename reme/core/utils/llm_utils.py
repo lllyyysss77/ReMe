@@ -12,6 +12,11 @@ from ..schema import Message, Trajectory, MemoryNode
 def format_messages(
     messages: list[Message | dict],
     add_index: bool = True,
+    add_time: bool = True,
+    use_name: bool = True,
+    add_reasoning: bool = True,
+    add_tools: bool = True,
+    strip_markdown_headers: bool = True,
     enable_system: bool = False,
 ) -> str:
     """Formats a list of messages into a single string, optionally filtering system roles."""
@@ -25,11 +30,11 @@ def format_messages(
         formatted_lines.append(
             message.format_message(
                 index=i if add_index else None,
-                add_time=True,
-                use_name=True,
-                add_reasoning=True,
-                add_tools=True,
-                strip_markdown_headers=True,
+                add_time=add_time,
+                use_name=use_name,
+                add_reasoning=add_reasoning,
+                add_tools=add_tools,
+                strip_markdown_headers=strip_markdown_headers,
             ),
         )
     return "\n".join(formatted_lines)

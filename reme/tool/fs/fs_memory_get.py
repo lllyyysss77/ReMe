@@ -10,11 +10,11 @@ from .base_fs_tool import BaseFsTool
 class FsMemoryGet(BaseFsTool):
     """Read specific snippets from memory files."""
 
-    def __init__(self, workspace_dir: str | None = None, **kwargs):
+    def __init__(self, cwd: str | None = None, **kwargs):
         """Initialize memory get tool."""
         kwargs.setdefault("name", "memory_get")
         super().__init__(**kwargs)
-        self.workspace_dir = workspace_dir or os.getcwd()
+        self.cwd = cwd or os.getcwd()
 
     def _build_tool_call(self) -> ToolCall:
         return ToolCall(
@@ -53,7 +53,7 @@ class FsMemoryGet(BaseFsTool):
         if os.path.isabs(raw_path):
             abs_path = os.path.abspath(raw_path)
         else:
-            abs_path = os.path.abspath(os.path.join(self.workspace_dir, raw_path))
+            abs_path = os.path.abspath(os.path.join(self.cwd, raw_path))
         assert abs_path.lower().endswith(".md")
 
         # Check file exists, is not a symlink, and is a regular file

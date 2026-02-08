@@ -4,7 +4,7 @@ import datetime
 
 from loguru import logger
 
-from ...core.enumeration import Role, MemoryType
+from ...core.enumeration import Role
 from ...core.op import BaseReact
 from ...core.schema import Message
 
@@ -12,14 +12,7 @@ from ...core.schema import Message
 class FsSummarizer(BaseReact):
     """Retrieve personal memories through vector search and history reading."""
 
-    memory_type: MemoryType = MemoryType.PERSONAL
-
-    def __init__(
-        self,
-        memory_dir: str = "memory",
-        version: str = "default",
-        **kwargs,
-    ):
+    def __init__(self, memory_dir: str = "memory", version: str = "default", **kwargs):
         super().__init__(**kwargs)
         self.memory_dir: str = memory_dir
         self.version: str = version
@@ -40,16 +33,18 @@ class FsSummarizer(BaseReact):
                 ),
             )
         else:
-            messages.append(Message(role=Role.SYSTEM, content=self.get_prompt("system_prompt")))
-            messages.append(
-                Message(
-                    role=Role.USER,
-                    content=self.prompt_format(
-                        "user_message",
-                        date=date_str,
-                        memory_dir=self.memory_dir,
+            messages.extend(
+                [
+                    Message(role=Role.SYSTEM, content=self.get_prompt("system_prompt")),
+                    Message(
+                        role=Role.USER,
+                        content=self.prompt_format(
+                            "user_message",
+                            date=date_str,
+                            memory_dir=self.memory_dir,
+                        ),
                     ),
-                ),
+                ],
             )
         return messages
 

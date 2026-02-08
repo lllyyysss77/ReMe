@@ -9,7 +9,7 @@ from prompt_toolkit import PromptSession
 
 from reme.core.utils import execute_stream_task
 from .agent.chat import FsCli
-from .agent.fs import FsCompactor, FsSummarizer
+from .agent.fs import FsCompactor, FsContextChecker, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
 from .core.enumeration import ChunkEnum
@@ -47,9 +47,13 @@ class ReMeFs(Application):
         default_token_counter_config: dict | None = None,
         default_file_watcher_config: dict | None = None,
         working_dir: str = ".reme",
-        compact_params: dict | None = None,
-        summary_params: dict | None = None,
-        search_params: dict | None = None,
+        context_window_tokens: int = 128000,
+        reserve_tokens: int = 36000,
+        keep_recent_tokens: int = 20000,
+        hybrid_enabled: bool = True,
+        hybrid_vector_weight: float = 0.7,
+        hybrid_text_weight: float = 0.3,
+        hybrid_candidate_multiplier: float = 3.0,
         **kwargs,
     ):
         """Initialize ReMe with config."""
@@ -67,18 +71,35 @@ class ReMeFs(Application):
             default_embedding_model_config=default_embedding_model_config,
             default_memory_store_config=default_memory_store_config,
             default_token_counter_config=default_token_counter_config,
-            default_file_watcher_config=default_file_watcher_config,
+            default_file_watcher_config=default_file_watcher_config
+            or {
+                "backend": "full",
+                "watch_paths": [working_dir, working_dir + "/memory"],
+                "suffix_filters": [".md"],
+                "recursive": False,
+                "scan_on_start": True,
+            },
             **kwargs,
         )
-
         self.working_dir: str = working_dir
         Path(self.working_dir).mkdir(parents=True, exist_ok=True)
-        self.compact_params: dict = compact_params or {}
-        self.summary_params: dict = summary_params or {}
-        self.search_params: dict = search_params or {}
+        self.context_window_tokens: int = context_window_tokens
+        self.reserve_tokens: int = reserve_tokens
+        self.keep_recent_tokens: int = keep_recent_tokens
+        self.hybrid_enabled: bool = hybrid_enabled
+        self.hybrid_vector_weight: float = hybrid_vector_weight
+        self.hybrid_text_weight: float = hybrid_text_weight
+        self.hybrid_candidate_multiplier: float = hybrid_candidate_multiplier
 
         # Setup file system tools
         self.fs_tools: list[BaseTool] = [
+            FsMemorySearch(
+                hybrid_enabled=hybrid_enabled,
+                hybrid_vector_weight=hybrid_vector_weight,
+                hybrid_text_weight=hybrid_text_weight,
+                hybrid_candidate_multiplier=hybrid_candidate_multiplier,
+            ),
+            FsMemoryGet(cwd=self.working_dir),
             BashTool(cwd=self.working_dir),
             EditTool(cwd=self.working_dir),
             FindTool(cwd=self.working_dir),
@@ -94,27 +115,75 @@ class ReMeFs(Application):
             "/compact",
             "/exit",
             "/help",
+            "/clear",
         ]
 
-    async def compact(self, messages: list[Message | dict], previous_summary: str = ""):
-        """Compact messages."""
-        messages = [Message(**message) if isinstance(message, dict) else message for message in messages]
-        compactor = FsCompactor(**(self.compact_params or {}))
+    async def context_check(self, messages: list[Message | dict]) -> dict:
+        """Check if messages exceed context limits."""
+        checker = FsContextChecker(
+            context_window_tokens=self.context_window_tokens,
+            reserve_tokens=self.reserve_tokens,
+            keep_recent_tokens=self.keep_recent_tokens,
+        )
+        return await checker.call(messages=messages, service_context=self.service_context)
+
+    async def compact(
+        self,
+        messages_to_summarize: list[Message | dict] = None,
+        turn_prefix_messages: list[Message | dict] = None,
+        previous_summary: str = "",
+    ) -> str:
+        """Compact messages into a summary.
+
+        Args:
+            messages_to_summarize: Messages to summarize
+            turn_prefix_messages: Messages to prepend to each turn
+            previous_summary: Previous summary to build upon
+
+        Returns:
+            Compaction result from FsCompactor
+        """
+        compactor = FsCompactor()
         return await compactor.call(
-            messages=messages,
+            messages_to_summarize=messages_to_summarize or [],
+            turn_prefix_messages=turn_prefix_messages or [],
             previous_summary=previous_summary,
             service_context=self.service_context,
         )
 
     async def summary(self, messages: list[Message | dict], date: str):
-        """Summarize messages."""
-        messages = [Message(**message) if isinstance(message, dict) else message for message in messages]
-        summarizer = FsSummarizer(tools=self.fs_tools, **(self.summary_params or {}))
+        """Generate a summary of the given messages.
+
+        Args:
+            messages: Messages to summarize
+            date: Date of the conversation
+
+        Returns:
+            Summary of the given messages
+        """
+        summarizer = FsSummarizer(tools=self.fs_tools, working_dir=self.working_dir)
         return await summarizer.call(messages=messages, date=date, service_context=self.service_context)
 
     async def memory_search(self, query: str, max_results: int = 10, min_score: float = 0.3) -> str:
-        """Semantically search memory files."""
-        search_tool = FsMemorySearch(**(self.search_params or {}))
+        """
+        Mandatory recall step: semantically search MEMORY.md + memory/*.md (and optional session transcripts)
+        before answering questions about prior work, decisions, dates, people, preferences, or todos;
+        returns top snippets with path + lines.
+
+        Args:
+            query: The semantic search query to find relevant memory snippets
+            max_results: Maximum number of search results to return (optional), default is 10
+            min_score: Minimum similarity score threshold for results (optional), default is 0.3
+
+        Returns:
+            Search results as formatted string
+        """
+        search_tool = FsMemorySearch(
+            hybrid_enabled=self.hybrid_enabled,
+            hybrid_vector_weight=self.hybrid_vector_weight,
+            hybrid_text_weight=self.hybrid_text_weight,
+            hybrid_candidate_multiplier=self.hybrid_candidate_multiplier,
+        )
         return await search_tool.call(
             query=query,
             max_results=max_results,
@@ -123,18 +192,44 @@ class ReMeFs(Application):
         )
 
     async def memory_get(self, path: str, offset: int | None = None, limit: int | None = None) -> str:
-        """Read specific snippets from memory files."""
-        get_tool = FsMemoryGet(workspace_dir=self.working_dir)
+        """
+        Safe snippet read from MEMORY.md, memory/*.md with optional offset/limit;
+        use after memory_search to pull only the needed lines and keep context small.
+
+        Args:
+            path: Path to the memory file to read (relative or absolute)
+            offset: Starting line number (1-indexed, optional)
+            limit: Number of lines to read from the starting line (optional)
+
+        Returns:
+            Memory file content as string
+        """
+        get_tool = FsMemoryGet(cwd=self.working_dir)
         return await get_tool.call(path=path, offset=offset, limit=limit, service_context=self.service_context)
+
+    async def needs_compaction(self, messages: list[Message | dict]) -> bool:
+        """Check if messages need compaction based on context window limits."""
+        messages = [Message(**message) if isinstance(message, dict) else message for message in messages]
+        checker = FsContextChecker(
+            context_window_tokens=self.context_window_tokens,
+            reserve_tokens=self.reserve_tokens,
+        )
+        result = await checker.call(messages=messages, service_context=self.service_context)
+        return result["needs_compaction"]
 
     async def chat_with_remy(self, tool_result_max_size: int = 100):
         """Interactive CLI chat with Remy using simple streaming output."""
         fs_cli = FsCli(
             working_dir=self.working_dir,
             tools=self.fs_tools,
-            summary_params=self.summary_params,
-            search_params=self.search_params,
-            compact_params=self.compact_params,
+            context_window_tokens=self.context_window_tokens,
+            reserve_tokens=self.reserve_tokens,
+            keep_recent_tokens=self.keep_recent_tokens,
+            hybrid_enabled=self.hybrid_enabled,
+            hybrid_vector_weight=self.hybrid_vector_weight,
+            hybrid_text_weight=self.hybrid_text_weight,
+            hybrid_candidate_multiplier=self.hybrid_candidate_multiplier,
+            tool_result_max_size=tool_result_max_size,
         )
         session = PromptSession()
 
@@ -148,7 +243,11 @@ class ReMeFs(Application):
             """Execute chat query and yield streaming chunks."""
             stream_queue = asyncio.Queue()
             task = asyncio.create_task(
-                fs_cli.call(query=q, stream_queue=stream_queue, service_context=self.service_context),
+                fs_cli.call(
+                    query=q,
+                    stream_queue=stream_queue,
+                    service_context=self.service_context,
+                ),
             )
             async for _chunk in execute_stream_task(
                 stream_queue=stream_queue,
@@ -170,13 +269,18 @@ class ReMeFs(Application):
                     break
 
                 if user_input.strip() == "/new":
-                    result = await fs_cli.reset_history()
+                    result = await fs_cli.reset()
                     print(f"{result}\nConversation reset\n")
                     continue
 
                 if user_input.strip() == "/compact":
-                    result = await fs_cli.compact_history()
+                    result = await fs_cli.compact()
                     print(f"{result}\nHistory compacted.\n")
+                    continue
+
+                if user_input.strip() == "/clear":
+                    fs_cli.messages.clear()
+                    print("History cleared.\n")
                     continue
 
                 if user_input.strip() == "/help":
@@ -220,7 +324,12 @@ class ReMeFs(Application):
                             print(f"\033[36m     Tool result for {tool_name}: {result.strip()}\033[0m")
 
                         elif chunk.chunk_type == ChunkEnum.ERROR:
-                            print(f"\n  Error: {chunk.chunk}")
+                            print(f"\n\033[91m[ERROR] {chunk.chunk}\033[0m")
+                            # Also log the full error metadata if available
+                            if chunk.metadata:
+                                import traceback
+
+                                traceback.print_exc()
 
                         elif chunk.chunk_type == ChunkEnum.DONE:
                             break
@@ -248,9 +357,8 @@ class ReMeFs(Application):
 
 async def async_main():
     """Main function for testing the ReMeFs CLI."""
-    reme = ReMeFs(*sys.argv[1:], log_to_console=False)
-    await reme.start()
-    await reme.chat_with_remy()
+    async with ReMeFs(*sys.argv[1:], log_to_console=False) as reme:
+        await reme.chat_with_remy()
 
 
 def main():

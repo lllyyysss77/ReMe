@@ -2,6 +2,8 @@
 
 import json
 
+from loguru import logger
+
 from reme.core.enumeration import MemorySource
 from reme.core.schema import MemorySearchResult, ToolCall
 from .base_fs_tool import BaseFsTool
@@ -76,6 +78,18 @@ class FsMemorySearch(BaseFsTool):
                 keyword_results = await self._search_keyword(query, candidates)
             vector_results = await self._search_vector(query, candidates)
 
+            # Log original vector results
+            logger.debug("\n=== Vector Search Results ===")
+            for i, r in enumerate(vector_results[:10], 1):
+                snippet_preview = (r.snippet[:100] + "...") if len(r.snippet) > 100 else r.snippet
+                logger.debug(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
+
+            # Log original keyword results
+            logger.debug("\n=== Keyword Search Results ===")
+            for i, r in enumerate(keyword_results[:10], 1):
+                snippet_preview = (r.snippet[:100] + "...") if len(r.snippet) > 100 else r.snippet
+                logger.debug(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
+
             if not keyword_results:
                 results = [r for r in vector_results if r.score >= min_score][:max_results]
             elif not vector_results:
@@ -87,6 +101,13 @@ class FsMemorySearch(BaseFsTool):
                     vector_weight=self.hybrid_vector_weight,
                     text_weight=self.hybrid_text_weight,
                 )
+
+                # Log merged results
+                logger.debug("\n=== Merged Hybrid Results ===")
+                for i, r in enumerate(merged[:10], 1):
+                    snippet_preview = (r.snippet[:100] + "...") if len(r.snippet) > 100 else r.snippet
+                    logger.debug(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
+
                 results = [r for r in merged if r.score >= min_score][:max_results]
         else:
             vector_results = await self._search_vector(query, candidates)

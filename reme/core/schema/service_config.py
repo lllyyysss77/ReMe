@@ -103,6 +103,7 @@ class FileWatcherConfig(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+    backend: str = Field(default="")
     watch_paths: list[str] = Field(default_factory=list)
     suffix_filters: list[str] = Field(default_factory=list)
     recursive: bool = Field(default=False)
@@ -110,6 +111,7 @@ class FileWatcherConfig(BaseModel):
     chunk_tokens: int = Field(default=400)
     chunk_overlap: int = Field(default=80)
     memory_store: str = Field(default="default")
+    scan_on_start: bool = Field(default=True)
 
 
 class ServiceConfig(BaseModel):

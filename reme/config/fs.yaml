@@ -22,6 +22,14 @@ memory_stores:
     fts_enabled: true
     snippet_max_chars: 700
 
+file_watchers:
+  default:
+    backend: full
+    watch_paths: [".reme", ".reme/memory"]
+    suffix_filters: [".md"]
+    recursive: false
+    scan_on_start: true
+
 token_counters:
   default:
     backend: base

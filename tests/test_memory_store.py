@@ -39,6 +39,7 @@ class TestConfig:
     """Configuration for test execution."""
 
     # SqliteMemoryStore settings
+    NAME = "test"
     SQLITE_DB_PATH = "./test_memory_store_sqlite/memory.db"
     SQLITE_VEC_EXT_PATH = ""  # Empty string to use default vec0/sqlite_vec/vector0
     SQLITE_FTS_ENABLED = True
@@ -205,6 +206,7 @@ def create_memory_store(store_type: str) -> BaseMemoryStore:
 
     if store_type == "sqlite":
         return SqliteMemoryStore(
+            store_name=config.NAME,
             db_path=config.SQLITE_DB_PATH,
             embedding_model=embedding_model,
             vec_ext_path=config.SQLITE_VEC_EXT_PATH,
@@ -235,8 +237,8 @@ async def test_start_store(store: BaseMemoryStore, _store_name: str):
         cursor.close()
 
         logger.info(f"Created tables: {tables}")
-        assert "files" in tables, "files table should exist"
-        assert "chunks" in tables, "chunks table should exist"
+        assert store.files_table_name in tables, f"{store.files_table_name} table should exist"
+        assert store.chunks_table_name in tables, f"{store.chunks_table_name} table should exist"
         logger.info("✓ Required tables created")
 
 
@@ -577,6 +579,42 @@ async def test_keyword_search_with_source_filter(store: BaseMemoryStore, _store_
     logger.info("\n✓ Keyword search with source filter test passed")
 
 
+async def test_keyword_search_special_chars(store: BaseMemoryStore, _store_name: str):
+    """Test keyword search with special characters like ?, *, etc."""
+    logger.info("=" * 20 + " KEYWORD SEARCH SPECIAL CHARS TEST " + "=" * 20)
+
+    # Check if FTS is available
+    if isinstance(store, SqliteMemoryStore) and not store.fts_available:
+        logger.info("⊘ Skipped: FTS not available")
+        return
+
+    # Test various queries with special characters
+    test_queries = [
+        "What is the status?",
+        "How does it work?",
+        "Why is this important?",
+        "data?",
+        "test*",
+        "query with ? marks",
+    ]
+
+    for query in test_queries:
+        logger.info(f"\nTesting query: '{query}'")
+        try:
+            results = await store.keyword_search(query, limit=3)
+            logger.info(f"✓ Query succeeded, found {len(results)} results")
+            if results:
+                for i, result in enumerate(results[:2], 1):  # Show first 2 results
+                    logger.info(
+                        f"  {i}. {result.path}:{result.start_line}-{result.end_line} (score: {result.score:.4f})",
+                    )
+        except Exception as e:
+            logger.error(f"✗ Query failed: {e}")
+            raise
+
+    logger.info("\n✓ Keyword search with special characters test passed")
+
+
 async def test_delete_file(store: BaseMemoryStore, _store_name: str):
     """Test file deletion."""
     logger.info("=" * 20 + " DELETE FILE TEST " + "=" * 20)
@@ -852,6 +890,7 @@ async def run_all_tests_for_store(store_type: str, store_name: str):
         await test_vector_search_with_source_filter(store, store_name)
         await test_keyword_search(store, store_name)
         await test_keyword_search_with_source_filter(store, store_name)
+        await test_keyword_search_special_chars(store, store_name)
 
         # ========== Advanced Tests ==========
         logger.info(f"\n{'#' * 60}")

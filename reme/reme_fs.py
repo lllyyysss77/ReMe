@@ -71,14 +71,7 @@ class ReMeFs(Application):
             default_embedding_model_config=default_embedding_model_config,
             default_memory_store_config=default_memory_store_config,
             default_token_counter_config=default_token_counter_config,
-            default_file_watcher_config=default_file_watcher_config
-            or {
-                "backend": "full",
-                "watch_paths": [working_dir, working_dir + "/memory"],
-                "suffix_filters": [".md"],
-                "recursive": False,
-                "scan_on_start": True,
-            },
+            default_file_watcher_config=default_file_watcher_config,
             **kwargs,
         )
         self.working_dir: str = working_dir

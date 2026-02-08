@@ -219,6 +219,9 @@ class ServiceContext(BaseContext):
         for _, memory_store in self.memory_stores.items():
             await memory_store.close()
 
+        for _, file_watcher in self.file_watchers.items():
+            await file_watcher.close()
+
         for _, llm in self.llms.items():
             await llm.close()
 

@@ -150,17 +150,24 @@ class BaseFileWatcher:
             logger.warning("No watch paths specified")
             return
 
-        async for changes in awatch(
-            *self.watch_paths,
-            watch_filter=self.watch_filter,
-            recursive=self.recursive,
-            debounce=self.debounce,
-            stop_event=self._stop_event,
-        ):
-            if self._stop_event.is_set():
-                break
+        try:
+            async for changes in awatch(
+                *self.watch_paths,
+                watch_filter=self.watch_filter,
+                recursive=self.recursive,
+                debounce=self.debounce,
+                stop_event=self._stop_event,
+            ):
+                if self._stop_event.is_set():
+                    break
 
-            await self.on_changes(changes)
+                await self.on_changes(changes)
+        except FileNotFoundError as e:
+            # Watch path was deleted, this is expected during cleanup
+            logger.debug(f"Watch path no longer exists: {e}")
+        except Exception as e:
+            # Log other exceptions but don't crash
+            logger.error(f"Error in watch loop: {e}", exc_info=True)
 
     async def _on_changes(self, changes: set[tuple[Change, str]]):
         """Callback method to handle file changes"""

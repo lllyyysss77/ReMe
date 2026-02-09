@@ -66,18 +66,7 @@ class FsCompactor(BaseOp):
         ]
 
     async def execute(self) -> str:
-        """
-        Generate summary for conversation history.
-
-        Expects context to have:
-            - messages_to_summarize: list[Message] (required)
-            - turn_prefix_messages: list[Message] (optional, for split turn)
-            - previous_summary: str (optional, for incremental summarization)
-
-        Returns:
-            str: Generated summary text formatted with compaction_summary_format.
-                 Returns empty string if no messages to summarize.
-        """
+        """Generate summary for conversation history."""
         messages_to_summarize = self.context.get("messages_to_summarize", [])
         turn_prefix_messages = self.context.get("turn_prefix_messages", [])
         previous_summary = self.context.get("previous_summary", "")

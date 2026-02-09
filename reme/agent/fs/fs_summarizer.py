@@ -7,6 +7,7 @@ from loguru import logger
 from ...core.enumeration import Role
 from ...core.op import BaseReact
 from ...core.schema import Message
+from ...core.utils import format_messages
 
 
 class FsSummarizer(BaseReact):
@@ -26,7 +27,8 @@ class FsSummarizer(BaseReact):
                 Message(
                     role=Role.USER,
                     content=self.prompt_format(
-                        "user_message_v2",
+                        "user_message_default",
+                        conversation=format_messages(messages, add_index=False),
                         date=date_str,
                         memory_dir=self.memory_dir,
                     ),

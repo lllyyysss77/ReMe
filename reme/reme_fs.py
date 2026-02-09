@@ -13,15 +13,12 @@ from .agent.fs import FsCompactor, FsContextChecker, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
 from .core.enumeration import ChunkEnum
-from .core.op import BaseTool
 from .core.schema import Message, StreamChunk
 from .tool.fs import (
     BashTool,
     EditTool,
-    FindTool,
     FsMemoryGet,
     FsMemorySearch,
-    GrepTool,
     LsTool,
     ReadTool,
     WriteTool,
@@ -93,14 +90,19 @@ class ReMeFs(Application):
         default_file_watcher_config = default_file_watcher_config or {}
         default_file_watcher_config.update(
             {
-                "watch_paths": watch_paths or [self.working_dir, str(memory_path)],
+                "watch_paths": watch_paths
+                or [
+                    str(working_path / "MEMORY.md"),
+                    str(working_path / "memory.md"),
+                    str(memory_path),
+                ],
                 "suffix_filters": suffix_filters or [".md"],
                 "recursive": recursive,
                 "debounce": debounce,
                 "chunk_tokens": chunk_tokens,
                 "chunk_overlap": chunk_overlap,
                 "scan_on_start": scan_on_start,
-            }
+            },
         )
 
         super().__init__(
@@ -129,34 +131,14 @@ class ReMeFs(Application):
         self.hybrid_text_weight: float = hybrid_text_weight
         self.hybrid_candidate_multiplier: float = hybrid_candidate_multiplier
 
-        # Setup file system tools
-        self.fs_tools: list[BaseTool] = [
-            FsMemorySearch(
-                hybrid_enabled=hybrid_enabled,
-                hybrid_vector_weight=hybrid_vector_weight,
-                hybrid_text_weight=hybrid_text_weight,
-                hybrid_candidate_multiplier=hybrid_candidate_multiplier,
-            ),
-            # FsMemoryGet(cwd=self.working_dir),
-            BashTool(cwd=self.working_dir),
-            EditTool(cwd=self.working_dir),
-            FindTool(cwd=self.working_dir),
-            GrepTool(cwd=self.working_dir),
-            LsTool(cwd=self.working_dir),
-            ReadTool(cwd=self.working_dir),
-            WriteTool(cwd=self.working_dir),
-            ExecuteCode(),
-            DashscopeSearch(),
-        ]
-
         # Commands
-        self.commands = [
-            "/new",
-            "/compact",
-            "/exit",
-            "/clear",
-            "/help",
-        ]
+        self.commands = {
+            "/new": "Create a new conversation.",
+            "/compact": "Compact messages into a summary.",
+            "/exit": "Exit the application.",
+            "/clear": "Clear the history.",
+            "/help": "Show help.",
+        }
 
     async def context_check(self, messages: list[Message | dict]) -> dict:
         """Check if messages exceed context limits."""
@@ -172,18 +154,11 @@ class ReMeFs(Application):
         messages_to_summarize: list[Message | dict] = None,
         turn_prefix_messages: list[Message | dict] = None,
         previous_summary: str = "",
+        language: str = "zh",
+        **kwargs,
     ) -> str:
-        """Compact messages into a summary.
-
-        Args:
-            messages_to_summarize: Messages to summarize
-            turn_prefix_messages: Messages to prepend to each turn
-            previous_summary: Previous summary to build upon
-
-        Returns:
-            Compaction result from FsCompactor
-        """
-        compactor = FsCompactor()
+        """Compact messages into a summary."""
+        compactor = FsCompactor(language=language, **kwargs)
         return await compactor.call(
             messages_to_summarize=messages_to_summarize or [],
             turn_prefix_messages=turn_prefix_messages or [],
@@ -191,17 +166,20 @@ class ReMeFs(Application):
             service_context=self.service_context,
         )
 
-    async def summary(self, messages: list[Message | dict], date: str):
-        """Generate a summary of the given messages.
-
-        Args:
-            messages: Messages to summarize
-            date: Date of the conversation
-
-        Returns:
-            Summary of the given messages
-        """
-        summarizer = FsSummarizer(tools=self.fs_tools, working_dir=self.working_dir)
+    async def summary(self, messages: list[Message | dict], date: str, language: str = "zh", **kwargs):
+        """Generate a summary of the given messages."""
+        summarizer = FsSummarizer(
+            tools=[
+                BashTool(cwd=self.working_dir),
+                LsTool(cwd=self.working_dir),
+                ReadTool(cwd=self.working_dir),
+                WriteTool(cwd=self.working_dir),
+                EditTool(cwd=self.working_dir),
+            ],
+            working_dir=self.working_dir,
+            language=language,
+            **kwargs,
+        )
         return await summarizer.call(messages=messages, date=date, service_context=self.service_context)
 
     async def memory_search(self, query: str, max_results: int = 10, min_score: float = 0.3) -> str:
@@ -257,11 +235,25 @@ class ReMeFs(Application):
         result = await checker.call(messages=messages, service_context=self.service_context)
         return result["needs_compaction"]
 
-    async def chat_with_remy(self, tool_result_max_size: int = 100):
+    async def chat_with_remy(self, tool_result_max_size: int = 100, language: str = "zh", **kwargs):
         """Interactive CLI chat with Remy using simple streaming output."""
         fs_cli = FsCli(
             working_dir=self.working_dir,
-            tools=self.fs_tools,
+            tools=[
+                FsMemorySearch(
+                    hybrid_enabled=self.hybrid_enabled,
+                    hybrid_vector_weight=self.hybrid_vector_weight,
+                    hybrid_text_weight=self.hybrid_text_weight,
+                    hybrid_candidate_multiplier=self.hybrid_candidate_multiplier,
+                ),
+                BashTool(cwd=self.working_dir),
+                LsTool(cwd=self.working_dir),
+                ReadTool(cwd=self.working_dir),
+                EditTool(cwd=self.working_dir),
+                WriteTool(cwd=self.working_dir),
+                ExecuteCode(),
+                DashscopeSearch(),
+            ],
             context_window_tokens=self.context_window_tokens,
             reserve_tokens=self.reserve_tokens,
             keep_recent_tokens=self.keep_recent_tokens,
@@ -270,6 +262,8 @@ class ReMeFs(Application):
             hybrid_text_weight=self.hybrid_text_weight,
             hybrid_candidate_multiplier=self.hybrid_candidate_multiplier,
             tool_result_max_size=tool_result_max_size,
+            language=language,
+            **kwargs,
         )
         session = PromptSession()
 

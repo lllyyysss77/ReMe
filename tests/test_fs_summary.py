@@ -88,8 +88,8 @@ def check_memory_file(working_dir: str, date: str):
     """
     memory_path = Path(working_dir) / "memory" / f"{date}.md"
     if memory_path.exists():
-        print(f"\n✓ 记忆文件存在：{memory_path}")
-        print(f"内容预览：")
+        print("✓ 记忆文件存在：")
+        print("内容预览：")
         print("-" * 80)
         content = memory_path.read_text()
         print(content[:500] + ("..." if len(content) > 500 else ""))

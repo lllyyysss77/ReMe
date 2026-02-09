@@ -461,7 +461,7 @@ class BaseLLM(ABC):
     async def simple_request(
         self,
         prompt: str,
-        model_name: str,
+        model_name: str | None = None,
         callback_fn: Callable[[Message], Any] | None = None,
         default_value: Any = None,
         **kwargs,
@@ -479,7 +479,7 @@ class BaseLLM(ABC):
     async def simple_request_for_json(
         self,
         prompt: str,
-        model_name: str,
+        model_name: str | None = None,
         **kwargs,
     ) -> dict:
         """Make a simple request using the LLM and extract JSON."""

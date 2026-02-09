@@ -548,6 +548,7 @@ class SqliteMemoryStore(BaseMemoryStore):
                         score=score,
                         snippet=snippet,
                         source=MemorySource(src),
+                        distance=dist,
                     ),
                 )
 

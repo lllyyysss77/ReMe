@@ -26,6 +26,8 @@ from .tool.fs import (
     ReadTool,
     WriteTool,
 )
+from .tool.gallery import ExecuteCode
+from .tool.search import DashscopeSearch
 
 
 class ReMeFs(Application):
@@ -100,6 +102,8 @@ class ReMeFs(Application):
             LsTool(cwd=self.working_dir),
             ReadTool(cwd=self.working_dir),
             WriteTool(cwd=self.working_dir),
+            ExecuteCode(),
+            DashscopeSearch(),
         ]
 
         # Commands

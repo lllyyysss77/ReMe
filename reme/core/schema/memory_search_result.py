@@ -14,6 +14,7 @@ class MemorySearchResult(BaseModel):
     score: float = Field(..., description="Relevance score of the search result")
     snippet: str = Field(..., description="Text snippet from the matched content")
     source: MemorySource = Field(..., description="Source of the memory data")
+    distance: float | None = Field(None, description="Original distance value from vector search")
     metadata: dict = Field(default_factory=dict, description="Additional metadata")
 
     @property

@@ -97,7 +97,7 @@ class PersonalV1Retriever(BaseMemoryAgent):
                         include_memory_id=False,
                         include_when_to_use=False,
                         include_content=True,
-                        include_message_time=False,
+                        include_message_time=True,
                         ref_memory_id_key="",
                     )
                     for n in self.retrieved_nodes

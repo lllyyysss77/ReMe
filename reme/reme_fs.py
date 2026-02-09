@@ -36,19 +36,30 @@ class ReMeFs(Application):
     def __init__(
         self,
         *args,
-        llm_api_key: str | None = None,
-        llm_api_base: str | None = None,
-        embedding_api_key: str | None = None,
-        embedding_api_base: str | None = None,
+        working_dir: str = ".reme",
         config_path: str = "fs",
         enable_logo: bool = True,
         log_to_console: bool = True,
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        default_llm_name: str | None = None,
         default_llm_config: dict | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+        default_embedding_model_name: str | None = None,
         default_embedding_model_config: dict | None = None,
+        default_store_name: str = "reme",
         default_memory_store_config: dict | None = None,
+        token_counter_backend: str = "base",
         default_token_counter_config: dict | None = None,
+        watch_paths: list[str] | None = None,
+        suffix_filters: list[str] | None = None,
+        recursive: bool = False,
+        debounce: int = 500,
+        chunk_tokens: int = 400,
+        chunk_overlap: int = 80,
+        scan_on_start: bool = True,
         default_file_watcher_config: dict | None = None,
-        working_dir: str = ".reme",
         context_window_tokens: int = 128000,
         reserve_tokens: int = 36000,
         keep_recent_tokens: int = 20000,
@@ -59,12 +70,45 @@ class ReMeFs(Application):
         **kwargs,
     ):
         """Initialize ReMe with config."""
+        working_path = Path(working_dir)
+        working_path.mkdir(parents=True, exist_ok=True)
+        memory_path = working_path / "memory"
+        memory_path.mkdir(parents=True, exist_ok=True)
+        self.working_dir: str = str(working_path.absolute())
+
+        default_llm_config = default_llm_config or {}
+        if default_llm_name:
+            default_llm_config["model_name"] = default_llm_name
+
+        default_embedding_model_config = default_embedding_model_config or {}
+        if default_embedding_model_name:
+            default_embedding_model_config["model_name"] = default_embedding_model_name
+
+        default_memory_store_config = default_memory_store_config or {}
+        default_memory_store_config["store_name"] = default_store_name
+
+        default_token_counter_config = default_token_counter_config or {}
+        default_token_counter_config["backend"] = token_counter_backend
+
+        default_file_watcher_config = default_file_watcher_config or {}
+        default_file_watcher_config.update(
+            {
+                "watch_paths": watch_paths or [self.working_dir, str(memory_path)],
+                "suffix_filters": suffix_filters or [".md"],
+                "recursive": recursive,
+                "debounce": debounce,
+                "chunk_tokens": chunk_tokens,
+                "chunk_overlap": chunk_overlap,
+                "scan_on_start": scan_on_start,
+            }
+        )
+
         super().__init__(
             *args,
             llm_api_key=llm_api_key,
-            llm_api_base=llm_api_base,
+            llm_base_url=llm_base_url,
             embedding_api_key=embedding_api_key,
-            embedding_api_base=embedding_api_base,
+            embedding_base_url=embedding_base_url,
             config_path=config_path,
             enable_logo=enable_logo,
             log_to_console=log_to_console,
@@ -76,8 +120,7 @@ class ReMeFs(Application):
             default_file_watcher_config=default_file_watcher_config,
             **kwargs,
         )
-        self.working_dir: str = working_dir
-        Path(self.working_dir).mkdir(parents=True, exist_ok=True)
+
         self.context_window_tokens: int = context_window_tokens
         self.reserve_tokens: int = reserve_tokens
         self.keep_recent_tokens: int = keep_recent_tokens
@@ -94,7 +137,7 @@ class ReMeFs(Application):
                 hybrid_text_weight=hybrid_text_weight,
                 hybrid_candidate_multiplier=hybrid_candidate_multiplier,
             ),
-            FsMemoryGet(cwd=self.working_dir),
+            # FsMemoryGet(cwd=self.working_dir),
             BashTool(cwd=self.working_dir),
             EditTool(cwd=self.working_dir),
             FindTool(cwd=self.working_dir),
@@ -111,8 +154,8 @@ class ReMeFs(Application):
             "/new",
             "/compact",
             "/exit",
-            "/help",
             "/clear",
+            "/help",
         ]
 
     async def context_check(self, messages: list[Message | dict]) -> dict:
@@ -233,7 +276,6 @@ class ReMeFs(Application):
         # Print welcome banner
         print("\n========================================")
         print("  Welcome to Remy Chat!")
-        print("  Type /exit to quit, /new to start fresh.")
         print("========================================\n")
 
         async def chat(q: str) -> AsyncGenerator[StreamChunk, None]:
@@ -271,7 +313,7 @@ class ReMeFs(Application):
                     continue
 
                 if user_input.strip() == "/compact":
-                    result = await fs_cli.compact()
+                    result = await fs_cli.compact(force_compact=True)
                     print(f"{result}\nHistory compacted.\n")
                     continue
 

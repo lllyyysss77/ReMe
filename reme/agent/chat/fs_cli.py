@@ -54,7 +54,11 @@ class FsCli(BaseReactStream):
         current_date = datetime.now().strftime("%Y-%m-%d")
         summarizer = FsSummarizer(tools=self.tools, working_dir=self.working_dir)
 
-        result = await summarizer.call(messages=self.messages, date=current_date, service_context=self.service_context)
+        result = await summarizer.call(
+            messages=self.messages,
+            date=current_date,
+            service_context=self.service_context,
+        )
         self.messages.clear()
         self.previous_summary = ""
         return f"History saved to memory files and reset. Result: {result.get('answer', 'Done')}"
@@ -117,13 +121,13 @@ class FsCli(BaseReactStream):
             service_context=self.service_context,
         )
 
-        # Step 3: Assemble final messages
-        summary_message = Message(role=Role.USER, content=summary_content)
-        self.messages = [summary_message] + left_messages
+        # Step 3: Call reset_history to save and clear
+        reset_result = await self.reset()
+
+        # Step 4: Assemble final messages
+        self.messages = left_messages
         self.previous_summary = summary_content
 
-        # Step 4: Call reset_history to save and clear
-        reset_result = await self.reset()
         return f"History compacted from {tokens_before} tokens. {reset_result}"
 
     async def build_messages(self) -> list[Message]:
@@ -146,6 +150,8 @@ class FsCli(BaseReactStream):
 
     async def execute(self):
         """Execute the agent."""
+        _ = await self.compact(force_compact=False)
+
         messages = await self.build_messages()
 
         t_tools, messages, success = await self.react(messages, self.tools)

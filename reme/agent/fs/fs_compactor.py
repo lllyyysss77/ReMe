@@ -85,7 +85,7 @@ class FsCompactor(BaseOp):
         messages_to_summarize = self._normalize_messages(messages_to_summarize)
         if messages_to_summarize:
             history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
-            history_summary = "**Turn Context**:\n\n" + await self._generate_summary(history_prompt_messages)
+            history_summary = "**History Summary**:\n\n" + await self._generate_summary(history_prompt_messages)
         else:
             history_summary = ""
 
@@ -97,6 +97,5 @@ class FsCompactor(BaseOp):
             turn_prefix_summary = ""
 
         summary = "\n\n---".join([history_summary, turn_prefix_summary])
-        summary_content = self.prompt_format("compaction_summary_format", summary=summary)
         logger.info(f"Generated summary: {summary}")
-        return summary_content
+        return summary

@@ -539,7 +539,7 @@ class SqliteMemoryStore(BaseMemoryStore):
             results = []
             for _, path, start, end, src, text, dist in cursor.fetchall():
                 score = max(0.0, 1.0 - dist)
-                snippet = text[: self.snippet_max_chars] if len(text) > self.snippet_max_chars else text
+                snippet = text
                 results.append(
                     MemorySearchResult(
                         path=path,
@@ -641,7 +641,7 @@ class SqliteMemoryStore(BaseMemoryStore):
             for _, path, start, end, src, text, rank in cursor.fetchall():
                 # Convert BM25 rank (negative) to 0-1 score (higher=better)
                 score = max(0.0, 1.0 / (1.0 + abs(rank)))
-                snippet = text[: self.snippet_max_chars] if len(text) > self.snippet_max_chars else text
+                snippet = text
                 results.append(
                     MemorySearchResult(
                         path=path,

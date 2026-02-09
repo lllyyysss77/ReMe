@@ -23,10 +23,7 @@ class BaseMemoryStore(ABC):
         # Validate store_name to prevent SQL injection
         # Only allow alphanumeric characters and underscores
         if not re.match(r"^[a-zA-Z0-9_]+$", store_name):
-            raise ValueError(
-                f"Invalid store_name: '{store_name}'. "
-                "Only alphanumeric characters and underscores are allowed."
-            )
+            raise ValueError(f"Invalid '{store_name}'. Only alphanumeric characters and underscores are allowed.")
         self.store_name: str = store_name
         self.embedding_model: BaseEmbeddingModel = embedding_model
         self.fts_enabled: bool = fts_enabled

@@ -43,7 +43,6 @@ class TestConfig:
     SQLITE_DB_PATH = "./test_memory_store_sqlite/memory.db"
     SQLITE_VEC_EXT_PATH = ""  # Empty string to use default vec0/sqlite_vec/vector0
     SQLITE_FTS_ENABLED = True
-    SQLITE_SNIPPET_MAX_CHARS = 700
 
     # Embedding model settings
     EMBEDDING_MODEL_NAME = "text-embedding-v4"
@@ -211,7 +210,6 @@ def create_memory_store(store_type: str) -> BaseMemoryStore:
             embedding_model=embedding_model,
             vec_ext_path=config.SQLITE_VEC_EXT_PATH,
             fts_enabled=config.SQLITE_FTS_ENABLED,
-            snippet_max_chars=config.SQLITE_SNIPPET_MAX_CHARS,
         )
     else:
         raise ValueError(f"Unknown store type: {store_type}")

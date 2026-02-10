@@ -289,7 +289,6 @@ async def test_file_watch_integration():
             "store_name": "test_integration",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
         default_file_watcher_config={
             "backend": "full",

@@ -66,18 +66,7 @@ class FsCompactor(BaseOp):
         ]
 
     async def execute(self) -> str:
-        """
-        Generate summary for conversation history.
-
-        Expects context to have:
-            - messages_to_summarize: list[Message] (required)
-            - turn_prefix_messages: list[Message] (optional, for split turn)
-            - previous_summary: str (optional, for incremental summarization)
-
-        Returns:
-            str: Generated summary text formatted with compaction_summary_format.
-                 Returns empty string if no messages to summarize.
-        """
+        """Generate summary for conversation history."""
         messages_to_summarize = self.context.get("messages_to_summarize", [])
         turn_prefix_messages = self.context.get("turn_prefix_messages", [])
         previous_summary = self.context.get("previous_summary", "")
@@ -85,7 +74,7 @@ class FsCompactor(BaseOp):
         messages_to_summarize = self._normalize_messages(messages_to_summarize)
         if messages_to_summarize:
             history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
-            history_summary = "**Turn Context**:\n\n" + await self._generate_summary(history_prompt_messages)
+            history_summary = "**History Summary**:\n\n" + await self._generate_summary(history_prompt_messages)
         else:
             history_summary = ""
 
@@ -97,6 +86,5 @@ class FsCompactor(BaseOp):
             turn_prefix_summary = ""
 
         summary = "\n\n---".join([history_summary, turn_prefix_summary])
-        summary_content = self.prompt_format("compaction_summary_format", summary=summary)
         logger.info(f"Generated summary: {summary}")
-        return summary_content
+        return summary

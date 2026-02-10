@@ -34,20 +34,20 @@ def create_long_conversation() -> list[Message]:
     messages = [
         Message(
             role=Role.USER,
-            content="I need help building a complete web application with authentication, database, and API endpoints.",
+            content="我需要帮助构建一个完整的Web应用程序，包含身份验证、数据库和API端点。",
         ),
         Message(
             role=Role.ASSISTANT,
-            content="""I'll help you build a complete web application. Here's what we'll do:
+            content="""我会帮你构建一个完整的Web应用程序。我们将执行以下步骤：
 
-1. Set up the project structure
-2. Implement authentication system
-3. Design and create database schema
-4. Build API endpoints
-5. Add frontend components
-6. Test and deploy
+1. 设置项目结构
+2. 实现身份验证系统
+3. 设计和创建数据库架构
+4. 构建API端点
+5. 添加前端组件
+6. 测试和部署
 
-Let me start with the project structure...""",
+让我从项目结构开始...""",
         ),
     ]
 
@@ -55,24 +55,24 @@ Let me start with the project structure...""",
         messages.append(
             Message(
                 role=Role.USER,
-                content=f"What about step {i + 1}? Can you provide more details?",
+                content=f"第{i + 1}步怎么做？能提供更多细节吗？",
             ),
         )
         messages.append(
             Message(
                 role=Role.ASSISTANT,
-                content=f"""For step {i + 1}, here's a detailed explanation:
+                content=f"""对于第{i + 1}步，这里是详细的解释：
 
-First, we need to consider the architecture. """
-                + "This is important context. " * 50
+首先，我们需要考虑架构设计。"""
+                + "这是重要的上下文信息。" * 50
                 + """
 
-Then we implement the following:
-- Component A
-- Component B
-- Component C
+然后我们实现以下内容：
+- 组件A
+- 组件B
+- 组件C
 
-Let me show you the code for this part..."""
+让我向你展示这部分的代码..."""
                 + "\n\ncode_example = 'example'" * 20,
             ),
         )
@@ -85,471 +85,454 @@ def create_realistic_personal_conversation() -> list[Message]:
     messages = [
         Message(
             role=Role.USER,
-            content="Hi! I'm planning a trip to Japan next month. I need help organizing my itinerary.",
+            content="你好！我计划下个月去中国旅行。我需要帮助安排行程。",
         ),
         Message(
             role=Role.ASSISTANT,
             content="""\
-Great! I'd be happy to help you plan your Japan trip. To give you the best recommendations, could you tell me:
-1. Which cities are you planning to visit?
-2. How many days will you be there?
-3. What are your interests (food, culture, nature, shopping, etc.)?
-4. What's your approximate budget per day?""",
+太好了！我很乐意帮你规划中国之旅。为了给你最好的建议，请告诉我：
+1. 你计划去哪些城市？
+2. 你会在那里待几天？
+3. 你的兴趣是什么（美食、文化、自然景观、购物等）？
+4. 你每天的预算大约是多少？""",
         ),
         Message(
             role=Role.USER,
             content="""\
-I'm planning to visit Tokyo, Kyoto, and Osaka. The trip will be 14 days, from March 15th to March 29th.
-My name is Sarah Chen, and I'm 28 years old. I'm traveling with my boyfriend David Miller who is 30.
-We're both really into Japanese food - sushi, ramen, tempura, you name it! We also love
-temples, gardens, and want to experience traditional Japanese culture.
-Our budget is around $200 per day per person, not including accommodation which we've already booked.""",
+我计划去北京、西安和成都。行程是14天，从3月15日到3月29日。
+我叫陈莎拉，今年28岁。我和我的男朋友大卫·米勒一起旅行，他30岁。
+我们都非常喜欢中国美食 - 烤鸭、火锅、川菜，你能想到的我们都喜欢！我们也很喜欢
+寺庙、园林，想要体验传统中国文化。
+我们的预算是每人每天大约200美元，不包括住宿费用，住宿我们已经订好了。""",
         ),
         Message(
             role=Role.ASSISTANT,
-            content="""Perfect! With 14 days and your interests, you'll have an amazing time.
-Here's a suggested breakdown:
+            content="""完美！14天的行程和你的兴趣，你们会度过美好的时光。
+以下是建议的行程安排：
 
-**Tokyo (5 days - March 15-19)**
-- Day 1: Arrive, check into hotel, explore Shibuya and Harajuku
-- Day 2: Visit Senso-ji Temple in Asakusa, explore Ueno Park
-- Day 3: Tsukiji Outer Market for breakfast, Imperial Palace, Ginza shopping
-- Day 4: Day trip to Nikko (UNESCO World Heritage temples)
-- Day 5: TeamLab Borderless, Odaiba, evening in Roppongi
+**北京（5天 - 3月15-19日）**
+- 第1天：抵达，入住酒店，游览王府井和南锣鼓巷
+- 第2天：参观故宫和天安门广场，游览景山公园
+- 第3天：登长城（八达岭或慕田峪），下午游览颐和园
+- 第4天：天坛公园，北京胡同游，恭王府
+- 第5天：798艺术区，三里屯购物，晚上看京剧
 
-**Kyoto (6 days - March 20-25)**
-- Day 6: Travel to Kyoto, Fushimi Inari Shrine (iconic red torii gates)
-- Day 7: Arashiyama Bamboo Grove, Tenryu-ji Temple, Monkey Park
-- Day 8: Kinkaku-ji (Golden Pavilion), Ryoan-ji rock garden
-- Day 9: Gion district, traditional tea ceremony, Kiyomizu-dera Temple
-- Day 10: Day trip to Nara (deer park, Todai-ji Temple)
-- Day 11: Philosopher's Path, Ginkaku-ji (Silver Pavilion), Heian Shrine
+**西安（6天 - 3月20-25日）**
+- 第6天：前往西安，参观兵马俑博物馆
+- 第7天：古城墙骑行，回民街美食街
+- 第8天：大雁塔，陕西历史博物馆
+- 第9天：华清池，骊山风景区
+- 第10天：大唐芙蓉园，曲江池遗址公园
+- 第11天：小雁塔，西安博物院，书院门
 
-**Osaka (3 days - March 26-28)**
-- Day 12: Travel to Osaka, Osaka Castle, Dotonbori food street
-- Day 13: Kuromon Market, Shinsaibashi shopping, Universal Studios Japan option
-- Day 14: Sumiyoshi Taisha Shrine, last-minute shopping, departure prep
+**成都（3天 - 3月26-28日）**
+- 第12天：前往成都，成都大熊猫繁育研究基地，宽窄巷子
+- 第13天：武侯祠，锦里古街，人民公园喝茶
+- 第14天：杜甫草堂，最后购物，准备返程
 
-Would you like me to suggest specific restaurants or any other details?""",
+你想让我推荐具体的餐厅或其他细节吗？""",
         ),
         Message(
             role=Role.USER,
             content="""\
-This looks fantastic! Yes, please suggest restaurants. We're especially interested in
-authentic local places, not touristy spots.
-Also, I should mention that David has a shellfish allergy, so we need to be careful
-about that.
-My email is sarah.chen@email.com if you want to send me a detailed PDF later.
-My phone is +1-555-0123-4567.
-We're staying at the Park Hyatt Tokyo (5 days), traditional ryokan in Kyoto called
-Yoshikawa Inn (6 days), and Hotel Granvia Osaka (3 days).""",
+这看起来太棒了！是的，请推荐餐厅。我们特别想去
+地道的本地餐馆，而不是游客聚集的地方。
+另外，我需要提醒一下，大卫对贝类过敏，所以我们需要小心
+这一点。
+我的邮箱是sarah.chen@email.com，如果你想稍后给我发送详细的PDF。
+我的电话是+1-555-0123-4567。
+我们住在北京柏悦酒店（5天），西安的传统四合院酒店
+长安客栈（6天），以及成都华尔道夫酒店（3天）。""",
         ),
         Message(
             role=Role.ASSISTANT,
-            content="""Excellent accommodation choices! The Yoshikawa Inn is particularly special
-- they have an amazing kaiseki restaurant.
+            content="""非常棒的住宿选择！长安客栈特别有特色
+- 他们有很棒的传统陕菜餐厅。
 
-**Restaurant Recommendations:**
+**餐厅推荐：**
 
-**Tokyo:**
-1. **Ichiran Ramen** (Shibuya) - Private booth ramen experience, customize your bowl. """
-            """Shellfish-free option available.
-2. **Sushi Dai** (Toyosu Market) - Early morning sushi breakfast, tell them about the
-shellfish allergy """
-            """("ebi to kai rui arerugī")
-3. **Tempura Kondo** (Ginza) - Michelin-starred, vegetable-focused tempura
-4. **Narisawa** (Aoyama) - If you want a splurge, this 2-Michelin-star restaurant has
-innovative Japanese cuisine
-5. **Afuri Ramen** (Harajuku) - Yuzu-based light ramen, very refreshing
+**北京：**
+1. **四季民福** (王府井) - 正宗北京烤鸭，无贝类选项。
+2. **簋街小吃** (东直门) - 各种北京小吃，告诉店家大卫对贝类过敏
+（"我对贝类过敏"）
+3. **全聚德** (前门) - 百年老字号烤鸭店
+4. **大董** (工体) - 如果想奢侈一点，这家米其林餐厅有
+创新中国菜
+5. **护国寺小吃** (护国寺) - 传统北京小吃，非常地道
 
-**Kyoto:**
-1. **Yoshikawa Inn's own restaurant** - Their kaiseki is exceptional, """
-            """inform them of the allergy when booking
-2. **Omen** (near Ginkaku-ji) - Handmade udon in a traditional house
-3. **Kikunoi Roan** - Kaiseki experience, they're very accommodating with allergies
-4. **Katsukura** (Sanjo) - Best tonkatsu (pork cutlet) in Kyoto
-5. **Nishiki Market** - Walk through for street food, but David should be cautious with mystery items
+**西安：**
+1. **长安客栈自己的餐厅** - 他们的陕菜很棒，
+预订时告知过敏情况
+2. **德发长** (钟楼附近) - 传统饺子宴，手工制作
+3. **老孙家** - 羊肉泡馍体验，对过敏很照顾
+4. **樊记肉夹馍** (竹笆市) - 西安最好的肉夹馍
+5. **回民街** - 逛街品尝美食，但大卫要小心未知食材
 
-**Osaka:**
-1. **Harukoma Sushi** (Tenjinbashisuji) - Conveyor belt sushi, excellent quality, affordable
-2. **Fukutaro** (Dotonbori) - Okonomiyaki specialists, no shellfish in standard recipes
-3. **Matsusakagyu Yakiniku M** (Hozenji Yokocho) - High-end yakiniku (grilled beef)
-4. **Ichiran Ramen** (Dotonbori branch) - Consistent quality
-5. **Kuromon Market** - Various stalls, ask vendors about ingredients
+**成都：**
+1. **蜀九香** (天府广场) - 火锅，品质优良，价格实惠
+2. **钟水饺** (春熙路) - 传统川菜小吃，标准菜谱无贝类
+3. **马旺子** (宽窄巷子) - 高端川菜
+4. **陈麻婆豆腐** (西玉龙街) - 正宗麻婆豆腐
+5. **锦里** - 各种小吃摊，询问摊主食材
 
-**Important Allergy Notes:**
-- Learn this phrase: "Ebi to kai rui arerugī ga arimasu"
-  (I have a shellfish allergy)
-- Many broths use shellfish stock, always ask
-- Carry allergy cards in Japanese
-- Download Google Translate offline for emergency communication
+**重要过敏提示：**
+- 学习这个短语："我对贝类过敏"
+- 许多汤底使用海鲜高汤，一定要询问
+- 携带中文过敏卡片
+- 下载离线翻译应用以备紧急沟通
 
-For your trip planning, I'll note: Sarah Chen (sarah.chen@email.com, +1-555-0123-4567)
-and David Miller, March 15-29 Japan trip.""",
+为你的行程规划，我记下：陈莎拉（sarah.chen@email.com，+1-555-0123-4567）
+和大卫·米勒，3月15-29日中国之旅。""",
         ),
         Message(
             role=Role.USER,
             content="""\
-Thank you so much! A few more questions:
-1. What's the best way to get from Tokyo to Kyoto? We heard about the JR Pass.
-2. Should we rent a pocket WiFi or buy a SIM card?
-3. Any cultural etiquette we should be aware of?
-4. David wants to know if there are good bars or nightlife spots. He loves whisky.
+非常感谢！还有几个问题：
+1. 从北京到西安最好的交通方式是什么？我们听说高铁很方便。
+2. 我们应该租随身WiFi还是买SIM卡？
+3. 有什么文化礼仪需要注意的吗？
+4. 大卫想知道有没有好的酒吧或夜生活场所。他喜欢白酒。
 """,
         ),
         Message(
             role=Role.ASSISTANT,
-            content="""Great questions! Let me address each:
+            content="""很好的问题！让我逐一解答：
 
-**1. Transportation:**
-Absolutely get the JR Pass! For your 14-day trip, get the 14-day pass (around ¥47,250/$315 per person).
-- Tokyo to Kyoto: Shinkansen (bullet train), 2.5 hours, covered by JR Pass
-- Kyoto to Osaka: 30 minutes by train, also covered
-- The pass also covers JR trains in cities and the Nikko trip
-- Order it before leaving the US, pick up at airport upon arrival
+**1. 交通：**
+绝对要坐高铁！对于你的14天行程，高铁是最佳选择。
+- 北京到西安：高铁，约4.5-5小时，二等座约500元/人
+- 西安到成都：高铁，约3-4小时，二等座约260元/人
+- 也可以提前在12306网站或携程上预订
+- 需要护照信息购票，提前预订可以拿到更好的价格
 
-**2. Internet:**
-I recommend renting pocket WiFi over SIM card because:
-- You can share it (both Sarah and David can connect)
-- No need to swap your phone SIM
-- Rent from companies like Japan Wireless or Ninja WiFi
-- Reserve online, pick up at Narita/Haneda airport
-- Cost: around $8-10/day for unlimited data
-- Return at airport when you leave
+**2. 网络：**
+我建议租随身WiFi而不是SIM卡，因为：
+- 可以共享（莎拉和大卫都可以连接）
+- 不需要更换手机SIM卡
+- 可以从携程或漫游超人等公司租赁
+- 在线预订，机场取货
+- 费用：约10-15元/天，无限流量
+- 离开时在机场归还
 
-**3. Cultural Etiquette:**
-- Take off shoes when entering homes, some restaurants, temples (you'll see slippers at entrance)
-- Don't tip - it can be considered insulting
-- At temples: bow before entering, don't take photos inside unless permitted
-- On trains: silent mode on phones, no phone calls
-- Eating: slurping noodles is okay (shows appreciation), don't stick chopsticks upright in rice
-- Onsen (if your ryokan has one): shower completely before entering communal bath, no swimwear
-- Walking: don't eat while walking, finish at the stall or sit down
-- Trash: carry your trash with you, public bins are rare
+**3. 文化礼仪：**
+- 进入家庭、一些餐厅、寺庙时脱鞋（入口处会看到拖鞋）
+- 在寺庙：进入前鞠躬，除非允许否则不要在室内拍照
+- 地铁上：手机静音，避免大声通话
+- 用餐：吃面条发出声音是可以的，不要把筷子插在米饭里
+- 付款：现在移动支付很普及，但准备一些现金总是好的
+- 垃圾：将垃圾带在身边，找到垃圾桶再丢弃
 
-**4. Bars & Whisky for David:**
+**4. 酒吧和白酒（给大卫）：**
 
-**Tokyo:**
-1. **Zoetrope** (Shinjuku) - 300+ types of Japanese whisky, cozy atmosphere
-2. **Bar Benfiddich** (Shinjuku) - Award-winning cocktail bar, house-made bitters
-3. **Mori Bar** (Ginza) - Classic Japanese bar, extensive whisky collection
-4. **Golden Gai** (Shinjuku) - Alley with 200+ tiny bars, unique atmosphere
+**北京：**
+1. **三里屯酒吧街** - 各种酒吧，国际氛围
+2. **Mesh** (三里屯) - 高端鸡尾酒吧
+3. **京A** - 精酿啤酒，也有白酒选择
+4. **南锣鼓巷** - 小酒吧聚集地，独特氛围
 
-**Kyoto:**
-1. **Sake Bar Yoramu** - Also has excellent whisky selection
-2. **Rocking Bar Ing** - Relaxed atmosphere, good whisky menu
-3. **Bar K6** (Kawaramachi) - Intimate whisky bar
+**西安：**
+1. **德福巷酒吧街** - 各种酒吧和夜店
+2. **1935酒吧** - 轻松氛围，好的酒单
+3. **回民街** - 晚上也有小酒馆
 
-**Osaka:**
-1. **Bar Nayuta** (Namba) - World-class whisky bar
-2. **Moonshine Karaoke Bar** (Dotonbori) - If you want karaoke with drinks
-3. **Bar Americana** - Extensive bourbon and whisky selection
+**成都：**
+1. **兰桂坊** (锦江区) - 世界级酒吧街
+2. **小酒馆** (玉林) - 如果想要有音乐的酒吧
+3. **九眼桥酒吧街** - 各种酒吧选择
 
-**Whisky Shopping:**
-- **Tanakaya** (Tokyo) - Huge selection of Japanese whisky
-- **Liquors Hasegawa** (Tokyo Station) - Great for last-minute bottles before flying home
-- Note: Japanese whisky (Yamazaki, Hibiki, Hakushu) can be expensive even in Japan due to global demand
+**白酒购物：**
+- **北京王府井** - 大型白酒专卖店
+- **机场免税店** - 回家前购买白酒的好地方
+- 注意：茅台、五粮液等高端白酒价格较高
 
-Do you need help with anything else for your trip? Train routes, more specific timing, or """
-            """budget breakdown?""",
+你的行程还需要其他帮助吗？火车路线、具体时间安排或"""
+            """预算明细？""",
         ),
         Message(
             role=Role.USER,
             content="""\
-This is incredibly helpful! One more thing - we want to attend a traditional tea
-ceremony in Kyoto. Can you recommend where to do this?
-Also, what should we pack? I know March can be unpredictable weather-wise.
-Oh, and my birthday is on March 22nd - any special restaurant recommendation for
-that evening? It'll be our 3rd anniversary too!
-David's credit card is Visa ending in 4892, and mine is Mastercard ending in 7651
-- will these work everywhere in Japan?""",
+这真的很有帮助！还有一件事 - 我们想在西安参加一个传统茶艺
+体验。你能推荐去哪里吗？
+另外，我们应该打包什么？我知道三月的天气可能不太稳定。
+哦，我的生日是3月22日 - 那天晚上有什么特别的餐厅推荐吗？
+那也是我们的3周年纪念日！
+大卫的信用卡是Visa尾号4892，我的是Mastercard尾号7651
+- 这些卡在中国到处都能用吗？""",
         ),
         Message(
             role=Role.ASSISTANT,
-            content="""Wonderful questions! And happy early birthday & anniversary!
+            content="""很棒的问题！提前祝你生日快乐和纪念日快乐！
 
-**Tea Ceremony Experiences in Kyoto:**
+**西安茶艺体验：**
 
-1. **Camellia Tea Ceremony** (Higashiyama) - Highly recommended!
-   - English-speaking host
-   - Includes kimono wearing experience
-   - Small groups (max 6 people)
-   - 2-hour experience, around ¥6,000 per person
-   - Book online in advance: camelliatearoom.com
+1. **大唐茶苑** (大雁塔附近) - 强烈推荐！
+   - 中英文主持人
+   - 包含汉服体验
+   - 小团体（最多6人）
+   - 2小时体验，约300元/人
+   - 提前在线预订
 
-2. **En Tea Ceremony** (near Kiyomizu-dera)
-   - Traditional machiya (townhouse) setting
-   - Very authentic, less touristy
-   - Private ceremony option available
-   - Around ¥5,500 per person
+2. **茶缘轩** (古城墙附近)
+   - 传统四合院环境
+   - 非常地道，游客少
+   - 可预订私人茶艺
+   - 约280元/人
 
-3. **Wak Japan** (Gion area)
-   - Combines tea ceremony with flower arrangement or calligraphy
-   - Good for couples
-   - Around ¥8,000 per person for combined experience
+3. **唐韵茶艺** (回民街区域)
+   - 结合茶艺和书法体验
+   - 适合情侣
+   - 组合体验约400元/人
 
-I recommend booking Day 9 (March 22nd) morning for the tea ceremony, then evening for your special dinner!
+我建议在第9天（3月22日）上午预订茶艺体验，然后晚上吃特别晚餐！
 
-**March Weather & Packing:**
-March in Japan: transitioning from winter to spring
-- Temperature: 8-15°C (46-59°F)
-- Cherry blossoms might just start blooming late March (you might catch early bloomers!)
+**三月天气和打包清单：**
+中国三月：从冬天过渡到春天
+- 气温：北京5-15°C，西安8-18°C，成都10-20°C
+- 可能会看到早春的花朵盛开！
 
-**Pack:**
-- Layering clothes: light sweater, cardigan, light jacket
-- One warmer jacket for evenings
-- Comfortable walking shoes (you'll walk 15,000+ steps daily)
-- Umbrella (March has occasional rain)
-- Slip-on shoes (easier for temple visits)
-- Nice outfit for fancy restaurants
-- Power adapter (Japan uses Type A plugs, 100V)
-- Portable charger for phones
-- Small day backpack
+**打包：**
+- 分层衣物：轻薄毛衣、开衫、轻便外套
+- 一件保暖外套（晚上用）
+- 舒适的步行鞋（每天要走15,000+步）
+- 雨伞（三月偶尔有雨）
+- 方便穿脱的鞋子（方便寺庙参观）
+- 高档餐厅用的正装
+- 电源转换器（中国使用A型插头，220V）
+- 手机充电宝
+- 小型日用背包
 
-**Birthday & Anniversary Dinner - March 22nd:**
+**生日和纪念日晚餐 - 3月22日：**
 
-For such a special occasion in Kyoto, I highly recommend:
+对于在西安这样特殊的场合，我强烈推荐：
 
-**Kikunoi Honten** (Main Branch) - 3 Michelin Stars
-- Ultimate kaiseki experience
-- Beautiful traditional setting with garden views
-- Multi-course seasonal menu
-- Reserve 1-2 months in advance
-- Budget: ¥25,000-40,000 per person (worth it for anniversary!)
-- Inform them of: shellfish allergy, birthday, anniversary
-- They'll often add special touches for celebrations
+**长安壹号** - 高端陕菜
+- 顶级陕菜体验
+- 美丽的传统环境和园林景观
+- 多道式季节菜单
+- 提前1-2个月预订
+- 预算：每人1000-1500元（值得纪念日！）
+- 告知他们：贝类过敏、生日、纪念日
+- 他们通常会为庆祝活动增添特别惊喜
 
-**Alternative (still amazing):**
-**Hyotei** - 3 Michelin Stars
-- Historic (400 years old)
-- Beautiful garden setting
-- Breakfast kaiseki is famous, but dinner is exceptional
-- Similar price range
+**备选（同样很棒）：**
+**西安饭庄** - 百年老店
+- 历史悠久（百年历史）
+- 美丽的园林环境
+- 传统陕菜，晚餐特别精致
+- 相似价格范围
 
-**More Accessible but Still Special:**
-**Gion Karyo**
-- 1 Michelin Star
-- Beautiful Gion location
-- Around ¥15,000-20,000 per person
-- Easier to book
+**更实惠但仍然特别：**
+**德发长**
+- 著名饺子宴
+- 市中心位置
+- 约每人500-800元
+- 更容易预订
 
-**Birthday Cake:**
-Order a birthday cake from **Malebranche** (Kyoto) - they do beautiful matcha cakes.
-Ask your ryokan to keep it refrigerated and present it after you return from dinner!
+**生日蛋糕：**
+从**北京稻香村**或当地蛋糕店订一个生日蛋糕。
+请你的酒店冷藏保管，晚餐后回来时呈上！
 
-**Credit Cards:**
-- Major hotels and restaurants: Visa & Mastercard widely accepted
-  (Sarah's Mastercard 7651 and David's Visa 4892 should work fine)
-- However, Japan is still heavily CASH-based
-- Bring cash for:
-  - Small restaurants
-  - Temples/shrines
-  - Street food
-  - Some shops
-  - Taxis
-  - Vending machines
+**信用卡：**
+- 大型酒店和餐厅：Visa和Mastercard广泛接受
+  （莎拉的Mastercard 7651和大卫的Visa 4892应该可以用）
+- 但是，中国现在主要使用移动支付（微信支付、支付宝）
+- 建议准备现金用于：
+  - 小餐馆
+  - 寺庙/景点
+  - 街边小吃
+  - 一些商店
+  - 出租车
+  - 自动售货机
 
-**ATM Tips:**
-- 7-Eleven ATMs work with foreign cards (open 24/7)
-- Japan Post Bank ATMs also reliable
-- Withdraw larger amounts to minimize fees
-- Keep ¥10,000-20,000 ($70-140) cash daily
-- Your banks: notify them of Japan travel to avoid card blocks
+**ATM提示：**
+- 中国银行ATM支持外国卡（需要银联标识）
+- 建议一次提取较大金额以减少手续费
+- 每天保持500-1000元现金
+- 你的银行：通知他们中国旅行计划以避免卡被冻结
 
-**Pre-Trip Checklist:**
-✅ JR Pass ordered
-✅ Pocket WiFi reserved
-✅ Kikunoi dinner reservation (book NOW for March 22nd)
-✅ Tea ceremony booking
-✅ Notify banks: Sarah (MC 7651), David (Visa 4892)
-✅ Travel insurance
-✅ Download offline maps
-✅ Book airport transfers
-✅ Birthday cake ordered
+**出行前清单：**
+✅ 高铁票预订
+✅ 随身WiFi预订
+✅ 长安壹号晚餐预订（现在就订3月22日的！）
+✅ 茶艺预订
+✅ 通知银行：莎拉（MC 7651），大卫（Visa 4892）
+✅ 旅行保险
+✅ 下载离线地图
+✅ 预订机场接送
+✅ 订生日蛋糕
 
-Would you like me to help with a day-by-day detailed schedule with specific times and addresses?""",
+你想要我帮助制定一个详细的每日行程，包括具体时间和地址吗？""",
         ),
         Message(
             role=Role.USER,
             content="""\
-Yes! A detailed daily schedule would be amazing. Can you include specific addresses and opening hours?
-Also, we're thinking of proposing to our friends to join us - my best friend Jessica Wang and her """
-            """husband Tom. What would change if we're traveling as a group of 4?""",
+太好了！详细的每日行程表会很棒。你能包括具体地址和开放时间吗？
+另外，我们在考虑邀请朋友一起 - 我最好的朋友杰西卡·王和她的"""
+            """丈夫汤姆。如果我们四个人一起旅行会有什么变化？""",
         ),
         Message(
             role=Role.ASSISTANT,
             content="""\
-Absolutely! I'll create a detailed schedule. Traveling as a group of 4 (Sarah & David + Jessica & """
-            """Tom) actually has some advantages:
+当然！我会制定详细的行程。作为四人团（莎拉和大卫 + 杰西卡和"""
+            """汤姆）旅行实际上有一些优势：
 
-**Group of 4 Benefits:**
-✅ Split pocket WiFi cost (1 device for 4 people)
-✅ Share taxi costs (taxis fit 4 people)
-✅ Some restaurants have minimum 4-person set menus
-✅ Private tea ceremony for your group
-✅ Better for group photos!
+**四人团的好处：**
+✅ 分摊随身WiFi费用（1台设备供4人使用）
+✅ 分摊出租车费用（出租车正好坐4人）
+✅ 一些餐厅有4人起的套餐
+✅ 你们团队的私人茶艺体验
+✅ 更适合团体照片！
 
-**Considerations:**
-- Book restaurants for 4 people
-- Some tiny bars in Golden Gai might not fit all
-- Reserve 2 rooms/apartments when needed
-- Coordinate meeting points if you split up
+**注意事项：**
+- 为4人预订餐厅
+- 一些小酒吧可能容纳不了所有人
+- 需要时预订2个房间/公寓
+- 如果分开行动要协调碰面地点
 
-**DETAILED 14-DAY SCHEDULE WITH ADDRESSES:**
+**详细的14天行程（包含地址）：**
 
-**DAY 1 - March 15 (Friday) - TOKYO ARRIVAL**
+**第1天 - 3月15日（周五）- 北京到达**
 
-*Morning/Afternoon:*
-- Arrive Narita/Haneda Airport
-- Pick up: JR Pass, Pocket WiFi
-- Exchange yen at airport (recommend ¥50,000+ per person)
-- Take train to hotel: Park Hyatt Tokyo
-  📍 3-7-1-2 Nishishinjuku, Shinjuku-ku, Tokyo 163-1055
-  🚇 Shinjuku Station → Oedo Line to Tochomae Station (5 min walk)
+*上午/下午：*
+- 到达北京首都国际机场
+- 取：随身WiFi
+- 在机场兑换人民币（建议每人3000元+）
+- 乘车到酒店：北京柏悦酒店
+  📍 北京市朝阳区建国门外大街2号
+  🚇 从机场乘机场快轨到东直门站，换乘地铁（约1小时）
 
-*Evening (6:00 PM - 9:00 PM):*
-- Check in, rest, freshen up
-- Dinner: **Omoide Yokocho** (Memory Lane)
-  📍 1 Chome Nishishinjuku, Shinjuku-ku, Tokyo
-  🕒 Open till midnight
-  💴 ¥2,000-3,000/person
-  - Narrow alley with small yakitori stands
-  - Cash only, very local atmosphere
-  - Ask about shellfish ("kai rui") in skewers
+*晚上（下午6:00 - 9:00）：*
+- 入住，休息，整理
+- 晚餐：**簋街小吃街**
+  📍 北京市东城区东直门内大街
+  🕒 营业至深夜
+  💴 每人100-150元
+  - 各种小吃摊位
+  - 多数店家只收现金或移动支付
+  - 询问贝类（"有没有海鲜"）
 
-*Night:*
-- Walk around Shinjuku, see the night lights
-- Convenience store snacks (7-Eleven/Family Mart)
-- Early sleep (jet lag)
-
----
-
-**DAY 2 - March 16 (Saturday) - ASAKUSA & UENO**
-
-*Morning (9:00 AM - 12:00 PM):*
-- Breakfast at hotel or nearby bakery
-- 🚇 Train to Asakusa (30 min from Shinjuku)
-
-- **Senso-ji Temple**
-  📍 2-3-1 Asakusa, Taito-ku, Tokyo
-  🕒 6:00 AM - 5:00 PM (grounds always open)
-  💴 Free
-  - Arrive by 9:30 AM to avoid crowds
-  - Walk through Kaminarimon Gate, Nakamise Shopping Street
-  - Draw fortune (omikuji) - ¥100
-  - Visit main hall, incense burner
-
-*Lunch (12:00 PM):*
-- **Daikokuya Tempura**
-  📍 1-38-10 Asakusa, Taito-ku, Tokyo
-  🕒 11:00 AM - 8:30 PM (closed Mon)
-  💴 ¥2,000-3,000/person
-  - Famous tendon (tempura rice bowl)
-  - Mention shellfish allergy to David's order
-
-*Afternoon (1:30 PM - 5:00 PM):*
-- Walk to Ueno (15 min) or train (2 stops)
-
-- **Ueno Park**
-  📍 Uenokoen, Taito-ku, Tokyo
-  🕒 5:00 AM - 11:00 PM
-  💴 Free (museums extra)
-  - Cherry blossom trees (might see early bloomers!)
-  - Visit **Tokyo National Museum** if interested
-    🕒 9:30 AM - 5:00 PM (closed Mon)
-    💴 ¥1,000/person
-
-- **Ameya-Yokocho Market**
-  📍 4 Chome Ueno, Taito-ku, Tokyo
-  - Shopping street, bargain clothes, snacks
-
-*Dinner (6:30 PM):*
-- **Ichiran Ramen Ueno**
-  📍 6-11-11 Ueno, Taito-ku, Tokyo
-  🕒 24 hours
-  💴 ¥1,000-1,500/person
-  - Individual booth experience
-  - Order via vending machine (English available)
-  - Customize your ramen
-
-*Night:*
-- Return to Shinjuku
-- Optional: **Zoetrope Whisky Bar** for David & Tom
-  📍 Sankoubldg. 3F, 1-7-10 Nishi-Shinjuku, Shinjuku-ku
-  🕒 6:00 PM - 12:00 AM (closed Sun)
-  💴 ¥1,500-3,000/drink
+*夜间：*
+- 在东直门周围散步，看夜景
+- 便利店小吃（7-11/全家）
+- 早点睡（时差调整）
 
 ---
 
-**DAY 3 - March 17 (Sunday) - TSUKIJI, GINZA, IMPERIAL PALACE**
+**第2天 - 3月16日（周六）- 故宫和天安门**
 
-*Early Morning (5:30 AM - 8:00 AM):*
-- Wake up early!
-- **Tsukiji Outer Market**
-  📍 4 Chome Tsukiji, Chuo-ku, Tokyo
-  🚇 Tsukijishijo Station (Oedo Line)
-  🕒 Most stalls: 5:00 AM - 2:00 PM
+*上午（9:00 AM - 12:00 PM）：*
+- 在酒店或附近面包店吃早餐
+- 🚇 地铁到天安门（从酒店约30分钟）
 
-- Breakfast at **Sushi Dai** (or Daiwa Sushi)
-  📍 Inside Toyosu Market (new location)
-  🕒 5:30 AM - 1:30 PM
-  💴 ¥3,500-5,000/person
-  ⚠️ Expect 1-2 hour wait, go early!
-  - Tell chef about David's shellfish allergy
-  - Omakase sushi breakfast
+- **天安门广场**
+  📍 北京市东城区天安门广场
+  🕒 6:00 AM - 5:00 PM（广场全天开放）
+  💴 免费
+  - 早上9:30前到达以避开人群
+  - 看升旗仪式（如果早起）
+  - 拍照留念
 
-*Late Morning (9:00 AM - 12:00 PM):*
-- **Imperial Palace East Gardens**
-  📍 1-1 Chiyoda, Chiyoda-ku, Tokyo
-  🕒 9:00 AM - 4:30 PM (closed Mon, Fri)
-  💴 Free
-  - Beautiful gardens, historic site
-  - 1-1.5 hour visit
+*午餐（12:00 PM）：*
+- **全聚德烤鸭**
+  📍 北京市东城区前门大街30号
+  🕒 11:00 AM - 2:00 PM，5:00 PM - 9:00 PM
+  💴 每人200-300元
+  - 著名北京烤鸭
+  - 告知大卫的贝类过敏
 
-*Lunch (12:30 PM):*
-- **Ginza**
-  📍 Ginza, Chuo-ku, Tokyo
-  - Many options for lunch
+*下午（1:30 PM - 5:00 PM）：*
+- 步行到故宫（15分钟）
 
-- **Tempura Kondo** (if you can get reservation)
-  📍 Sakaguchi Bldg. 9F, 5-5-13 Ginza, Chuo-ku
-  🕒 Lunch 12:00-2:00 PM, Dinner 5:30-9:00 PM (closed Sun)
-  💴 Lunch ¥8,000-12,000/person
-  - Reserve online or call: +81-3-5568-0923
+- **故宫博物院**
+  📍 北京市东城区景山前街4号
+  🕒 8:30 AM - 5:00 PM（周一闭馆）
+  💴 60元/人（需提前网上预订）
+  - 可能看到早春的花朵！
+  - 参观太和殿、乾清宫等主要宫殿
+  - 大约需要3-4小时
 
-- **Backup: Ginza Kagari Ramen**
-  📍 Ginza, Chuo-ku (search exact location)
-  💴 ¥1,200/person
-  - Creamy chicken ramen, no shellfish
+- **景山公园**
+  📍 北京市西城区景山前街
+  - 登顶俯瞰故宫全景
 
-*Afternoon (2:00 PM - 6:00 PM):*
-- **Ginza Shopping**
-  - UNIQLO flagship (12 floors)
-  - Mitsukoshi Department Store
-  - Dover Street Market (avant-garde fashion)
-  - MUJI flagship
-  - Window shop luxury brands
+*晚餐（6:30 PM）：*
+- **护国寺小吃**
+  📍 北京市西城区护国寺大街93号
+  🕒 全天营业
+  💴 每人80-100元
+  - 传统北京小吃
+  - 多种选择
+  - 可定制你的餐食
 
-*Dinner (6:30 PM):*
-- **Afuri Ramen**
-  📍 1-1-7 Ebisu, Shibuya-ku, Tokyo (Ebisu location)
-  🕒 11:00 AM - 11:00 PM
-  💴 ¥1,200/person
-  - Yuzu-salt ramen, light and refreshing
-
-*Night:*
-- Train to Shibuya for evening walk
-- See Shibuya Crossing at night
-- Return hotel
+*夜间：*
+- 返回酒店
+- 可选：**三里屯酒吧街**（给大卫和汤姆）
+  📍 北京市朝阳区三里屯路
+  🕒 下午6:00 - 凌晨2:00
+  💴 每杯60-150元
 
 ---
 
-This is getting quite long! Should I continue with the rest of the days (Days 4-14)? I can also send """
-            """you this as a Google Doc or PDF if that's easier. Just need to confirm - are Jessica and Tom """
-            """definitely joining, or still maybe?
+**第3天 - 3月17日（周日）- 长城和颐和园**
 
-Also, does anyone have other dietary restrictions besides David's shellfish allergy? And what are """
-            """your hotel/ryokan confirmations - should I include check-in/check-out timing?""",
+*清晨（5:30 AM - 8:00 AM）：*
+- 早起！
+- **慕田峪长城**
+  📍 北京市怀柔区慕田峪村
+  🚇 可预订包车或参加一日游（从市区约1.5小时）
+  🕒 7:30 AM - 5:30 PM
+
+- 在景区附近吃早餐
+  📍 景区内餐厅
+  🕒 8:00 AM - 10:00 AM
+  💴 每人50-80元
+  ⚠️ 准备好爬长城，穿舒适的鞋子！
+  - 告知餐厅大卫的贝类过敏
+  - 简单早餐
+
+*上午（9:00 AM - 12:00 PM）：*
+- **登长城**
+  📍 慕田峪长城
+  🕒 已开放
+  💴 45元门票/人 + 缆车120元往返
+  - 美丽的景色，历史遗迹
+  - 约2-3小时游览
+
+*午餐（12:30 PM）：*
+- **景区餐厅**
+  📍 慕田峪景区
+  - 多种午餐选择
+
+- 返回市区（约1.5小时车程）
+
+*下午（3:00 PM - 6:00 PM）：*
+- **颐和园**
+  📍 北京市海淀区新建宫门路19号
+  🕒 6:30 AM - 8:00 PM
+  💴 30元/人（旺季）
+  - 皇家园林，昆明湖
+  - 十七孔桥，长廊
+  - 约2-3小时游览
+
+*晚餐（6:30 PM）：*
+- **四季民福烤鸭**
+  📍 北京市东城区灯市口大街50号
+  🕒 11:00 AM - 10:00 PM
+  💴 每人150-200元
+  - 北京烤鸭，清淡爽口
+
+*夜间：*
+- 返回酒店休息
+- 可选：在酒店附近散步
+
+---
+
+这变得相当长了！我应该继续写剩下的天数（第4-14天）吗？我也可以"""
+            """把这个做成Google文档或PDF，如果那样更方便的话。只需要确认 - 杰西卡和汤姆"""
+            """确定要来，还是只是可能？
+
+另外，除了大卫的贝类过敏之外，还有其他人有饮食限制吗？你的"""
+            """酒店确认信息是什么 - 我应该包含入住/退房时间吗？""",
         ),
     ]
 

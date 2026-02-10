@@ -16,7 +16,6 @@ class BaseMemoryStore(ABC):
         store_name: str,
         embedding_model: BaseEmbeddingModel,
         fts_enabled: bool = True,
-        snippet_max_chars: int = 700,
         **kwargs,
     ):
         """Initialize"""
@@ -27,7 +26,6 @@ class BaseMemoryStore(ABC):
         self.store_name: str = store_name
         self.embedding_model: BaseEmbeddingModel = embedding_model
         self.fts_enabled: bool = fts_enabled
-        self.snippet_max_chars: int = snippet_max_chars
         self.kwargs: dict = kwargs
 
         self.vector_available = False

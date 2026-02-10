@@ -48,9 +48,9 @@ class ReMe(Application):
         self,
         *args,
         llm_api_key: str | None = None,
-        llm_api_base: str | None = None,
+        llm_base_url: str | None = None,
         embedding_api_key: str | None = None,
-        embedding_api_base: str | None = None,
+        embedding_base_url: str | None = None,
         config_path: str = "default",
         enable_logo: bool = True,
         log_to_console: bool = True,
@@ -69,9 +69,9 @@ class ReMe(Application):
         Args:
             *args: Arguments passed to Application
             llm_api_key: API key for LLM provider
-            llm_api_base: API base for LLM provider
+            llm_base_url: API base for LLM provider
             embedding_api_key: API key for embedding provider
-            embedding_api_base: API base for embedding provider
+            embedding_base_url: API base for embedding provider
             config_path: Path to config file
             enable_logo: Enable logo
             log_to_console: Log to console
@@ -101,9 +101,9 @@ class ReMe(Application):
         super().__init__(
             *args,
             llm_api_key=llm_api_key,
-            llm_api_base=llm_api_base,
+            llm_base_url=llm_base_url,
             embedding_api_key=embedding_api_key,
-            embedding_api_base=embedding_api_base,
+            embedding_base_url=embedding_base_url,
             config_path=config_path,
             enable_logo=enable_logo,
             log_to_console=log_to_console,

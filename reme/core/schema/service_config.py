@@ -86,7 +86,6 @@ class MemoryStoreConfig(BaseModel):
     store_name: str = Field(default="reme")
     embedding_model: str = Field(default="default")
     fts_enabled: bool = Field(default=True)
-    snippet_max_chars: int = Field(default=700)
 
 
 class TokenCounterConfig(BaseModel):

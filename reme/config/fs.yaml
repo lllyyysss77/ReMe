@@ -3,8 +3,8 @@ backend: cmd
 llms:
   default:
     backend: openai
-    model_name: qwen3-30b-a3b-instruct-2507
-#    model_name: qwen3-30b-a3b-thinking-2507
+#    model_name: qwen3-30b-a3b-instruct-2507
+    model_name: qwen3-30b-a3b-thinking-2507
     request_interval: 1
 #    temperature: 0.0001
 
@@ -20,7 +20,6 @@ memory_stores:
     store_name: test_hybrid
     embedding_model: default
     fts_enabled: true
-    snippet_max_chars: 700
 
 file_watchers:
   default:

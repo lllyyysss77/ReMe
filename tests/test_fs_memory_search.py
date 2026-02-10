@@ -216,7 +216,6 @@ async def test_memory_search_basic():
             "store_name": "test_basic",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
     )
     await reme_fs.start()
@@ -278,7 +277,6 @@ async def test_memory_search_technical_content():
             "store_name": "test_technical",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
     )
     await reme_fs.start()
@@ -448,7 +446,6 @@ async def test_memory_search_score_filtering():
             "store_name": "test_score_filter",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
     )
     await reme_fs.start()
@@ -515,7 +512,6 @@ async def test_memory_search_max_results():
             "store_name": "test_max_results",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
     )
     await reme_fs.start()
@@ -582,7 +578,6 @@ async def test_memory_search_hybrid_mode():
             "store_name": "test_hybrid",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
     )
     await reme_fs.start()
@@ -614,7 +609,6 @@ async def test_memory_search_hybrid_mode():
             "store_name": "test_hybrid",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
         search_params={
             "hybrid_enabled": True,
@@ -646,7 +640,6 @@ async def test_memory_search_hybrid_mode():
             "store_name": "test_hybrid",
             "embedding_model": "default",
             "fts_enabled": True,
-            "snippet_max_chars": 700,
         },
         search_params={"hybrid_enabled": False},
     )
@@ -679,7 +672,6 @@ async def test_memory_search_hybrid_mode():
                 "store_name": "test_hybrid",
                 "embedding_model": "default",
                 "fts_enabled": True,
-                "snippet_max_chars": 700,
             },
             search_params={
                 "hybrid_enabled": True,

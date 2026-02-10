@@ -9,31 +9,66 @@ user_message: |
   Store durable memories now (use {memory_dir}/YYYY-MM-DD.md; create {memory_dir}/ if needed).
   If nothing to store, reply with [SILENT].
 
-user_message_v2: |
+user_message_default: |
+  <conversation>
+  {conversation}
+  </conversation>
+
+  The conversation is about to be compacted. Please extract persistent memories to disk.
   Current Date: {date}
-  The session is near auto-compaction; capture durable memories to disk.
 
-  Memory storage workflow:
-  1. Check if {memory_dir}/ exists; if not, create it via bash
-  2. Check if {memory_dir}/YYYY-MM-DD.md exists (use actual date)
-  3. If file is NEW: Write memories directly (be concise)
-  4. If file EXISTS:
-     a) Read the existing file content
-     b) Compare conversation history with existing content
-     c) Identify NEW/UPDATED information not yet captured
-     d) Use edit_tool to add/update only the new information (preserve existing content)
-     e) If conversation contains NO new information, skip writing
-  5. If NO valuable information to store: Reply with reason and [SILENT]
+  Execution Flow:
+  1. Determine if the conversation contains information worth storing
+     - If no: Reply with reason + [SILENT]
+     - If yes: Continue to step 2
 
-  IMPORTANT for updates:
-  - Only add information that is NOT already in the file
-  - Preserve all existing entries
-  - Merge duplicate information intelligently
-  - Use edit_tool for surgical updates, not write_tool (which overwrites)
+  2. Check file {memory_dir}/YYYY-MM-DD.md (use actual date)
+     - File doesn't exist: Write new memories directly
+     - File exists:
+       a) Read existing content
+       b) Compare and identify new/updated information
+       c) Prefer edit_tool for precise additions (preserves existing content); write_tool overwrites entire file
+       d) If no new information: Reply with explanation + [SILENT]
 
-  Example of what counts as NEW information:
-  - Existing: "Alice: Software engineer"
-  - Conversation: "Alice loves Python and AI projects"
-  - Action: ADD "Enjoys Python programming and AI project work" to Alice's entry
+  Update Principles:
+  - Only add unrecorded information, preserve all existing content
+  - Intelligently merge duplicate information, retain key details like timestamps
 
-  Store durable memories. Keep entries concise and well-organized.
+  Example (information merging):
+  Existing: "Alice joined Company A as Software Engineer on 2023-01-01"
+  New: "Alice joined Company B as Senior Engineer on 2024-01-01"
+  Result: "Alice joined Company A as Software Engineer on 2023-01-01, moved to Company B as Senior Engineer on 2024-01-01"
+
+  Please store persistent memories, keeping entries concise and well-structured.
+
+user_message_default_zh: |
+  <conversation>
+  {conversation}
+  </conversation>
+
+  conversation即将压缩，请提取持久性记忆存储至磁盘。
+  当前日期：{date}
+
+  执行流程：
+  1. 判断对话是否包含值得存储的信息
+     - 若无：回复原因 + [SILENT]
+     - 若有：继续步骤 2
+
+  2. 检查文件 {memory_dir}/YYYY-MM-DD.md（使用实际日期）
+     - 文件不存在：直接写入新记忆
+     - 文件已存在：
+       a) 读取现有内容
+       b) 对比识别新增/更新信息
+       c) 优先使用 edit_tool 精准添加新信息（保留已有内容），write_tool 会覆盖整个文件
+       d) 若无新信息：回复说明 + [SILENT]
+
+  更新原则：
+  - 仅添加未记录的信息，保留所有已有内容
+  - 智能合并重复信息，保留时间等关键细节
+
+  示例（信息合并）：
+  已有："Alice 于 2023-01-01 加入 A 公司任软件工程师"
+  新增："Alice 于 2024-01-01 加入 B 公司任高级工程师"
+  结果："Alice 于 2023-01-01 加入 A 公司任软件工程师，2024-01-01 转入 B 公司任高级工程师"
+
+  请存储持久性记忆，保持条目简洁、结构清晰。

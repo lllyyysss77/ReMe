@@ -29,9 +29,9 @@ class ServiceContext(BaseContext):
         self,
         *args,
         llm_api_key: str | None = None,
-        llm_api_base: str | None = None,
+        llm_base_url: str | None = None,
         embedding_api_key: str | None = None,
-        embedding_api_base: str | None = None,
+        embedding_base_url: str | None = None,
         service_config: ServiceConfig | None = None,
         parser: type[PydanticConfigParser] | None = None,
         config_path: str | None = None,
@@ -49,9 +49,9 @@ class ServiceContext(BaseContext):
 
         load_env()
         self._update_env("REME_LLM_API_KEY", llm_api_key)
-        self._update_env("REME_LLM_BASE_URL", llm_api_base)
+        self._update_env("REME_LLM_BASE_URL", llm_base_url)
         self._update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
-        self._update_env("REME_EMBEDDING_BASE_URL", embedding_api_base)
+        self._update_env("REME_EMBEDDING_BASE_URL", embedding_base_url)
 
         if service_config is None:
             parser_class = parser if parser is not None else PydanticConfigParser

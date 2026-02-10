@@ -107,8 +107,8 @@ class FileWatcherConfig(BaseModel):
     suffix_filters: list[str] = Field(default_factory=list)
     recursive: bool = Field(default=False)
     debounce: int = Field(default=500)
-    chunk_tokens: int = Field(default=400)
-    chunk_overlap: int = Field(default=80)
+    chunk_tokens: int = Field(default=1000)
+    chunk_overlap: int = Field(default=100)
     memory_store: str = Field(default="default")
     scan_on_start: bool = Field(default=True)
 

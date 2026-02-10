@@ -53,8 +53,8 @@ class ReMeFs(Application):
         suffix_filters: list[str] | None = None,
         recursive: bool = False,
         debounce: int = 500,
-        chunk_tokens: int = 400,
-        chunk_overlap: int = 80,
+        chunk_tokens: int = 1000,
+        chunk_overlap: int = 100,
         scan_on_start: bool = True,
         default_file_watcher_config: dict | None = None,
         context_window_tokens: int = 128000,
@@ -182,7 +182,7 @@ class ReMeFs(Application):
         )
         return await summarizer.call(messages=messages, date=date, service_context=self.service_context)
 
-    async def memory_search(self, query: str, max_results: int = 10, min_score: float = 0.3) -> str:
+    async def memory_search(self, query: str, max_results: int = 5, min_score: float = 0.1) -> str:
         """
         Mandatory recall step: semantically search MEMORY.md + memory/*.md (and optional session transcripts)
         before answering questions about prior work, decisions, dates, people, preferences, or todos;
@@ -190,8 +190,8 @@ class ReMeFs(Application):
 
         Args:
             query: The semantic search query to find relevant memory snippets
-            max_results: Maximum number of search results to return (optional), default is 10
-            min_score: Minimum similarity score threshold for results (optional), default is 0.3
+            max_results: Maximum number of search results to return (optional), default is 5
+            min_score: Minimum similarity score threshold for results (optional), default is 0.1
 
         Returns:
             Search results as formatted string

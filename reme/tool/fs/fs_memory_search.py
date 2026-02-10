@@ -16,7 +16,7 @@ class FsMemorySearch(BaseFsTool):
         self,
         sources: list[MemorySource] | None = None,
         min_score: float = 0.1,
-        max_results: int = 20,
+        max_results: int = 5,
         hybrid_enabled: bool = True,
         hybrid_vector_weight: float = 0.7,
         hybrid_text_weight: float = 0.3,
@@ -52,11 +52,11 @@ class FsMemorySearch(BaseFsTool):
                         },
                         "max_results": {
                             "type": "integer",
-                            "description": "Maximum number of search results to return (optional)",
+                            "description": "Maximum number of search results to return (optional), default 5",
                         },
                         "min_score": {
                             "type": "number",
-                            "description": "Minimum similarity score threshold for results (optional)",
+                            "description": "Minimum similarity score threshold for results (optional), default 0.1",
                         },
                     },
                     "required": ["query"],
@@ -79,16 +79,16 @@ class FsMemorySearch(BaseFsTool):
             vector_results = await self._search_vector(query, candidates)
 
             # Log original vector results
-            logger.debug("\n=== Vector Search Results ===")
+            logger.info("\n=== Vector Search Results ===")
             for i, r in enumerate(vector_results[:10], 1):
                 snippet_preview = (r.snippet[:100] + "...") if len(r.snippet) > 100 else r.snippet
-                logger.debug(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
+                logger.info(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
 
             # Log original keyword results
-            logger.debug("\n=== Keyword Search Results ===")
+            logger.info("\n=== Keyword Search Results ===")
             for i, r in enumerate(keyword_results[:10], 1):
                 snippet_preview = (r.snippet[:100] + "...") if len(r.snippet) > 100 else r.snippet
-                logger.debug(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
+                logger.info(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
 
             if not keyword_results:
                 results = [r for r in vector_results if r.score >= min_score][:max_results]
@@ -103,10 +103,10 @@ class FsMemorySearch(BaseFsTool):
                 )
 
                 # Log merged results
-                logger.debug("\n=== Merged Hybrid Results ===")
+                logger.info("\n=== Merged Hybrid Results ===")
                 for i, r in enumerate(merged[:10], 1):
                     snippet_preview = (r.snippet[:100] + "...") if len(r.snippet) > 100 else r.snippet
-                    logger.debug(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
+                    logger.info(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
 
                 results = [r for r in merged if r.score >= min_score][:max_results]
         else:

@@ -159,12 +159,13 @@ class SqliteMemoryStore(BaseMemoryStore):
                     path UNINDEXED,
                     source UNINDEXED,
                     start_line UNINDEXED,
-                    end_line UNINDEXED
+                    end_line UNINDEXED,
+                    tokenize='trigram'
                 )
             """,
             )
             self.fts_available = True
-            logger.info("Created FTS5 table")
+            logger.info("Created FTS5 table with trigram tokenizer")
 
         self.conn.commit()
         cursor.close()
@@ -538,7 +539,10 @@ class SqliteMemoryStore(BaseMemoryStore):
 
             results = []
             for _, path, start, end, src, text, dist in cursor.fetchall():
-                score = max(0.0, 1.0 - dist)
+                # Convert L2 distance to similarity score
+                # For normalized vectors, L2 distance range is [0, 2]
+                # Map to [1, 0] score range (higher score = more similar)
+                score = max(0.0, 1.0 - dist / 2.0)
                 snippet = text
                 results.append(
                     MemorySearchResult(
@@ -548,7 +552,7 @@ class SqliteMemoryStore(BaseMemoryStore):
                         score=score,
                         snippet=snippet,
                         source=MemorySource(src),
-                        distance=dist,
+                        raw_metric=dist,
                     ),
                 )
 
@@ -568,7 +572,19 @@ class SqliteMemoryStore(BaseMemoryStore):
         - " (phrase search, needs escaping)
         - : (column filter)
         - ^ (start of line anchor, not standard FTS5)
-        - Other special chars that may interfere
+        - ' (single quote, causes syntax errors)
+        - ` (backtick, can cause issues)
+        - | (pipe, OR operator)
+        - + (plus, can be used for required terms)
+        - - (minus, NOT operator)
+        - = (equals, can cause issues)
+        - < > (angle brackets, comparison operators)
+        - ! (exclamation, NOT operator variant)
+        - @ # $ % & (other special chars)
+        - "\"
+        - / (slash, can interfere)
+        - ; (semicolon, statement separator)
+        - , (comma, can interfere with phrase parsing)
 
         Args:
             query: Raw query string
@@ -580,8 +596,38 @@ class SqliteMemoryStore(BaseMemoryStore):
             return ""
 
         # Remove FTS5 special characters that we don't want users to use
-        # Keep only alphanumeric, spaces, and some safe punctuation
-        special_chars = ["*", "?", ":", "^", "(", ")", "[", "]", "{", "}"]
+        # Keep only alphanumeric, spaces, periods, and underscores
+        special_chars = [
+            "*",
+            "?",
+            ":",
+            "^",
+            "(",
+            ")",
+            "[",
+            "]",
+            "{",
+            "}",
+            "'",
+            '"',
+            "`",
+            "|",
+            "+",
+            "-",
+            "=",
+            "<",
+            ">",
+            "!",
+            "@",
+            "#",
+            "$",
+            "%",
+            "&",
+            "\\",
+            "/",
+            ";",
+            ",",
+        ]
         cleaned = query
         for char in special_chars:
             cleaned = cleaned.replace(char, " ")
@@ -650,6 +696,7 @@ class SqliteMemoryStore(BaseMemoryStore):
                         score=score,
                         snippet=snippet,
                         source=MemorySource(src),
+                        raw_metric=rank,
                     ),
                 )
 

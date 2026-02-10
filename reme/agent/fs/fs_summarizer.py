@@ -13,8 +13,9 @@ from ...core.utils import format_messages
 class FsSummarizer(BaseReact):
     """Retrieve personal memories through vector search and history reading."""
 
-    def __init__(self, memory_dir: str = "memory", version: str = "default", **kwargs):
+    def __init__(self, working_dir: str, memory_dir: str = "memory", version: str = "default", **kwargs):
         super().__init__(**kwargs)
+        self.working_dir: str = working_dir
         self.memory_dir: str = memory_dir
         self.version: str = version
 
@@ -29,6 +30,7 @@ class FsSummarizer(BaseReact):
                     content=self.prompt_format(
                         "user_message_default",
                         conversation=format_messages(messages, add_index=False),
+                        working_dir=self.working_dir,
                         date=date_str,
                         memory_dir=self.memory_dir,
                     ),

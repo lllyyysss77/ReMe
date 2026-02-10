@@ -6,6 +6,7 @@ from pathlib import Path
 from ...core.enumeration import Role, ChunkEnum
 from ...core.op import BaseReactStream
 from ...core.schema import Message, StreamChunk
+from ...tool.fs import BashTool, LsTool, ReadTool, WriteTool, EditTool
 
 
 class FsCli(BaseReactStream):
@@ -52,7 +53,17 @@ class FsCli(BaseReactStream):
 
         # Summarize current conversation and save to memory files
         current_date = datetime.now().strftime("%Y-%m-%d")
-        summarizer = FsSummarizer(tools=self.tools, working_dir=self.working_dir)
+        summarizer = FsSummarizer(
+            tools=[
+                BashTool(cwd=self.working_dir),
+                LsTool(cwd=self.working_dir),
+                ReadTool(cwd=self.working_dir),
+                WriteTool(cwd=self.working_dir),
+                EditTool(cwd=self.working_dir),
+            ],
+            working_dir=self.working_dir,
+            language=self.language,
+        )
 
         result = await summarizer.call(
             messages=self.messages,
@@ -113,7 +124,7 @@ class FsCli(BaseReactStream):
             left_messages = cut_result.get("left_messages", [])
 
         # Step 2: Generate summary via Compactor
-        compactor = FsCompactor()
+        compactor = FsCompactor(language=self.language)
         summary_content = await compactor.call(
             messages_to_summarize=messages_to_summarize,
             turn_prefix_messages=turn_prefix_messages,

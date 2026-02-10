@@ -7,13 +7,13 @@ from typing import AsyncGenerator
 
 from prompt_toolkit import PromptSession
 
-from reme.core.utils import execute_stream_task
 from .agent.chat import FsCli
 from .agent.fs import FsCompactor, FsContextChecker, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
 from .core.enumeration import ChunkEnum
 from .core.schema import Message, StreamChunk
+from .core.utils import execute_stream_task
 from .tool.fs import (
     BashTool,
     EditTool,
@@ -347,14 +347,14 @@ class ReMeFs(Application):
                             if in_thinking:
                                 print("\033[0m")  # reset color after thinking
                                 in_thinking = False
-                            print(f"\033[36m  -> Tool: {chunk.chunk}\033[0m")
+                            print(f"\033[36m  -> {chunk.chunk}\033[0m")
 
                         elif chunk.chunk_type == ChunkEnum.TOOL_RESULT:
                             tool_name = chunk.metadata.get("tool_name", "unknown")
                             result = chunk.chunk
                             if len(result) > tool_result_max_size:
                                 result = result[:tool_result_max_size] + f"... ({len(chunk.chunk)} chars total)"
-                            print(f"\033[36m     Tool result for {tool_name}: {result.strip()}\033[0m")
+                            print(f"\033[36m  -> Tool result for {tool_name}: {result.strip()}\033[0m")
 
                         elif chunk.chunk_type == ChunkEnum.ERROR:
                             print(f"\n\033[91m[ERROR] {chunk.chunk}\033[0m")

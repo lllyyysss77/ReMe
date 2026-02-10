@@ -3,6 +3,8 @@
 from datetime import datetime
 from pathlib import Path
 
+from loguru import logger
+
 from ...core.enumeration import Role, ChunkEnum
 from ...core.op import BaseReactStream
 from ...core.schema import Message, StreamChunk
@@ -164,6 +166,9 @@ class FsCli(BaseReactStream):
         _ = await self.compact(force_compact=False)
 
         messages = await self.build_messages()
+        for i, message in enumerate(messages):
+            role = message.name or message.role
+            logger.info(f"[{self.__class__.__name__}] role={role} {message.simple_dump(as_dict=False)}")
 
         t_tools, messages, success = await self.react(messages, self.tools)
 

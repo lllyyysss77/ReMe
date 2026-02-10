@@ -33,10 +33,10 @@ class LiteLLMSync(LiteLLM):
 
             delta = chunk.choices[0].delta
 
-            if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
+            if hasattr(delta, "reasoning_content") and delta.reasoning_content:
                 yield StreamChunk(chunk_type=ChunkEnum.THINK, chunk=delta.reasoning_content)
 
-            if delta.content is not None:
+            if delta.content:
                 yield StreamChunk(chunk_type=ChunkEnum.ANSWER, chunk=delta.content)
 
             if hasattr(delta, "tool_calls") and delta.tool_calls is not None:

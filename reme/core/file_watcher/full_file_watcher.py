@@ -6,6 +6,7 @@ on any change, ensuring complete synchronization.
 
 import asyncio
 import os
+from pathlib import Path
 
 from loguru import logger
 from watchfiles import Change
@@ -27,18 +28,17 @@ class FullFileWatcher(BaseFileWatcher):
 
     @staticmethod
     async def _build_file_metadata(path: str) -> FileMetadata:
+        file_path = Path(path)
+
         def _read_file_sync():
-            stat_t = os.stat(path)
-            with open(path, "r", encoding="utf-8") as f:
-                content_t = f.read()
-            return stat_t, content_t
+            return file_path.stat(), file_path.read_text(encoding="utf-8")
 
         stat, content = await asyncio.to_thread(_read_file_sync)
         return FileMetadata(
             hash=hash_text(content),
             mtime_ms=stat.st_mtime * 1000,
             size=stat.st_size,
-            path=path,
+            path=str(file_path.absolute()),
             content=content,
         )
 

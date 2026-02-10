@@ -293,33 +293,34 @@ class ReMeFs(Application):
         while True:
             try:
                 # Get user input (async)
-                user_input = await session.prompt_async("You: ", default="")
-                if not user_input.strip():
+                user_input = await session.prompt_async("You: ")
+                user_input = user_input.strip()
+                if not user_input:
                     continue
 
                 # Handle commands
-                if user_input.strip() == "/exit":
+                if user_input == "/exit":
                     break
 
-                if user_input.strip() == "/new":
+                if user_input == "/new":
                     result = await fs_cli.reset()
                     print(f"{result}\nConversation reset\n")
                     continue
 
-                if user_input.strip() == "/compact":
+                if user_input == "/compact":
                     result = await fs_cli.compact(force_compact=True)
                     print(f"{result}\nHistory compacted.\n")
                     continue
 
-                if user_input.strip() == "/clear":
+                if user_input == "/clear":
                     fs_cli.messages.clear()
                     print("History cleared.\n")
                     continue
 
-                if user_input.strip() == "/help":
+                if user_input == "/help":
                     print("\nCommands:")
-                    for command in self.commands:
-                        print(f"  {command}")
+                    for command, description in self.commands.items():
+                        print(f"  {command}: {description}")
                     continue
 
                 # Stream processing state

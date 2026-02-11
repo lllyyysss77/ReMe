@@ -85,7 +85,6 @@ class MemoryStoreConfig(BaseModel):
     backend: str = Field(default="sqlite")
     store_name: str = Field(default="reme")
     embedding_model: str = Field(default="default")
-    fts_enabled: bool = Field(default=True)
 
 
 class TokenCounterConfig(BaseModel):
@@ -103,14 +102,8 @@ class FileWatcherConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     backend: str = Field(default="")
+    memory_store: str = Field(default="")
     watch_paths: list[str] = Field(default_factory=list)
-    suffix_filters: list[str] = Field(default_factory=list)
-    recursive: bool = Field(default=False)
-    debounce: int = Field(default=500)
-    chunk_tokens: int = Field(default=1000)
-    chunk_overlap: int = Field(default=100)
-    memory_store: str = Field(default="default")
-    scan_on_start: bool = Field(default=True)
 
 
 class ServiceConfig(BaseModel):
@@ -120,6 +113,7 @@ class ServiceConfig(BaseModel):
 
     backend: str = Field(default="")
     app_name: str = Field(default=os.getenv("APP_NAME", "ReMe"))
+    working_dir: str | None = Field(default=None)
     enable_logo: bool = Field(default=True)
     language: str = Field(default="")
     thread_pool_max_workers: int = Field(default=16)

@@ -20,10 +20,6 @@ class FsCli(BaseReactStream):
         context_window_tokens: int = 128000,
         reserve_tokens: int = 36000,
         keep_recent_tokens: int = 20000,
-        hybrid_enabled: bool = True,
-        hybrid_vector_weight: float = 0.7,
-        hybrid_text_weight: float = 0.3,
-        hybrid_candidate_multiplier: float = 3.0,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -32,10 +28,6 @@ class FsCli(BaseReactStream):
         self.context_window_tokens: int = context_window_tokens
         self.reserve_tokens: int = reserve_tokens
         self.keep_recent_tokens: int = keep_recent_tokens
-        self.hybrid_enabled: bool = hybrid_enabled
-        self.hybrid_vector_weight: float = hybrid_vector_weight
-        self.hybrid_text_weight: float = hybrid_text_weight
-        self.hybrid_candidate_multiplier: float = hybrid_candidate_multiplier
 
         self.messages: list[Message] = []
         self.previous_summary: str = ""
@@ -168,7 +160,7 @@ class FsCli(BaseReactStream):
         messages = await self.build_messages()
         for i, message in enumerate(messages):
             role = message.name or message.role
-            logger.info(f"[{self.__class__.__name__}] role={role} {message.simple_dump(as_dict=False)}")
+            logger.info(f"[{self.__class__.__name__}] msg[{i}] role={role} {message.simple_dump(as_dict=False)}")
 
         t_tools, messages, success = await self.react(messages, self.tools)
 

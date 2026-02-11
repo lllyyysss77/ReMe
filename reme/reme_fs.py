@@ -1,19 +1,11 @@
 """ReMe File System"""
 
-import asyncio
-import sys
 from pathlib import Path
-from typing import AsyncGenerator
 
-from prompt_toolkit import PromptSession
-
-from .agent.chat import FsCli
 from .agent.fs import FsCompactor, FsContextChecker, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
-from .core.enumeration import ChunkEnum
-from .core.schema import Message, StreamChunk
-from .core.utils import execute_stream_task
+from .core.schema import Message
 from .tool.fs import (
     BashTool,
     EditTool,
@@ -23,8 +15,6 @@ from .tool.fs import (
     ReadTool,
     WriteTool,
 )
-from .tool.gallery import ExecuteCode
-from .tool.search import DashscopeSearch
 
 
 class ReMeFs(Application):
@@ -46,6 +36,8 @@ class ReMeFs(Application):
         default_embedding_model_name: str | None = None,
         default_embedding_model_config: dict | None = None,
         default_store_name: str = "reme",
+        vector_enabled: bool = False,
+        fts_enabled: bool = True,
         default_memory_store_config: dict | None = None,
         token_counter_backend: str = "base",
         default_token_counter_config: dict | None = None,
@@ -60,9 +52,7 @@ class ReMeFs(Application):
         context_window_tokens: int = 128000,
         reserve_tokens: int = 36000,
         keep_recent_tokens: int = 20000,
-        hybrid_enabled: bool = True,
         hybrid_vector_weight: float = 0.7,
-        hybrid_text_weight: float = 0.3,
         hybrid_candidate_multiplier: float = 3.0,
         **kwargs,
     ):
@@ -82,10 +72,20 @@ class ReMeFs(Application):
             default_embedding_model_config["model_name"] = default_embedding_model_name
 
         default_memory_store_config = default_memory_store_config or {}
-        default_memory_store_config["store_name"] = default_store_name
+        default_memory_store_config.update(
+            {
+                "store_name": default_store_name,
+                "vector_enabled": vector_enabled,
+                "fts_enabled": fts_enabled,
+            },
+        )
 
         default_token_counter_config = default_token_counter_config or {}
-        default_token_counter_config["backend"] = token_counter_backend
+        default_token_counter_config.update(
+            {
+                "backend": token_counter_backend,
+            },
+        )
 
         default_file_watcher_config = default_file_watcher_config or {}
         default_file_watcher_config.update(
@@ -126,19 +126,8 @@ class ReMeFs(Application):
         self.context_window_tokens: int = context_window_tokens
         self.reserve_tokens: int = reserve_tokens
         self.keep_recent_tokens: int = keep_recent_tokens
-        self.hybrid_enabled: bool = hybrid_enabled
         self.hybrid_vector_weight: float = hybrid_vector_weight
-        self.hybrid_text_weight: float = hybrid_text_weight
         self.hybrid_candidate_multiplier: float = hybrid_candidate_multiplier
-
-        # Commands
-        self.commands = {
-            "/new": "Create a new conversation.",
-            "/compact": "Compact messages into a summary.",
-            "/exit": "Exit the application.",
-            "/clear": "Clear the history.",
-            "/help": "Show help.",
-        }
 
     async def context_check(self, messages: list[Message | dict]) -> dict:
         """Check if messages exceed context limits."""
@@ -166,7 +155,14 @@ class ReMeFs(Application):
             service_context=self.service_context,
         )
 
-    async def summary(self, messages: list[Message | dict], date: str, language: str = "zh", **kwargs):
+    async def summary(
+        self,
+        messages: list[Message | dict],
+        date: str,
+        version: str = "default",
+        language: str = "zh",
+        **kwargs,
+    ):
         """Generate a summary of the given messages."""
         summarizer = FsSummarizer(
             tools=[
@@ -178,6 +174,7 @@ class ReMeFs(Application):
             ],
             working_dir=self.working_dir,
             language=language,
+            version=version,
             **kwargs,
         )
         return await summarizer.call(messages=messages, date=date, service_context=self.service_context)
@@ -197,9 +194,7 @@ class ReMeFs(Application):
             Search results as formatted string
         """
         search_tool = FsMemorySearch(
-            hybrid_enabled=self.hybrid_enabled,
             hybrid_vector_weight=self.hybrid_vector_weight,
-            hybrid_text_weight=self.hybrid_text_weight,
             hybrid_candidate_multiplier=self.hybrid_candidate_multiplier,
         )
         return await search_tool.call(
@@ -234,171 +229,3 @@ class ReMeFs(Application):
         )
         result = await checker.call(messages=messages, service_context=self.service_context)
         return result["needs_compaction"]
-
-    async def chat_with_remy(self, tool_result_max_size: int = 100, language: str = "zh", **kwargs):
-        """Interactive CLI chat with Remy using simple streaming output."""
-        fs_cli = FsCli(
-            working_dir=self.working_dir,
-            tools=[
-                FsMemorySearch(
-                    hybrid_enabled=self.hybrid_enabled,
-                    hybrid_vector_weight=self.hybrid_vector_weight,
-                    hybrid_text_weight=self.hybrid_text_weight,
-                    hybrid_candidate_multiplier=self.hybrid_candidate_multiplier,
-                ),
-                BashTool(cwd=self.working_dir),
-                LsTool(cwd=self.working_dir),
-                ReadTool(cwd=self.working_dir),
-                EditTool(cwd=self.working_dir),
-                WriteTool(cwd=self.working_dir),
-                ExecuteCode(),
-                DashscopeSearch(),
-            ],
-            context_window_tokens=self.context_window_tokens,
-            reserve_tokens=self.reserve_tokens,
-            keep_recent_tokens=self.keep_recent_tokens,
-            hybrid_enabled=self.hybrid_enabled,
-            hybrid_vector_weight=self.hybrid_vector_weight,
-            hybrid_text_weight=self.hybrid_text_weight,
-            hybrid_candidate_multiplier=self.hybrid_candidate_multiplier,
-            tool_result_max_size=tool_result_max_size,
-            language=language,
-            **kwargs,
-        )
-        session = PromptSession()
-
-        # Print welcome banner
-        print("\n========================================")
-        print("  Welcome to Remy Chat!")
-        print("========================================\n")
-
-        async def chat(q: str) -> AsyncGenerator[StreamChunk, None]:
-            """Execute chat query and yield streaming chunks."""
-            stream_queue = asyncio.Queue()
-            task = asyncio.create_task(
-                fs_cli.call(
-                    query=q,
-                    stream_queue=stream_queue,
-                    service_context=self.service_context,
-                ),
-            )
-            async for _chunk in execute_stream_task(
-                stream_queue=stream_queue,
-                task=task,
-                task_name="cli",
-                output_format="chunk",
-            ):
-                yield _chunk
-
-        while True:
-            try:
-                # Get user input (async)
-                user_input = await session.prompt_async("You: ")
-                user_input = user_input.strip()
-                if not user_input:
-                    continue
-
-                # Handle commands
-                if user_input == "/exit":
-                    break
-
-                if user_input == "/new":
-                    result = await fs_cli.reset()
-                    print(f"{result}\nConversation reset\n")
-                    continue
-
-                if user_input == "/compact":
-                    result = await fs_cli.compact(force_compact=True)
-                    print(f"{result}\nHistory compacted.\n")
-                    continue
-
-                if user_input == "/clear":
-                    fs_cli.messages.clear()
-                    print("History cleared.\n")
-                    continue
-
-                if user_input == "/help":
-                    print("\nCommands:")
-                    for command, description in self.commands.items():
-                        print(f"  {command}: {description}")
-                    continue
-
-                # Stream processing state
-                in_thinking = False
-                in_answer = False
-
-                try:
-                    async for chunk in chat(user_input):
-                        if chunk.chunk_type == ChunkEnum.THINK:
-                            if not in_thinking:
-                                print("\033[90mThinking: ", end="", flush=True)
-                                in_thinking = True
-                            print(chunk.chunk, end="", flush=True)
-
-                        elif chunk.chunk_type == ChunkEnum.ANSWER:
-                            if in_thinking:
-                                print("\033[0m")  # reset color after thinking
-                                in_thinking = False
-                            if not in_answer:
-                                print("\nRemy: ", end="", flush=True)
-                                in_answer = True
-                            print(chunk.chunk, end="", flush=True)
-
-                        elif chunk.chunk_type == ChunkEnum.TOOL:
-                            if in_thinking:
-                                print("\033[0m")  # reset color after thinking
-                                in_thinking = False
-                            print(f"\033[36m  -> {chunk.chunk}\033[0m")
-
-                        elif chunk.chunk_type == ChunkEnum.TOOL_RESULT:
-                            tool_name = chunk.metadata.get("tool_name", "unknown")
-                            result = chunk.chunk
-                            if len(result) > tool_result_max_size:
-                                result = result[:tool_result_max_size] + f"... ({len(chunk.chunk)} chars total)"
-                            print(f"\033[36m  -> Tool result for {tool_name}: {result.strip()}\033[0m")
-
-                        elif chunk.chunk_type == ChunkEnum.ERROR:
-                            print(f"\n\033[91m[ERROR] {chunk.chunk}\033[0m")
-                            # Also log the full error metadata if available
-                            if chunk.metadata:
-                                import traceback
-
-                                traceback.print_exc()
-
-                        elif chunk.chunk_type == ChunkEnum.DONE:
-                            break
-
-                except Exception as e:
-                    print(f"\nStream error: {e}")
-
-                # End current streaming line
-                print("\n")
-                print("----------------------------------------\n")
-
-            except EOFError:
-                break
-            except KeyboardInterrupt:
-                print("\nInterrupted.")
-                break
-            except Exception as e:
-                print(f"Error: {e}")
-                import traceback
-
-                traceback.print_exc()
-
-        print("\nGoodbye!\n")
-
-
-async def async_main():
-    """Main function for testing the ReMeFs CLI."""
-    async with ReMeFs(*sys.argv[1:], log_to_console=False) as reme:
-        await reme.chat_with_remy()
-
-
-def main():
-    """Main function for testing the ReMeFs CLI."""
-    asyncio.run(async_main())
-
-
-if __name__ == "__main__":
-    main()

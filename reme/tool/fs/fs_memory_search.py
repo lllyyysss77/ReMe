@@ -17,21 +17,20 @@ class FsMemorySearch(BaseFsTool):
         sources: list[MemorySource] | None = None,
         min_score: float = 0.1,
         max_results: int = 5,
-        hybrid_enabled: bool = True,
         hybrid_vector_weight: float = 0.7,
-        hybrid_text_weight: float = 0.3,
         hybrid_candidate_multiplier: float = 3.0,
         **kwargs,
     ):
         """Initialize memory search tool."""
+        assert (
+            0.0 <= hybrid_vector_weight <= 1.0
+        ), f"hybrid_vector_weight must be between 0 and 1, got {hybrid_vector_weight}"
         kwargs.setdefault("name", "memory_search")
         super().__init__(**kwargs)
         self.sources = sources or [MemorySource.MEMORY]
         self.min_score = min_score
         self.max_results = max_results
-        self.hybrid_enabled = hybrid_enabled
         self.hybrid_vector_weight = hybrid_vector_weight
-        self.hybrid_text_weight = hybrid_text_weight
         self.hybrid_candidate_multiplier = hybrid_candidate_multiplier
 
     def _build_tool_call(self) -> ToolCall:
@@ -71,11 +70,12 @@ class FsMemorySearch(BaseFsTool):
         max_results = self.context.get("max_results", self.max_results)
         candidates = min(200, max(1, int(max_results * self.hybrid_candidate_multiplier)))
 
-        # Perform hybrid search (vector + keyword)
-        if self.hybrid_enabled:
-            keyword_results = []
-            if self.memory_store.fts_enabled:
-                keyword_results = await self._search_keyword(query, candidates)
+        vector_enabled = self.memory_store.vector_enabled
+        fts_enabled = self.memory_store.fts_enabled
+
+        # Perform search based on enabled backends
+        if vector_enabled and fts_enabled:
+            keyword_results = await self._search_keyword(query, candidates)
             vector_results = await self._search_vector(query, candidates)
 
             # Log original vector results
@@ -99,7 +99,7 @@ class FsMemorySearch(BaseFsTool):
                     vector=vector_results,
                     keyword=keyword_results,
                     vector_weight=self.hybrid_vector_weight,
-                    text_weight=self.hybrid_text_weight,
+                    text_weight=1.0 - self.hybrid_vector_weight,
                 )
 
                 # Log merged results
@@ -109,9 +109,14 @@ class FsMemorySearch(BaseFsTool):
                     logger.info(f"{i}. Score: {r.score:.4f} | Snippet: {snippet_preview}")
 
                 results = [r for r in merged if r.score >= min_score][:max_results]
-        else:
+        elif vector_enabled:
             vector_results = await self._search_vector(query, candidates)
             results = [r for r in vector_results if r.score >= min_score][:max_results]
+        elif fts_enabled:
+            keyword_results = await self._search_keyword(query, candidates)
+            results = [r for r in keyword_results if r.score >= min_score][:max_results]
+        else:
+            results = []
 
         return json.dumps([result.model_dump(exclude_none=True) for result in results], indent=2, ensure_ascii=False)
 

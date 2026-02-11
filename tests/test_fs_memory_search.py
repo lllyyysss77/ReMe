@@ -611,9 +611,7 @@ async def test_memory_search_hybrid_mode():
             "fts_enabled": True,
         },
         search_params={
-            "hybrid_enabled": True,
             "hybrid_vector_weight": 0.7,
-            "hybrid_text_weight": 0.3,
         },
     )
     await reme_fs_hybrid.start()
@@ -641,7 +639,7 @@ async def test_memory_search_hybrid_mode():
             "embedding_model": "default",
             "fts_enabled": True,
         },
-        search_params={"hybrid_enabled": False},
+        search_params={},
     )
     await reme_fs_vector.start()
     result_json_vector = await reme_fs_vector.memory_search(
@@ -674,9 +672,7 @@ async def test_memory_search_hybrid_mode():
                 "fts_enabled": True,
             },
             search_params={
-                "hybrid_enabled": True,
                 "hybrid_vector_weight": vec_weight,
-                "hybrid_text_weight": text_weight,
             },
         )
         await reme_fs_weights.start()

@@ -15,6 +15,7 @@ class BaseMemoryStore(ABC):
         self,
         store_name: str,
         embedding_model: BaseEmbeddingModel,
+        vector_enabled: bool = False,
         fts_enabled: bool = True,
         **kwargs,
     ):
@@ -23,13 +24,16 @@ class BaseMemoryStore(ABC):
         # Only allow alphanumeric characters and underscores
         if not re.match(r"^[a-zA-Z0-9_]+$", store_name):
             raise ValueError(f"Invalid '{store_name}'. Only alphanumeric characters and underscores are allowed.")
+
+        # Ensure at least one search method is enabled
+        if not vector_enabled and not fts_enabled:
+            raise ValueError("At least one of vector_enabled or fts_enabled must be True.")
+
         self.store_name: str = store_name
         self.embedding_model: BaseEmbeddingModel = embedding_model
+        self.vector_enabled: bool = vector_enabled
         self.fts_enabled: bool = fts_enabled
         self.kwargs: dict = kwargs
-
-        self.vector_available = False
-        self.fts_available = False
 
     @property
     def embedding_dim(self) -> int:

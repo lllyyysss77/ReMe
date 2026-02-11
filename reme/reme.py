@@ -51,6 +51,7 @@ class ReMe(Application):
         llm_base_url: str | None = None,
         embedding_api_key: str | None = None,
         embedding_base_url: str | None = None,
+        working_dir: str = ".reme",
         config_path: str = "default",
         enable_logo: bool = True,
         log_to_console: bool = True,
@@ -61,42 +62,18 @@ class ReMe(Application):
         target_user_names: list[str] | None = None,
         target_task_names: list[str] | None = None,
         target_tool_names: list[str] | None = None,
-        profile_dir: str = ".reme/profile",
         **kwargs,
     ):
         """Initialize ReMe with config.
-
-        Args:
-            *args: Arguments passed to Application
-            llm_api_key: API key for LLM provider
-            llm_base_url: API base for LLM provider
-            embedding_api_key: API key for embedding provider
-            embedding_base_url: API base for embedding provider
-            config_path: Path to config file
-            enable_logo: Enable logo
-            log_to_console: Log to console
-            default_llm_config: LLM configuration
-            default_embedding_model_config: Embedding model configuration
-            default_vector_store_config: Vector store configuration
-            default_token_counter_config: Token counter configuration
-            target_user_names: List of user names for personal memory
-            target_task_names: List of task names for procedural memory
-            target_tool_names: List of tool names for tool memory
-            profile_dir: Directory for profile storage
-            **kwargs: Additional keyword arguments passed to Application
 
         Example:
             ```python
             reme = ReMe(...)
             await reme.start()
-            # reme = await ReMe.create(...)  # both ok
-
             await reme.summarize_memory(...)
             await reme.retrieve_memory(...)
-
             await reme.close()
             ```
-
         """
         super().__init__(
             *args,
@@ -104,6 +81,7 @@ class ReMe(Application):
             llm_base_url=llm_base_url,
             embedding_api_key=embedding_api_key,
             embedding_base_url=embedding_base_url,
+            working_dir=working_dir,
             config_path=config_path,
             enable_logo=enable_logo,
             log_to_console=log_to_console,
@@ -131,7 +109,10 @@ class ReMe(Application):
                 memory_target_type_mapping[name] = MemoryType.TOOL
 
         self.service_context.memory_target_type_mapping = memory_target_type_mapping
-        self.profile_dir: str = profile_dir
+
+        profile_path = Path(self.service_context.service_config.working_dir) / "profile"
+        profile_path.mkdir(parents=True, exist_ok=True)
+        self.profile_dir: str = str(profile_path)
 
     def _add_meta_memory(self, memory_type: str | MemoryType, memory_target: str):
         """Register or validate a memory target with the given memory type."""

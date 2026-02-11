@@ -29,13 +29,29 @@ class FsSummarizer(BaseReact):
                     role=Role.USER,
                     content=self.prompt_format(
                         "user_message_default",
-                        conversation=format_messages(messages, add_index=False),
                         working_dir=self.working_dir,
                         date=date_str,
                         memory_dir=self.memory_dir,
                     ),
                 ),
             )
+
+        elif self.version == "v1":
+            conversation = format_messages(messages, add_index=False)
+            messages = [
+                Message(
+                    role=Role.USER,
+                    content=f"<conversation>\n{conversation}\n</conversation>\n"
+                    + self.prompt_format(
+                        "user_message_default",
+                        conversation=format_messages(messages, add_index=False),
+                        working_dir=self.working_dir,
+                        date=date_str,
+                        memory_dir=self.memory_dir,
+                    ),
+                ),
+            ]
+
         else:
             messages.extend(
                 [

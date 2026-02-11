@@ -2,6 +2,7 @@
 
 import os
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -34,6 +35,7 @@ class ServiceContext(BaseContext):
         embedding_base_url: str | None = None,
         service_config: ServiceConfig | None = None,
         parser: type[PydanticConfigParser] | None = None,
+        working_dir: str | None = None,
         config_path: str | None = None,
         enable_logo: bool = True,
         log_to_console: bool = True,
@@ -74,13 +76,23 @@ class ServiceContext(BaseContext):
                 self._update_section_config(kwargs, "memory_stores", **default_memory_store_config)
             if default_file_watcher_config:
                 self._update_section_config(kwargs, "file_watchers", **default_file_watcher_config)
-            kwargs["enable_logo"] = enable_logo
-            kwargs["log_to_console"] = log_to_console
+
+            kwargs.update(
+                {
+                    "enable_logo": enable_logo,
+                    "log_to_console": log_to_console,
+                    "working_dir": working_dir,
+                },
+            )
             logger.info(f"update with args: {input_args} kwargs: {kwargs}")
             service_config = parser.parse_args(*input_args, **kwargs)
 
         self.service_config: ServiceConfig = service_config
         init_logger(log_to_console=self.service_config.log_to_console)
+        logger.info(f"ReMe Config: {service_config.model_dump_json()}")
+
+        if self.service_config.working_dir:
+            Path(self.service_config.working_dir).mkdir(parents=True, exist_ok=True)
 
         if self.service_config.enable_logo:
             print_logo(service_config=self.service_config)
@@ -147,41 +159,58 @@ class ServiceContext(BaseContext):
     async def start(self):
         """Start the service context by initializing all configured components."""
         for name, config in self.service_config.llms.items():
-            self.llms[name] = R.llms[config.backend](model_name=config.model_name, **config.model_extra)
+            if config.backend not in R.llms:
+                logger.warning(f"LLM backend {config.backend} is not supported.")
+            else:
+                self.llms[name] = R.llms[config.backend](model_name=config.model_name, **config.model_extra)
 
         for name, config in self.service_config.embedding_models.items():
-            self.embedding_models[name] = R.embedding_models[config.backend](
-                model_name=config.model_name,
-                **config.model_extra,
-            )
+            if config.backend not in R.embedding_models:
+                logger.warning(f"Embedding model backend {config.backend} is not supported.")
+            else:
+                self.embedding_models[name] = R.embedding_models[config.backend](
+                    model_name=config.model_name,
+                    **config.model_extra,
+                )
 
         for name, config in self.service_config.token_counters.items():
-            self.token_counters[name] = R.token_counters[config.backend](
-                model_name=config.model_name,
-                **config.model_extra,
-            )
+            if config.backend not in R.token_counters:
+                logger.warning(f"Token counter backend {config.backend} is not supported.")
+            else:
+                self.token_counters[name] = R.token_counters[config.backend](
+                    model_name=config.model_name,
+                    **config.model_extra,
+                )
 
         for name, config in self.service_config.vector_stores.items():
-            # Extract config dict and replace special fields with actual instances
-            config_dict = config.model_dump(exclude={"backend", "embedding_model"})
-            config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
-            config_dict["thread_pool"] = self.thread_pool
-            self.vector_stores[name] = R.vector_stores[config.backend](**config_dict)
-            await self.vector_stores[name].create_collection(config.collection_name)
+            if config.backend not in R.vector_stores:
+                logger.warning(f"Vector store backend {config.backend} is not supported.")
+            else:
+                # Extract config dict and replace special fields with actual instances
+                config_dict = config.model_dump(exclude={"backend", "embedding_model"})
+                config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
+                config_dict["thread_pool"] = self.thread_pool
+                self.vector_stores[name] = R.vector_stores[config.backend](**config_dict)
+                await self.vector_stores[name].create_collection(config.collection_name)
 
         for name, config in self.service_config.memory_stores.items():
-            # Extract config dict and replace embedding_model string with actual instance
-            config_dict = config.model_dump(exclude={"backend", "embedding_model"})
-            config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
-            self.memory_stores[name] = R.memory_stores[config.backend](**config_dict)
-            await self.memory_stores[name].start()
+            if config.backend not in R.memory_stores:
+                logger.warning(f"Memory store backend {config.backend} is not supported.")
+            else:
+                # Extract config dict and replace embedding_model string with actual instance
+                config_dict = config.model_dump(exclude={"backend", "embedding_model"})
+                config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
+                self.memory_stores[name] = R.memory_stores[config.backend](**config_dict)
+                await self.memory_stores[name].start()
 
         for name, config in self.service_config.file_watchers.items():
-            # Extract config dict and replace memory_store string with actual instance
-            config_dict = config.model_dump(exclude={"backend", "memory_store"})
-            config_dict["memory_store"] = self.memory_stores[config.memory_store]
-            self.file_watchers[name] = R.file_watchers[config.backend](**config_dict)
-            await self.file_watchers[name].start()
+            if config.backend not in R.file_watchers:
+                logger.warning(f"File watcher backend {config.backend} is not supported.")
+            else:
+                config_dict = config.model_dump(exclude={"backend", "memory_store"})
+                config_dict["memory_store"] = self.memory_stores[config.memory_store]
+                self.file_watchers[name] = R.file_watchers[config.backend](**config_dict)
+                await self.file_watchers[name].start()
 
         if self.service_config.mcp_servers:
             await self.prepare_mcp_servers()

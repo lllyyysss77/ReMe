@@ -67,108 +67,114 @@ class SqliteMemoryStore(BaseMemoryStore):
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        self.conn.enable_load_extension(True)
 
-        # Load sqlite-vec extension
-        if self.vec_ext_path:
-            try:
-                self.conn.load_extension(self.vec_ext_path)
-                self.vector_available = True
-                logger.info(f"Loaded sqlite-vec: {self.vec_ext_path}")
-            except Exception as e:
-                logger.warning(f"Failed to load sqlite-vec: {e}")
+        # Only load sqlite-vec extension if vector search is enabled
+        if self.vector_enabled:
+            self.conn.enable_load_extension(True)
 
+            # Load sqlite-vec extension
+            if self.vec_ext_path:
+                try:
+                    self.conn.load_extension(self.vec_ext_path)
+                    logger.info(f"Loaded sqlite-vec: {self.vec_ext_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to load sqlite-vec: {e}")
+
+            else:
+                try:
+                    import sqlite_vec
+
+                    ext_path = sqlite_vec.loadable_path()
+                    self.conn.load_extension(ext_path)
+                    logger.info(f"Loaded sqlite-vec from package: {ext_path}")
+
+                except Exception as e:
+                    logger.warning(f"Failed to load sqlite-vec from package: {e}")
+                    # Fallback: try common extension names
+                    for name in ["vec0", "sqlite_vec", "vector0"]:
+                        try:
+                            self.conn.load_extension(name)
+                            logger.info(f"Loaded sqlite-vec: {name}")
+                            break
+                        except Exception:
+                            pass
+
+            self.conn.enable_load_extension(False)
         else:
-            try:
-                import sqlite_vec
+            logger.info("Vector search disabled, skipping sqlite-vec extension loading")
 
-                ext_path = sqlite_vec.loadable_path()
-                self.conn.load_extension(ext_path)
-                self.vector_available = True
-                logger.info(f"Loaded sqlite-vec from package: {ext_path}")
-
-            except Exception as e:
-                logger.warning(f"Failed to load sqlite-vec from package: {e}")
-                # Fallback: try common extension names
-                for name in ["vec0", "sqlite_vec", "vector0"]:
-                    try:
-                        self.conn.load_extension(name)
-                        self.vector_available = True
-                        logger.info(f"Loaded sqlite-vec: {name}")
-                        break
-                    except Exception:
-                        pass
-
-        self.conn.enable_load_extension(False)
         await self._create_tables()
 
     async def _create_tables(self) -> None:
         """Create database schema."""
         cursor = self.conn.cursor()
-
-        # Files
-        cursor.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self.files_table_name} (
-                path TEXT,
-                source TEXT,
-                hash TEXT,
-                mtime REAL,
-                size INTEGER,
-                PRIMARY KEY (path, source)
-            )
-        """,
-        )
-
-        # Chunks
-        cursor.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self.chunks_table_name} (
-                id TEXT PRIMARY KEY,
-                path TEXT,
-                source TEXT,
-                start_line INTEGER,
-                end_line INTEGER,
-                hash TEXT,
-                text TEXT,
-                embedding TEXT,
-                updated_at INTEGER
-            )
-        """,
-        )
-
-        # Vector table (sqlite-vec)
-        if self.vector_available:
+        try:
+            # Files
             cursor.execute(
                 f"""
-                CREATE VIRTUAL TABLE IF NOT EXISTS {self.vector_table_name} USING vec0(
+                CREATE TABLE IF NOT EXISTS {self.files_table_name} (
+                    path TEXT,
+                    source TEXT,
+                    hash TEXT,
+                    mtime REAL,
+                    size INTEGER,
+                    PRIMARY KEY (path, source)
+                )
+            """,
+            )
+
+            # Chunks
+            cursor.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.chunks_table_name} (
                     id TEXT PRIMARY KEY,
-                    embedding FLOAT[{self.embedding_dim}]
+                    path TEXT,
+                    source TEXT,
+                    start_line INTEGER,
+                    end_line INTEGER,
+                    hash TEXT,
+                    text TEXT,
+                    embedding TEXT,
+                    updated_at INTEGER
                 )
             """,
             )
-            logger.info(f"Created vector table (dims={self.embedding_dim})")
 
-        # FTS table
-        if self.fts_enabled:
-            cursor.execute(
-                f"""
-                CREATE VIRTUAL TABLE IF NOT EXISTS {self.fts_table_name} USING fts5(
-                    text,
-                    id UNINDEXED,
-                    path UNINDEXED,
-                    source UNINDEXED,
-                    start_line UNINDEXED,
-                    end_line UNINDEXED,
-                    tokenize='trigram'
+            # Vector table (sqlite-vec)
+            if self.vector_enabled:
+                cursor.execute(
+                    f"""
+                    CREATE VIRTUAL TABLE IF NOT EXISTS {self.vector_table_name} USING vec0(
+                        id TEXT PRIMARY KEY,
+                        embedding FLOAT[{self.embedding_dim}]
+                    )
+                """,
                 )
-            """,
-            )
-            self.fts_available = True
-            logger.info("Created FTS5 table with trigram tokenizer")
+                logger.info(f"Created vector table (dims={self.embedding_dim})")
 
-        self.conn.commit()
-        cursor.close()
+            # FTS table
+            if self.fts_enabled:
+                cursor.execute(
+                    f"""
+                    CREATE VIRTUAL TABLE IF NOT EXISTS {self.fts_table_name} USING fts5(
+                        text,
+                        id UNINDEXED,
+                        path UNINDEXED,
+                        source UNINDEXED,
+                        start_line UNINDEXED,
+                        end_line UNINDEXED,
+                        tokenize='trigram'
+                    )
+                """,
+                )
+                logger.info("Created FTS5 table with trigram tokenizer")
+
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to create tables: {e}")
+            raise
+        finally:
+            cursor.close()
 
     async def upsert_file(self, file_meta: FileMetadata, source: MemorySource, chunks: list[MemoryChunk]):
         """Insert or update file and its chunks."""
@@ -210,21 +216,25 @@ class SqliteMemoryStore(BaseMemoryStore):
                 )
 
                 # Insert vector (vec0 doesn't support OR REPLACE, use DELETE + INSERT)
-                if self.vector_available:
-                    assert chunk.embedding, "Embedding is required for vector insert"
-                    # Delete existing vector first
-                    cursor.execute(
-                        f"DELETE FROM {self.vector_table_name} WHERE id = ?",
-                        (chunk.id,),
-                    )
-                    # Then insert new vector
-                    cursor.execute(
-                        f"INSERT INTO {self.vector_table_name} (id, embedding) VALUES (?, ?)",
-                        (chunk.id, self.vector_to_blob(chunk.embedding)),
-                    )
+                if self.vector_enabled:
+                    if not chunk.embedding:
+                        logger.warning(
+                            f"Chunk {chunk.id} missing embedding for vector insert, skipping vector indexing",
+                        )
+                    else:
+                        # Delete existing vector first
+                        cursor.execute(
+                            f"DELETE FROM {self.vector_table_name} WHERE id = ?",
+                            (chunk.id,),
+                        )
+                        # Then insert new vector
+                        cursor.execute(
+                            f"INSERT INTO {self.vector_table_name} (id, embedding) VALUES (?, ?)",
+                            (chunk.id, self.vector_to_blob(chunk.embedding)),
+                        )
 
                 # Insert FTS
-                if self.fts_available:
+                if self.fts_enabled:
                     cursor.execute(
                         f"""
                         INSERT OR REPLACE INTO {self.fts_table_name} (
@@ -242,8 +252,9 @@ class SqliteMemoryStore(BaseMemoryStore):
                     )
 
             cursor.execute("COMMIT")
-        except Exception:
+        except Exception as e:
             cursor.execute("ROLLBACK")
+            logger.error(f"Failed to upsert file {file_meta.path}: {e}")
             raise
         finally:
             cursor.close()
@@ -262,25 +273,19 @@ class SqliteMemoryStore(BaseMemoryStore):
             chunk_ids = [row[0] for row in cursor.fetchall()]
 
             # Delete vectors
-            if self.vector_available and chunk_ids:
+            if self.vector_enabled and chunk_ids:
                 for chunk_id in chunk_ids:
-                    try:
-                        cursor.execute(
-                            f"DELETE FROM {self.vector_table_name} WHERE id = ?",
-                            (chunk_id,),
-                        )
-                    except Exception as e:
-                        logger.debug(f"Vector delete failed: {e}")
+                    cursor.execute(
+                        f"DELETE FROM {self.vector_table_name} WHERE id = ?",
+                        (chunk_id,),
+                    )
 
             # Delete FTS entries
-            if self.fts_available:
-                try:
-                    cursor.execute(
-                        f"DELETE FROM {self.fts_table_name} WHERE path = ? AND source = ?",
-                        (path, source.value),
-                    )
-                except Exception as e:
-                    logger.debug(f"FTS delete failed: {e}")
+            if self.fts_enabled:
+                cursor.execute(
+                    f"DELETE FROM {self.fts_table_name} WHERE path = ? AND source = ?",
+                    (path, source.value),
+                )
 
             # Delete chunks and file
             cursor.execute(
@@ -293,8 +298,9 @@ class SqliteMemoryStore(BaseMemoryStore):
             )
 
             cursor.execute("COMMIT")
-        except Exception:
+        except Exception as e:
             cursor.execute("ROLLBACK")
+            logger.error(f"Failed to delete file {path}: {e}")
             raise
         finally:
             cursor.close()
@@ -309,26 +315,20 @@ class SqliteMemoryStore(BaseMemoryStore):
             cursor.execute("BEGIN")
 
             # Delete vectors
-            if self.vector_available:
+            if self.vector_enabled:
                 for chunk_id in chunk_ids:
-                    try:
-                        cursor.execute(
-                            f"DELETE FROM {self.vector_table_name} WHERE id = ?",
-                            (chunk_id,),
-                        )
-                    except Exception as e:
-                        logger.debug(f"Vector delete failed for {chunk_id}: {e}")
+                    cursor.execute(
+                        f"DELETE FROM {self.vector_table_name} WHERE id = ?",
+                        (chunk_id,),
+                    )
 
             # Delete FTS entries
-            if self.fts_available:
+            if self.fts_enabled:
                 placeholders = ",".join("?" * len(chunk_ids))
-                try:
-                    cursor.execute(
-                        f"DELETE FROM {self.fts_table_name} WHERE id IN ({placeholders})",
-                        chunk_ids,
-                    )
-                except Exception as e:
-                    logger.debug(f"FTS delete failed: {e}")
+                cursor.execute(
+                    f"DELETE FROM {self.fts_table_name} WHERE id IN ({placeholders})",
+                    chunk_ids,
+                )
 
             # Delete chunks
             placeholders = ",".join("?" * len(chunk_ids))
@@ -338,8 +338,9 @@ class SqliteMemoryStore(BaseMemoryStore):
             )
 
             cursor.execute("COMMIT")
-        except Exception:
+        except Exception as e:
             cursor.execute("ROLLBACK")
+            logger.error(f"Failed to delete chunks for {path}: {e}")
             raise
         finally:
             cursor.close()
@@ -377,21 +378,25 @@ class SqliteMemoryStore(BaseMemoryStore):
                 )
 
                 # Insert/update vector (vec0 doesn't support OR REPLACE, use DELETE + INSERT)
-                if self.vector_available:
-                    assert chunk.embedding, "Embedding is required for vector insert"
-                    # Delete existing vector first
-                    cursor.execute(
-                        f"DELETE FROM {self.vector_table_name} WHERE id = ?",
-                        (chunk.id,),
-                    )
-                    # Then insert new vector
-                    cursor.execute(
-                        f"INSERT INTO {self.vector_table_name} (id, embedding) VALUES (?, ?)",
-                        (chunk.id, self.vector_to_blob(chunk.embedding)),
-                    )
+                if self.vector_enabled:
+                    if not chunk.embedding:
+                        logger.warning(
+                            f"Chunk {chunk.id} missing embedding for vector insert, skipping vector indexing",
+                        )
+                    else:
+                        # Delete existing vector first
+                        cursor.execute(
+                            f"DELETE FROM {self.vector_table_name} WHERE id = ?",
+                            (chunk.id,),
+                        )
+                        # Then insert new vector
+                        cursor.execute(
+                            f"INSERT INTO {self.vector_table_name} (id, embedding) VALUES (?, ?)",
+                            (chunk.id, self.vector_to_blob(chunk.embedding)),
+                        )
 
                 # Insert/update FTS
-                if self.fts_available:
+                if self.fts_enabled:
                     cursor.execute(
                         f"""
                         INSERT OR REPLACE INTO {self.fts_table_name} (
@@ -409,8 +414,9 @@ class SqliteMemoryStore(BaseMemoryStore):
                     )
 
             cursor.execute("COMMIT")
-        except Exception:
+        except Exception as e:
             cursor.execute("ROLLBACK")
+            logger.error(f"Failed to upsert chunks: {e}")
             raise
         finally:
             cursor.close()
@@ -418,77 +424,91 @@ class SqliteMemoryStore(BaseMemoryStore):
     async def list_files(self, source: MemorySource) -> list[str]:
         """List all indexed files."""
         cursor = self.conn.cursor()
-        cursor.execute(f"SELECT path FROM {self.files_table_name} WHERE source = ?", (source.value,))
-        paths = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        return paths
+        try:
+            cursor.execute(f"SELECT path FROM {self.files_table_name} WHERE source = ?", (source.value,))
+            paths = [row[0] for row in cursor.fetchall()]
+            return paths
+        except Exception as e:
+            logger.error(f"Failed to list files: {e}")
+            raise
+        finally:
+            cursor.close()
 
     async def get_file_metadata(self, path: str, source: MemorySource) -> FileMetadata | None:
         """Get file metadata with chunk count."""
         cursor = self.conn.cursor()
-        cursor.execute(
-            f"SELECT hash, mtime, size FROM {self.files_table_name} WHERE path = ? AND source = ?",
-            (path, source.value),
-        )
-        row = cursor.fetchone()
-        if not row:
+        try:
+            cursor.execute(
+                f"SELECT hash, mtime, size FROM {self.files_table_name} WHERE path = ? AND source = ?",
+                (path, source.value),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            hash_val, mtime, size = row
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {self.chunks_table_name} WHERE path = ? AND source = ?",
+                (path, source.value),
+            )
+            chunk_count = cursor.fetchone()[0]
+
+            return FileMetadata(
+                hash=hash_val,
+                mtime_ms=mtime,
+                size=size,
+                path=path,
+                chunk_count=chunk_count,
+            )
+        except Exception as e:
+            logger.error(f"Failed to get file metadata for {path}: {e}")
+            raise
+        finally:
             cursor.close()
-            return None
-
-        hash_val, mtime, size = row
-        cursor.execute(
-            f"SELECT COUNT(*) FROM {self.chunks_table_name} WHERE path = ? AND source = ?",
-            (path, source.value),
-        )
-        chunk_count = cursor.fetchone()[0]
-        cursor.close()
-
-        return FileMetadata(
-            hash=hash_val,
-            mtime_ms=mtime,
-            size=size,
-            path=path,
-            chunk_count=chunk_count,
-        )
 
     async def get_file_chunks(self, path: str, source: MemorySource) -> list[MemoryChunk]:
         """Get all chunks for a file."""
         cursor = self.conn.cursor()
-        cursor.execute(
-            f"""
-            SELECT id, path, source, start_line, end_line, text, hash, embedding
-            FROM {self.chunks_table_name} WHERE path = ? AND source = ?
-            ORDER BY start_line
-        """,
-            (path, source.value),
-        )
-
-        chunks = []
-        for row in cursor.fetchall():
-            chunk_id, path_val, source_val, start, end, text, hash_val, emb_str = row
-            # Parse embedding from JSON string
-            embedding = None
-            if emb_str:
-                try:
-                    embedding = json.loads(emb_str)
-                except (json.JSONDecodeError, TypeError):
-                    embedding = None
-
-            chunks.append(
-                MemoryChunk(
-                    id=chunk_id,
-                    path=path_val,
-                    source=MemorySource(source_val),
-                    start_line=start,
-                    end_line=end,
-                    text=text,
-                    hash=hash_val,
-                    embedding=embedding,
-                ),
+        try:
+            cursor.execute(
+                f"""
+                SELECT id, path, source, start_line, end_line, text, hash, embedding
+                FROM {self.chunks_table_name} WHERE path = ? AND source = ?
+                ORDER BY start_line
+            """,
+                (path, source.value),
             )
 
-        cursor.close()
-        return chunks
+            chunks = []
+            for row in cursor.fetchall():
+                chunk_id, path_val, source_val, start, end, text, hash_val, emb_str = row
+                # Parse embedding from JSON string
+                embedding = None
+                if emb_str:
+                    try:
+                        embedding = json.loads(emb_str)
+                    except (json.JSONDecodeError, TypeError):
+                        embedding = None
+
+                chunks.append(
+                    MemoryChunk(
+                        id=chunk_id,
+                        path=path_val,
+                        source=MemorySource(source_val),
+                        start_line=start,
+                        end_line=end,
+                        text=text,
+                        hash=hash_val,
+                        embedding=embedding,
+                    ),
+                )
+
+            return chunks
+        except Exception as e:
+            logger.error(f"Failed to get file chunks for {path}: {e}")
+            raise
+        finally:
+            cursor.close()
 
     async def vector_search(
         self,
@@ -497,7 +517,7 @@ class SqliteMemoryStore(BaseMemoryStore):
         sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform vector similarity search."""
-        if not self.vector_available or not query:
+        if not self.vector_enabled or not query:
             return []
 
         # Get query embedding
@@ -556,6 +576,7 @@ class SqliteMemoryStore(BaseMemoryStore):
                     ),
                 )
 
+            results.sort(key=lambda r: r.score, reverse=True)
             return results
         except Exception as e:
             logger.error(f"Vector search failed: {e}")
@@ -563,7 +584,8 @@ class SqliteMemoryStore(BaseMemoryStore):
         finally:
             cursor.close()
 
-    def _sanitize_fts_query(self, query: str) -> str:
+    @staticmethod
+    def _sanitize_fts_query(query: str) -> str:
         """Sanitize query string for FTS5 search.
 
         Removes or escapes special characters that have special meaning in FTS5:
@@ -643,22 +665,41 @@ class SqliteMemoryStore(BaseMemoryStore):
         limit: int,
         sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
-        """Perform full-text search."""
-        if not self.fts_available:
+        """Perform keyword search.
+
+        Strategy:
+        - FTS5 trigram (fast path): used when ALL terms >= 3 chars (trigram minimum).
+        - LIKE (universal fallback): used when any term < 3 chars, covering CJK
+          short words, single/double-char queries, and mixed-length queries.
+        """
+        if not self.fts_enabled:
             return []
 
-        # Sanitize and prepare query
         cleaned = self._sanitize_fts_query(query)
         if not cleaned:
             return []
 
-        # Split into words and escape double quotes for FTS5 phrase matching
         words = cleaned.split()
         if not words:
             return []
 
-        # Use OR operator for better recall - match any of the query words
-        escaped_words = [word.replace('"', '""') for word in words]
+        # FTS5 trigram requires every term >= 3 characters
+        if all(len(w) >= 3 for w in words):
+            results = await self._fts_trigram_search(words, limit, sources)
+            if results:
+                return results
+
+        # Universal fallback: LIKE-based substring search
+        return await self._like_search(cleaned, words, limit, sources)
+
+    async def _fts_trigram_search(
+        self,
+        words: list[str],
+        limit: int,
+        sources: list[MemorySource] | None = None,
+    ) -> list[MemorySearchResult]:
+        """FTS5 trigram search. All terms must be >= 3 characters."""
+        escaped_words = [w.replace('"', '""') for w in words]
         fts_query = " OR ".join(escaped_words)
 
         cursor = self.conn.cursor()
@@ -685,24 +726,102 @@ class SqliteMemoryStore(BaseMemoryStore):
 
             results = []
             for _, path, start, end, src, text, rank in cursor.fetchall():
-                # Convert BM25 rank (negative) to 0-1 score (higher=better)
                 score = max(0.0, 1.0 / (1.0 + abs(rank)))
-                snippet = text
                 results.append(
                     MemorySearchResult(
                         path=path,
                         start_line=start,
                         end_line=end,
                         score=score,
-                        snippet=snippet,
+                        snippet=text,
                         source=MemorySource(src),
                         raw_metric=rank,
                     ),
                 )
-
+            results.sort(key=lambda r: r.score, reverse=True)
             return results
         except Exception as e:
-            logger.error(f"Keyword search failed: {e}")
+            logger.error(f"FTS trigram search failed: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    async def _like_search(
+        self,
+        phrase: str,
+        words: list[str],
+        limit: int,
+        sources: list[MemorySource] | None = None,
+    ) -> list[MemorySearchResult]:
+        """LIKE-based substring search with Python-side relevance scoring.
+
+        Handles any term length and all languages (CJK, Latin, etc.).
+        Scores results by: word-match ratio + full-phrase bonus.
+        """
+        cursor = self.conn.cursor()
+        try:
+            # Build OR conditions: match any individual word
+            like_clauses = []
+            params: list = []
+            for word in words:
+                like_clauses.append("c.text LIKE ?")
+                params.append(f"%{word}%")
+
+            where_clause = " OR ".join(like_clauses)
+
+            source_filter = ""
+            if sources:
+                placeholders = ",".join("?" * len(sources))
+                source_filter = f" AND c.source IN ({placeholders})"
+                params.extend([s.value for s in sources])
+
+            # Fetch extra candidates for re-ranking in Python
+            fetch_limit = min(limit * 3, 200)
+            params.append(fetch_limit)
+
+            cursor.execute(
+                f"""
+                SELECT c.id, c.path, c.start_line, c.end_line, c.source, c.text
+                FROM {self.chunks_table_name} c
+                WHERE ({where_clause}){source_filter}
+                LIMIT ?
+            """,
+                params,
+            )
+
+            results = []
+            phrase_lower = phrase.lower()
+            words_lower = [w.lower() for w in words]
+            n_words = len(words)
+
+            for _, path, start, end, src, text in cursor.fetchall():
+                text_lower = text.lower()
+
+                # Base score: proportion of query words found in text
+                match_count = sum(1 for w in words_lower if w in text_lower)
+                base_score = match_count / n_words
+
+                # Bonus: full phrase appears as contiguous substring
+                phrase_bonus = 0.2 if n_words > 1 and phrase_lower in text_lower else 0.0
+
+                score = min(1.0, base_score * 0.8 + phrase_bonus)
+
+                results.append(
+                    MemorySearchResult(
+                        path=path,
+                        start_line=start,
+                        end_line=end,
+                        score=score,
+                        snippet=text,
+                        source=MemorySource(src),
+                    ),
+                )
+
+            # Sort by score descending, return top `limit`
+            results.sort(key=lambda r: r.score, reverse=True)
+            return results[:limit]
+        except Exception as e:
+            logger.error(f"LIKE search failed: {e}")
             return []
         finally:
             cursor.close()
@@ -710,21 +829,22 @@ class SqliteMemoryStore(BaseMemoryStore):
     async def clear_all(self):
         """Clear all indexed data."""
         cursor = self.conn.cursor()
-        cursor.execute("BEGIN")
-
         try:
+            cursor.execute("BEGIN")
+
             cursor.execute(f"DELETE FROM {self.files_table_name}")
             cursor.execute(f"DELETE FROM {self.chunks_table_name}")
 
-            if self.vector_available:
+            if self.vector_enabled:
                 cursor.execute(f"DELETE FROM {self.vector_table_name}")
 
-            if self.fts_available:
+            if self.fts_enabled:
                 cursor.execute(f"DELETE FROM {self.fts_table_name}")
 
             cursor.execute("COMMIT")
-        except Exception:
+        except Exception as e:
             cursor.execute("ROLLBACK")
+            logger.error(f"Failed to clear all data: {e}")
             raise
         finally:
             cursor.close()

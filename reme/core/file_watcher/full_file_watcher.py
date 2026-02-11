@@ -5,7 +5,6 @@ on any change, ensuring complete synchronization.
 """
 
 import asyncio
-import os
 from pathlib import Path
 
 from loguru import logger

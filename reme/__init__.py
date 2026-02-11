@@ -6,6 +6,7 @@ from . import core
 from . import tool
 from . import workflow
 from .reme import ReMe
+from .reme_cli import ReMeCli
 from .reme_fs import ReMeFs
 
 __all__ = [
@@ -15,10 +16,11 @@ __all__ = [
     "tool",
     "workflow",
     "ReMe",
+    "ReMeCli",
     "ReMeFs",
 ]
 
-__version__ = "0.3.0.0a4"
+__version__ = "0.3.0.0a5"
 
 
 """

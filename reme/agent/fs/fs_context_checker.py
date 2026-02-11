@@ -3,11 +3,11 @@
 from loguru import logger
 
 from ...core.enumeration import Role
-from ...core.op import BaseReact
+from ...core.op import BaseOp
 from ...core.schema import CutPointResult, Message
 
 
-class FsContextChecker(BaseReact):
+class FsContextChecker(BaseOp):
     """Check if context exceeds token limits and find cut point for compaction."""
 
     def __init__(

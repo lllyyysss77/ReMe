@@ -68,7 +68,7 @@ class MemoryDeduplication(BaseOp):
                 continue
 
             # Check similarity with current batch task memories
-            if self._is_similar_to_current_task_memories(current_embedding, unique_task_memories, similarity_threshold):
+            if await self._is_similar_to_current_task_memories(current_embedding, unique_task_memories, similarity_threshold):
                 logger.debug(f"Skipping duplicate in current batch: {str(task_memory.when_to_use)[:50]}...")
                 continue
 
@@ -105,13 +105,13 @@ class MemoryDeduplication(BaseOp):
             logger.warning(f"Failed to retrieve existing task memory embeddings: {e}")
             return []
 
-    def _get_task_memory_embedding(self, task_memory: MemoryNode) -> List[float] | None:
+    async def _get_task_memory_embedding(self, task_memory: MemoryNode) -> List[float] | None:
         """Generate embedding for task memory"""
         try:
 
             # Combine task memory description and content for embedding
             text_for_embedding = f"{task_memory.when_to_use} {task_memory.content}"
-            embeddings = self.vector_store.embedding_model.get_embeddings([text_for_embedding])
+            embeddings = await self.vector_store.get_embeddings([text_for_embedding])
 
             if embeddings and len(embeddings) > 0:
                 return embeddings[0]
@@ -137,7 +137,7 @@ class MemoryDeduplication(BaseOp):
                 return True
         return False
 
-    def _is_similar_to_current_task_memories(
+    async def _is_similar_to_current_task_memories(
         self,
         current_embedding: List[float],
         current_task_memories: List[MemoryNode],
@@ -145,7 +145,7 @@ class MemoryDeduplication(BaseOp):
     ) -> bool:
         """Check if current embedding is similar to other memories in current batch."""
         for existing_task_memory in current_task_memories:
-            existing_embedding = self._get_task_memory_embedding(existing_task_memory)
+            existing_embedding = await self._get_task_memory_embedding(existing_task_memory)
             if existing_embedding is None:
                 continue
 

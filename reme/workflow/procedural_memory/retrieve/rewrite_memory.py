@@ -134,7 +134,7 @@ class RewriteMemory(BaseOp):
         for i, memory in enumerate(memories, 1):
             condition = memory.when_to_use
             memory_content = memory.content
-            memory_text = f"Experience {i} :\n When to use: {condition}\n Content: {memory_content}\n"
+            memory_text = f"Memory {i} :\n When to use: {condition}\n Content: {memory_content}\n"
 
             formatted_memories.append(memory_text)
 

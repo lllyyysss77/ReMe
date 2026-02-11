@@ -287,8 +287,20 @@ class ReMe(Application):
             raise NotImplementedError
 
         procedural_summarizer: BaseMemoryAgent
-        if version in ["default", "v1", "v2", "halumem"]:
-            procedural_summarizer = ProceduralSummarizer(tools=[])
+        if version in ["default", "v1"]:
+            procedural_summarizer = ProceduralSummarizer(
+                tools=[
+                    VectorRetrieveMemory(
+                        add_memory_type_target=False,
+                        enable_thinking_params=True,
+                        metadata_desc=None,
+                        top_k=5,
+                    ),
+                    AddMemory(enable_thinking_params=True,add_when_to_use=True, metadata_desc=metadata_summary),
+                    DeleteMemory(enable_thinking_params=True),
+                    UpdateMemory(enable_thinking_params=True,add_when_to_use=True, metadata_desc=metadata_summary),
+                ],
+            )
         else:
             raise NotImplementedError
 
@@ -466,8 +478,18 @@ class ReMe(Application):
             raise NotImplementedError
 
         procedural_retriever: BaseMemoryAgent
-        if version in ["default", "v1", "v2", "halumem"]:
-            procedural_retriever = ProceduralRetriever(tools=[])
+        if version in ["default", "v1"]:
+            procedural_retriever = ProceduralRetriever(
+                tools=[
+                    VectorRetrieveMemory(
+                        add_memory_type_target=True,
+                        enable_thinking_params=True,
+                        metadata_desc=metadata_retrieve,
+                        top_k=top_k,
+                    ),
+                    ReadHistory(enable_thinking_params=True),
+                ],
+            )
         else:
             raise NotImplementedError
 

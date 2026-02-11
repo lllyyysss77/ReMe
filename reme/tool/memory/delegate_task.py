@@ -61,6 +61,10 @@ class DelegateTask(BaseMemoryTool):
         # Submit memory_target_tasks to agents
         agent_list: list[BaseMemoryAgent] = []
         for i, memory_target in enumerate(memory_target_tasks):
+            if memory_target not in self.memory_target_type_mapping:
+                logger.warning(f"Memory target {memory_target} not found in memory_target_type_mapping")
+                continue
+
             memory_type = self.memory_target_type_mapping[memory_target]
             agent = self.memory_agent_dict[memory_type].copy()
             agent_list.append(agent)

@@ -60,9 +60,20 @@ class Application:
         self.prompt_handler = PromptHandler(language=self.service_context.language)
         self._started: bool = False
 
-    def update_api_envs(self):
+    def update_api_envs(
+        self,
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+    ):
         """Update the API environment variables."""
-        self.service_context.update_api_envs()
+        self.service_context.update_api_envs(
+            llm_api_key=llm_api_key,
+            llm_base_url=llm_base_url,
+            embedding_api_key=embedding_api_key,
+            embedding_base_url=embedding_base_url,
+        )
 
     @classmethod
     async def create(

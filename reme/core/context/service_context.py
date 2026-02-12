@@ -169,6 +169,19 @@ class ServiceContext(BaseContext):
 
     async def start(self):
         """Start the service context by initializing all configured components."""
+        # Recreate thread pool if it was shut down
+        if self.thread_pool is None or self.thread_pool._shutdown:
+            self.thread_pool = ThreadPoolExecutor(
+                max_workers=self.service_config.thread_pool_max_workers,
+            )
+
+        # Re-initialize Ray if it was shut down
+        if self.service_config.ray_max_workers > 1:
+            import ray
+
+            if not ray.is_initialized():
+                ray.init(num_cpus=self.service_config.ray_max_workers)
+
         for name, config in self.service_config.llms.items():
             if config.backend not in R.llms:
                 logger.warning(f"LLM backend {config.backend} is not supported.")

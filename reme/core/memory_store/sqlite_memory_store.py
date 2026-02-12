@@ -70,6 +70,11 @@ class SqliteMemoryStore(BaseMemoryStore):
 
         # Only load sqlite-vec extension if vector search is enabled
         if self.vector_enabled:
+            logger.warning(
+                "On macOS systems with version 14 or earlier, "
+                "loading the sqlite-vec vector extension carries a risk of crashes or hangs.",
+            )
+
             self.conn.enable_load_extension(True)
 
             # Load sqlite-vec extension

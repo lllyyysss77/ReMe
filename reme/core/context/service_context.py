@@ -50,10 +50,7 @@ class ServiceContext(BaseContext):
         super().__init__()
 
         load_env()
-        self._update_env("REME_LLM_API_KEY", llm_api_key)
-        self._update_env("REME_LLM_BASE_URL", llm_base_url)
-        self._update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
-        self._update_env("REME_EMBEDDING_BASE_URL", embedding_base_url)
+        self.update_api_envs(llm_api_key, llm_base_url, embedding_api_key, embedding_base_url)
 
         if service_config is None:
             parser_class = parser if parser is not None else PydanticConfigParser
@@ -120,10 +117,23 @@ class ServiceContext(BaseContext):
         self._build_flows()
 
     @staticmethod
-    def _update_env(key: str, value: str | None):
+    def update_env(key: str, value: str | None):
         """Update environment variable if value is provided."""
         if value:
             os.environ[key] = value
+
+    def update_api_envs(
+        self,
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+    ):
+        """Update common environment variables for LLM and embedding services."""
+        self.update_env("REME_LLM_API_KEY", llm_api_key)
+        self.update_env("REME_LLM_BASE_URL", llm_base_url)
+        self.update_env("REME_EMBEDDING_API_KEY", embedding_api_key)
+        self.update_env("REME_EMBEDDING_BASE_URL", embedding_base_url)
 
     @staticmethod
     def _update_section_config(config: dict, section_name: str, **kwargs):

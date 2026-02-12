@@ -89,7 +89,8 @@ class ServiceContext(BaseContext):
         logger.info(f"ReMe Config: {service_config.model_dump_json()}")
 
         if self.service_config.working_dir:
-            Path(self.service_config.working_dir).mkdir(parents=True, exist_ok=True)
+            self.working_path = Path(self.service_config.working_dir)
+            self.working_path.mkdir(parents=True, exist_ok=True)
 
         if self.service_config.enable_logo:
             print_logo(service_config=self.service_config)
@@ -198,8 +199,12 @@ class ServiceContext(BaseContext):
             else:
                 # Extract config dict and replace special fields with actual instances
                 config_dict = config.model_dump(exclude={"backend", "embedding_model"})
-                config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
-                config_dict["thread_pool"] = self.thread_pool
+                config_dict.update(
+                    {
+                        "embedding_model": self.embedding_models[config.embedding_model],
+                        "thread_pool": self.thread_pool,
+                    },
+                )
                 self.vector_stores[name] = R.vector_stores[config.backend](**config_dict)
                 await self.vector_stores[name].create_collection(config.collection_name)
 
@@ -209,7 +214,13 @@ class ServiceContext(BaseContext):
             else:
                 # Extract config dict and replace embedding_model string with actual instance
                 config_dict = config.model_dump(exclude={"backend", "embedding_model"})
-                config_dict["embedding_model"] = self.embedding_models[config.embedding_model]
+                config_dict.update(
+                    {
+                        "embedding_model": self.embedding_models[config.embedding_model],
+                        "thread_pool": self.thread_pool,
+                        "db_path": self.working_path / config.db_name,
+                    },
+                )
                 self.memory_stores[name] = R.memory_stores[config.backend](**config_dict)
                 await self.memory_stores[name].start()
 

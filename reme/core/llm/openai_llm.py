@@ -19,12 +19,19 @@ class OpenAILLM(BaseLLM):
         """Initialize the OpenAI async client with API credentials and model configuration."""
         super().__init__(**kwargs)
 
-        # Create client using factory method
-        self._client = self._create_client()
+        # Lazy client initialization
+        self._client = None
 
     def _create_client(self):
         """Create and return an instance of the AsyncOpenAI client."""
         return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+
+    @property
+    def client(self):
+        """Lazily create and return the AsyncOpenAI client."""
+        if self._client is None:
+            self._client = self._create_client()
+        return self._client
 
     def _build_stream_kwargs(
         self,
@@ -76,7 +83,7 @@ class OpenAILLM(BaseLLM):
     ) -> AsyncGenerator[StreamChunk, None]:
         """Generate a stream of chat completion chunks including text, reasoning content, and tool calls."""
         stream_kwargs = stream_kwargs or {}
-        completion = await self._client.chat.completions.create(**stream_kwargs)
+        completion = await self.client.chat.completions.create(**stream_kwargs)
         ret_tool_calls: list[ToolCall] = []
 
         async for chunk in completion:
@@ -102,4 +109,6 @@ class OpenAILLM(BaseLLM):
 
     async def close(self):
         """Asynchronously close the OpenAI client and release network resources."""
-        await self._client.close()
+        if self._client is not None:
+            await self._client.close()
+            self._client = None

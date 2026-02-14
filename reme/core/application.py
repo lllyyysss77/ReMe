@@ -8,7 +8,7 @@ from .file_watcher import BaseFileWatcher
 from .flow import BaseFlow
 from .llm import BaseLLM
 from .memory_store import BaseMemoryStore
-from .schema import Response
+from .schema import Response, ServiceConfig
 from .token_counter import BaseTokenCounter
 from .utils import execute_stream_task, PydanticConfigParser
 from .vector_store import BaseVectorStore
@@ -209,6 +209,11 @@ class Application:
     def default_token_counter(self) -> BaseTokenCounter:
         """Get the default token counter instance."""
         return self.service_context.token_counters.get("default")
+
+    @property
+    def service_config(self) -> ServiceConfig:
+        """Get the service configuration."""
+        return self.service_context.service_config
 
     def get_token_counter(self, name: str):
         """Get a token counter instance by name."""

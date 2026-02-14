@@ -138,14 +138,17 @@ class FsCli(BaseReactStream):
     async def build_messages(self) -> list[Message]:
         """Build system prompt message."""
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S %A")
+        has_web_search = any(t.name == "web_search" for t in self.tools)
 
         system_prompt = self.prompt_format(
             "system_prompt",
             workspace_dir=self.working_dir,
             current_time=current_time,
+            has_web_search=has_web_search,
             has_previous_summary=bool(self.previous_summary),
             previous_summary=self.previous_summary or "",
         )
+        logger.info(f"[{self.__class__.__name__}] system_prompt: {system_prompt}")
 
         return [
             Message(role=Role.SYSTEM, content=system_prompt),

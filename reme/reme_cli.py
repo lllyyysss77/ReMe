@@ -1,11 +1,13 @@
 """ReMe File System"""
 
 import asyncio
+import os
 import sys
 from typing import AsyncGenerator
 
 from prompt_toolkit import PromptSession
 
+from reme.core.op import BaseTool
 from .agent.chat import FsCli
 from .core.enumeration import ChunkEnum
 from .core.schema import StreamChunk
@@ -20,15 +22,15 @@ from .tool.fs import (
     WriteTool,
 )
 from .tool.gallery import ExecuteCode
-from .tool.search import DashscopeSearch
+from .tool.search import DashscopeSearch, TavilySearch
 
 
 class ReMeCli(ReMeFs):
     """ReMe Cli"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, config_path: str = "cli", **kwargs):
         """Initialize ReMe with config."""
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, config_path=config_path, **kwargs)
         self.commands = {
             "/new": "Create a new conversation.",
             "/compact": "Compact messages into a summary.",
@@ -39,20 +41,28 @@ class ReMeCli(ReMeFs):
 
     async def chat_with_remy(self, tool_result_max_size: int = 100, language: str = "zh", **kwargs):
         """Interactive CLI chat with Remy using simple streaming output."""
+        tools: list[BaseTool] = [
+            FsMemorySearch(vector_weight=self.vector_weight, candidate_multiplier=self.candidate_multiplier),
+            BashTool(cwd=self.working_dir),
+            LsTool(cwd=self.working_dir),
+            ReadTool(cwd=self.working_dir),
+            EditTool(cwd=self.working_dir),
+            WriteTool(cwd=self.working_dir),
+            ExecuteCode(),
+        ]
+        tavily_api_key: str = os.getenv("TAVILY_API_KEY", "")
+        dashscope_api_key: str = os.getenv("DASHSCOPE_API_KEY", "")
+        if tavily_api_key:
+            tools.append(TavilySearch(name="web_search"))
+            print("find tavily_api_key, append Tavily search tool")
+        elif dashscope_api_key:
+            tools.append(DashscopeSearch(name="web_search"))
+            print("find dashscope_api_key, append Dashscope search tool")
+        else:
+            print("No Tavily or Dashscope API key found, skip Tavily and Dashscope search tool")
+
         fs_cli = FsCli(
-            tools=[
-                FsMemorySearch(
-                    vector_weight=self.vector_weight,
-                    candidate_multiplier=self.candidate_multiplier,
-                ),
-                BashTool(cwd=self.working_dir),
-                LsTool(cwd=self.working_dir),
-                ReadTool(cwd=self.working_dir),
-                EditTool(cwd=self.working_dir),
-                WriteTool(cwd=self.working_dir),
-                ExecuteCode(),
-                DashscopeSearch(),
-            ],
+            tools=tools,
             context_window_tokens=self.context_window_tokens,
             reserve_tokens=self.reserve_tokens,
             keep_recent_tokens=self.keep_recent_tokens,

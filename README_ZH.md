@@ -41,7 +41,7 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ## 📰 最新进展
 
-- **[2026-02]** 💻 ReMeCli：终端 AI 聊天助手，内置记忆管理能力。当对话过长时自动将旧内容压缩为摘要以释放上下文空间，同时将重要信息以 Markdown 文件持久化存储，供未来会话自动检索使用。记忆设计灵感来源于 [OpenClaw](https://github.com/openclaw/openclaw)。（[快速开始](docs/cli/quick_start_en.md)）
+- **[2026-02]** 💻 ReMeCli：终端 AI 聊天助手，内置记忆管理能力。当对话过长时自动将旧内容压缩为摘要以释放上下文空间，同时将重要信息以 Markdown 文件持久化存储，供未来会话自动检索使用。记忆设计灵感来源于 [OpenClaw](https://github.com/openclaw/openclaw)。输入 `/horse` 触发马年彩蛋——烟花、奔马动画和随机马年祝福。（[快速开始](docs/cli/quick_start_en.md)）
 <table border="0" cellspacing="0" cellpadding="0" style="border: none;">
   <tr style="border: none;">
     <td width="10%" style="border: none;"></td>

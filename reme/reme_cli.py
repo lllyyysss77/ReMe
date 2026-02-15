@@ -23,6 +23,7 @@ from .tool.fs import (
 )
 from .tool.gallery import ExecuteCode
 from .tool.search import DashscopeSearch, TavilySearch
+from .horse import _play_horse_easter_egg
 
 
 class ReMeCli(ReMeFs):
@@ -37,6 +38,7 @@ class ReMeCli(ReMeFs):
             "/exit": "Exit the application.",
             "/clear": "Clear the history.",
             "/help": "Show help.",
+            "/horse": "A surprise.",
         }
         self.working_dir = self.service_config.working_dir
 
@@ -137,6 +139,10 @@ class ReMeCli(ReMeFs):
                     print("\nCommands:")
                     for command, description in self.commands.items():
                         print(f"  {command}: {description}")
+                    continue
+
+                if user_input == "/horse":
+                    _play_horse_easter_egg()
                     continue
 
                 # Stream processing state

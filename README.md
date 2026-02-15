@@ -40,6 +40,9 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ## 📰 Latest Updates
 
+- **[2025-12]** 💻 ReMeCli: File-based memory management for coding agents, inspired by [OpenClaw](https://github.com/openclaw/openclaw) ([Quick Start](docs/cli/quick_start_en.md))
+<video src="https://github.com/user-attachments/assets/d731ae5c-80eb-498b-a22c-8ab2b9169f87" width="80%" controls></video>
+
 - **[2025-12]** 📄 Our procedural (task) memory paper has been released on [arXiv](https://arxiv.org/abs/2512.10696)
 - **[2025-11]** 🧠 React-agent with working-memory demo ([Intro](docs/work_memory/message_offload.md)) with ([Quick Start](docs/cookbook/working/quick_start.md)) and ([Code](cookbook/working_memory/work_memory_demo.py))
 - **[2025-10]** 🚀 Direct Python import support: use `from reme_ai import ReMeApp` without HTTP/MCP service

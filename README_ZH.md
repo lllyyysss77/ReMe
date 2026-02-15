@@ -41,7 +41,7 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ## 📰 最新进展
 
-- **[2025-12]** 💻 ReMeCli：面向编程智能体的基于文件的记忆管理，灵感来源于 [OpenClaw](https://github.com/openclaw/openclaw)（[快速开始](docs/cli/quick_start_en.md)）
+- **[2026-02]** 💻 ReMeCli：面向编程智能体的基于文件的记忆管理，灵感来源于 [OpenClaw](https://github.com/openclaw/openclaw)（[快速开始](docs/cli/quick_start_en.md)）
 <table>
   <tr>
     <td width="10%"></td>

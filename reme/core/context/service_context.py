@@ -170,7 +170,7 @@ class ServiceContext(BaseContext):
     async def start(self):
         """Start the service context by initializing all configured components."""
         # Recreate thread pool if it was shut down
-        if self.thread_pool is None or self.thread_pool._shutdown:
+        if self.thread_pool is None or self.thread_pool._shutdown:  # pylint: disable=protected-access
             self.thread_pool = ThreadPoolExecutor(
                 max_workers=self.service_config.thread_pool_max_workers,
             )

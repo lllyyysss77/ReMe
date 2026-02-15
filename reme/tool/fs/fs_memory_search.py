@@ -62,8 +62,16 @@ class FsMemorySearch(BaseFsTool):
     async def execute(self) -> str:
         """Execute the memory search operation."""
         query: str = self.context.query.strip()
-        min_score = self.context.get("min_score", self.min_score)
-        max_results = self.context.get("max_results", self.max_results)
+        min_score: float = self.context.get("min_score", self.min_score)
+        max_results: int = self.context.get("max_results", self.max_results)
+
+        assert query, "Query cannot be empty"
+        assert (
+            isinstance(min_score, float) and 0.0 <= min_score <= 1.0
+        ), f"min_score must be between 0 and 1, got {min_score}"
+        assert (
+            isinstance(max_results, int) and max_results > 0
+        ), f"max_results must be a positive integer, got {max_results}"
 
         # Use hybrid_search from memory_store
         results = await self.memory_store.hybrid_search(

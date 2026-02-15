@@ -35,7 +35,7 @@ class ExecuteCode(BaseTool):
         )
 
     async def execute(self):
-        await async_exec_code(self.context.code)
+        return await async_exec_code(self.context.code)
 
     def execute_sync(self):
         return exec_code(self.context.code)

@@ -40,7 +40,7 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ## 📰 Latest Updates
 
-- **[2026-02]** 💻 ReMeCli: File-based memory management for coding agents, inspired by [OpenClaw](https://github.com/openclaw/openclaw) ([Quick Start](docs/cli/quick_start_en.md))
+- **[2026-02]** 💻 ReMeCli: A terminal-based AI chat assistant with built-in memory management. Automatically compacts long conversations into summaries to free up context space, and persists important information as Markdown files for retrieval in future sessions. Memory design inspired by [OpenClaw](https://github.com/openclaw/openclaw). ([Quick Start](docs/cli/quick_start_en.md))
 <table>
   <tr>
     <td width="10%"></td>

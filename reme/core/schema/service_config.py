@@ -134,3 +134,5 @@ class ServiceConfig(BaseModel):
     memory_stores: dict[str, MemoryStoreConfig] = Field(default_factory=dict)
     token_counters: dict[str, TokenCounterConfig] = Field(default_factory=dict)
     file_watchers: dict[str, FileWatcherConfig] = Field(default_factory=dict)
+
+    metadata: dict = Field(default_factory=dict)

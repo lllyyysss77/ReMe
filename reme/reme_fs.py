@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from loguru import logger
+
 from .agent.fs import FsCompactor, FsContextChecker, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
@@ -76,18 +78,19 @@ class ReMeFs(Application):
             **kwargs,
         )
 
-        self.context_window_tokens: int = context_window_tokens
-        self.reserve_tokens: int = reserve_tokens
-        self.keep_recent_tokens: int = keep_recent_tokens
-        self.vector_weight: float = vector_weight
-        self.candidate_multiplier: float = candidate_multiplier
+        self.service_config.metadata.setdefault("context_window_tokens", context_window_tokens)
+        self.service_config.metadata.setdefault("reserve_tokens", reserve_tokens)
+        self.service_config.metadata.setdefault("keep_recent_tokens", keep_recent_tokens)
+        self.service_config.metadata.setdefault("vector_weight", vector_weight)
+        self.service_config.metadata.setdefault("candidate_multiplier", candidate_multiplier)
+        logger.info(f"ReMe model_extra config: {self.service_config.metadata}")
 
     async def context_check(self, messages: list[Message | dict]) -> dict:
         """Check if messages exceed context limits."""
         checker = FsContextChecker(
-            context_window_tokens=self.context_window_tokens,
-            reserve_tokens=self.reserve_tokens,
-            keep_recent_tokens=self.keep_recent_tokens,
+            context_window_tokens=self.service_config.metadata["context_window_tokens"],
+            reserve_tokens=self.service_config.metadata["reserve_tokens"],
+            keep_recent_tokens=self.service_config.metadata["keep_recent_tokens"],
         )
         return await checker.call(messages=messages, service_context=self.service_context)
 
@@ -147,8 +150,8 @@ class ReMeFs(Application):
             Search results as formatted string
         """
         search_tool = FsMemorySearch(
-            vector_weight=self.vector_weight,
-            candidate_multiplier=self.candidate_multiplier,
+            vector_weight=self.service_config.metadata["vector_weight"],
+            candidate_multiplier=self.service_config.metadata["candidate_multiplier"],
         )
         return await search_tool.call(
             query=query,
@@ -177,8 +180,8 @@ class ReMeFs(Application):
         """Check if messages need compaction based on context window limits."""
         messages = [Message(**message) if isinstance(message, dict) else message for message in messages]
         checker = FsContextChecker(
-            context_window_tokens=self.context_window_tokens,
-            reserve_tokens=self.reserve_tokens,
+            context_window_tokens=self.service_config.metadata["context_window_tokens"],
+            reserve_tokens=self.service_config.metadata["reserve_tokens"],
         )
         result = await checker.call(messages=messages, service_context=self.service_context)
         return result["needs_compaction"]

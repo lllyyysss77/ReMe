@@ -38,13 +38,17 @@ class ReMeCli(ReMeFs):
             "/clear": "Clear the history.",
             "/help": "Show help.",
         }
+        self.working_dir = self.service_config.working_dir
 
     async def chat_with_remy(self, tool_result_max_size: int = 100, **kwargs):
         """Interactive CLI chat with Remy using simple streaming output."""
         language = self.service_config.language
-        print(f"ReMe language={language}")
+        print(f"ReMe language={language or 'default'}")
         tools: list[BaseTool] = [
-            FsMemorySearch(vector_weight=self.vector_weight, candidate_multiplier=self.candidate_multiplier),
+            FsMemorySearch(
+                vector_weight=self.service_config.metadata["vector_weight"],
+                candidate_multiplier=self.service_config.metadata["candidate_multiplier"],
+            ),
             BashTool(cwd=self.working_dir),
             LsTool(cwd=self.working_dir),
             ReadTool(cwd=self.working_dir),
@@ -65,9 +69,9 @@ class ReMeCli(ReMeFs):
 
         fs_cli = FsCli(
             tools=tools,
-            context_window_tokens=self.context_window_tokens,
-            reserve_tokens=self.reserve_tokens,
-            keep_recent_tokens=self.keep_recent_tokens,
+            context_window_tokens=self.service_config.metadata["context_window_tokens"],
+            reserve_tokens=self.service_config.metadata["reserve_tokens"],
+            keep_recent_tokens=self.service_config.metadata["keep_recent_tokens"],
             working_dir=self.working_dir,
             language=language,
             **kwargs,

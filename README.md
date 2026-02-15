@@ -38,6 +38,18 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ---
 
+
+
+https://github.com/user-attachments/assets/d731ae5c-80eb-498b-a22c-8ab2b9169f87
+
+
+
+https://github.com/user-attachments/assets/befa7e40-63ba-4db2-8251-516024616e00
+
+
+
+
+
 ## 📰 Latest Updates
 
 - **[2025-12]** 📄 Our procedural (task) memory paper has been released on [arXiv](https://arxiv.org/abs/2512.10696)

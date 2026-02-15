@@ -43,11 +43,11 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 - **[2025-12]** 💻 ReMeCli: File-based memory management for coding agents, inspired by [OpenClaw](https://github.com/openclaw/openclaw) ([Quick Start](docs/cli/quick_start_en.md))
 <table>
   <tr>
-    <td width="25%"></td>
-    <td width="50%">
+    <td width="10%"></td>
+    <td width="80%">
       <video src="https://github.com/user-attachments/assets/d731ae5c-80eb-498b-a22c-8ab2b9169f87" controls></video>
     </td>
-    <td width="25%"></td>
+    <td width="10%"></td>
   </tr>
 </table>
 

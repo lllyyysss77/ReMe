@@ -42,7 +42,9 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 - **[2025-12]** 💻 ReMeCli: File-based memory management for coding agents, inspired by [OpenClaw](https://github.com/openclaw/openclaw) ([Quick Start](docs/cli/quick_start_en.md))
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/d731ae5c-80eb-498b-a22c-8ab2b9169f87" width="600" controls></video>
+  <table><tr><td width="50%">
+    <video src="https://github.com/user-attachments/assets/d731ae5c-80eb-498b-a22c-8ab2b9169f87" controls></video>
+  </td></tr></table>
 </div>
 
 - **[2025-12]** 📄 Our procedural (task) memory paper has been released on [arXiv](https://arxiv.org/abs/2512.10696)

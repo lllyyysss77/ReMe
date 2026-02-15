@@ -54,7 +54,7 @@ ReMe 的长期记忆不依赖外部数据库——**Markdown 文件就是记忆�
 
 ---
 
-## 示例
+## ReMeCli Demo
 
 <video src="https://github.com/user-attachments/assets/befa7e40-63ba-4db2-8251-516024616e00" width="80%" controls></video>
 

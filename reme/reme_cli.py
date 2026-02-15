@@ -39,8 +39,10 @@ class ReMeCli(ReMeFs):
             "/help": "Show help.",
         }
 
-    async def chat_with_remy(self, tool_result_max_size: int = 100, language: str = "zh", **kwargs):
+    async def chat_with_remy(self, tool_result_max_size: int = 100, **kwargs):
         """Interactive CLI chat with Remy using simple streaming output."""
+        language = self.service_config.language
+        print(f"ReMe language={language}")
         tools: list[BaseTool] = [
             FsMemorySearch(vector_weight=self.vector_weight, candidate_multiplier=self.candidate_multiplier),
             BashTool(cwd=self.working_dir),
@@ -53,10 +55,10 @@ class ReMeCli(ReMeFs):
         tavily_api_key: str = os.getenv("TAVILY_API_KEY", "")
         dashscope_api_key: str = os.getenv("DASHSCOPE_API_KEY", "")
         if tavily_api_key:
-            tools.append(TavilySearch(name="web_search"))
+            tools.append(TavilySearch(name="web_search", language=language))
             print("find tavily_api_key, append Tavily search tool")
         elif dashscope_api_key:
-            tools.append(DashscopeSearch(name="web_search"))
+            tools.append(DashscopeSearch(name="web_search", language=language))
             print("find dashscope_api_key, append Dashscope search tool")
         else:
             print("No Tavily or Dashscope API key found, skip Tavily and Dashscope search tool")
@@ -108,13 +110,18 @@ class ReMeCli(ReMeFs):
                     break
 
                 if user_input == "/new":
-                    result = await fs_cli.reset()
+                    result = await fs_cli.new()
                     print(f"{result}\nConversation reset\n")
                     continue
 
                 if user_input == "/compact":
                     result = await fs_cli.compact(force_compact=True)
                     print(f"{result}\nHistory compacted.\n")
+                    continue
+
+                if user_input == "/history":
+                    result = fs_cli.format_history()
+                    print(f"Formated History:\n{result}\n")
                     continue
 
                 if user_input == "/clear":

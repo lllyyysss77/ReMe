@@ -19,7 +19,7 @@ memory_stores:
     store_name: reme
     embedding_model: default
     fts_enabled: true
-    vector_enabled: false
+    vector_enabled: true
 
 file_watchers:
   default:

@@ -43,11 +43,15 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 - **[2026-02]** 💻 ReMeCli: A terminal-based AI chat assistant with built-in memory management. Automatically compacts long conversations into summaries to free up context space, and persists important information as Markdown files for retrieval in future sessions. Memory design inspired by [OpenClaw](https://github.com/openclaw/openclaw). Try the `/horse` Easter egg for a Year of the Horse 2026 surprise -- fireworks, a galloping horse, and a random blessing. ([Quick Start](docs/cli/quick_start_en.md))
 <table border="0" cellspacing="0" cellpadding="0" style="border: none;">
   <tr style="border: none;">
-    <td width="10%" style="border: none;"></td>
+    <td width="10%" style="border: none; vertical-align: middle; text-align: center;">
+      <strong>马<br>上<br>有<br>钱</strong>
+    </td>
     <td width="80%" style="border: none;">
       <video src="https://github.com/user-attachments/assets/d731ae5c-80eb-498b-a22c-8ab2b9169f87" autoplay muted loop controls></video>
     </td>
-    <td width="10%" style="border: none;"></td>
+    <td width="10%" style="border: none; vertical-align: middle; text-align: center;">
+      <strong>马<br>到<br>成<br>功</strong>
+    </td>
   </tr>
 </table>
 

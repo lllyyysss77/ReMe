@@ -41,6 +41,17 @@ Agent Memory = Long-Term Memory + Short-Term Memory
 
 ## 📰 最新进展
 
+- **[2025-12]** 💻 ReMeCli：面向编程智能体的基于文件的记忆管理，灵感来源于 [OpenClaw](https://github.com/openclaw/openclaw)（[快速开始](docs/cli/quick_start_en.md)）
+<table>
+  <tr>
+    <td width="10%"></td>
+    <td width="80%">
+      <video src="https://github.com/user-attachments/assets/befa7e40-63ba-4db2-8251-516024616e00" autoplay muted loop controls></video>
+    </td>
+    <td width="10%"></td>
+  </tr>
+</table>
+
 - **[2025-12]** 📄 我们的程序性（任务）记忆论文已在 [arXiv](https://arxiv.org/abs/2512.10696) 发布
 - **[2025-11]** 🧠 基于工作记忆的 react-agent demo（[介绍](docs/work_memory/message_offload.md)、[Quick Start](docs/cookbook/working/quick_start.md)、[代码](cookbook/working_memory/work_memory_demo.py)）
 - **[2025-10]** 🚀 直接 Python 导入：支持 `from reme_ai import ReMeApp`，无需 HTTP/MCP 服务

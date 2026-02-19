@@ -169,6 +169,10 @@ class Application:
         """Get an LLM instance by name."""
         return self.service_context.llms.get(name)
 
+    def update_default_llm_name(self, name: str):
+        """Update the default LLM name."""
+        self.default_llm.model_name = name
+
     @property
     def default_embedding_model(self) -> BaseEmbeddingModel:
         """Get the default embedding model instance."""
@@ -177,6 +181,10 @@ class Application:
     def get_embedding_model(self, name: str):
         """Get an embedding model instance by name."""
         return self.service_context.embedding_models.get(name)
+
+    def update_default_embedding_name(self, name: str):
+        """Update the default embedding model name."""
+        self.default_embedding_model.model_name = name
 
     @property
     def default_vector_store(self) -> BaseVectorStore:

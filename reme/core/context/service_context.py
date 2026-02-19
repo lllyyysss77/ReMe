@@ -193,6 +193,7 @@ class ServiceContext(BaseContext):
                 logger.warning(f"Embedding model backend {config.backend} is not supported.")
             else:
                 self.embedding_models[name] = R.embedding_models[config.backend](
+                    cache_dir=self.working_path / "embedding_cache",
                     model_name=config.model_name,
                     **config.model_extra,
                 )
@@ -276,19 +277,24 @@ class ServiceContext(BaseContext):
 
     async def close(self):
         """Close all service components asynchronously."""
-        for _, vector_store in self.vector_stores.items():
+        for name, vector_store in self.vector_stores.items():
+            logger.info(f"Closing vector store: {name}")
             await vector_store.close()
 
-        for _, memory_store in self.memory_stores.items():
+        for name, memory_store in self.memory_stores.items():
+            logger.info(f"Closing memory store: {name}")
             await memory_store.close()
 
-        for _, file_watcher in self.file_watchers.items():
+        for name, file_watcher in self.file_watchers.items():
+            logger.info(f"Closing file watcher: {name}")
             await file_watcher.close()
 
-        for _, llm in self.llms.items():
+        for name, llm in self.llms.items():
+            logger.info(f"Closing LLM: {name}")
             await llm.close()
 
-        for _, embedding_model in self.embedding_models.items():
+        for name, embedding_model in self.embedding_models.items():
+            logger.info(f"Closing embedding model: {name}")
             await embedding_model.close()
 
         self.shutdown_thread_pool()

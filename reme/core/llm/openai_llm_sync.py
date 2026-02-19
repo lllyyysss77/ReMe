@@ -55,3 +55,4 @@ class OpenAILLMSync(OpenAILLM):
         if self._client is not None:
             self._client.close()
             self._client = None
+        super().close_sync()

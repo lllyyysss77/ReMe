@@ -48,6 +48,7 @@ class ChromaMemoryStore(BaseMemoryStore):
         self.chunks_collection: "chromadb.Collection | None" = None
         # Initialize metadata file path (db_path and store_name are set by base class)
         self._metadata_file: Path = self.db_path.parent / f"{self.store_name}_file_metadata.json"
+        self._metadata_cache: dict[str, dict[str, FileMetadata]] = {}
 
     @property
     def collection_name(self) -> str:
@@ -64,10 +65,7 @@ class ChromaMemoryStore(BaseMemoryStore):
             return {}
 
         try:
-            data = await self._run_sync_in_executor(
-                self._metadata_file.read_text,
-                encoding="utf-8",
-            )
+            data = self._metadata_file.read_text(encoding="utf-8")
             metadata_dict = json.loads(data)
 
             # Convert dict to FileMetadata objects
@@ -104,11 +102,7 @@ class ChromaMemoryStore(BaseMemoryStore):
                     }
 
             data = json.dumps(metadata_dict, indent=2, ensure_ascii=False)
-            await self._run_sync_in_executor(
-                self._metadata_file.write_text,
-                data,
-                encoding="utf-8",
-            )
+            self._metadata_file.write_text(data, encoding="utf-8")
             logger.debug(f"Saved file metadata to {self._metadata_file}")
         except Exception as e:
             logger.error(f"Failed to save file metadata to {self._metadata_file}: {e}")
@@ -121,8 +115,7 @@ class ChromaMemoryStore(BaseMemoryStore):
         self.db_path.mkdir(parents=True, exist_ok=True)
 
         # Initialize persistent ChromaDB client
-        self.client = await self._run_sync_in_executor(
-            chromadb.PersistentClient,
+        self.client = chromadb.PersistentClient(
             path=str(self.db_path),
             settings=Settings(
                 anonymized_telemetry=False,
@@ -132,11 +125,13 @@ class ChromaMemoryStore(BaseMemoryStore):
 
         # Get or create the chunks collection
         # ChromaDB uses cosine distance by default for similarity
-        self.chunks_collection = await self._run_sync_in_executor(
-            self.client.get_or_create_collection,
+        self.chunks_collection = self.client.get_or_create_collection(
             name=self.collection_name,
             metadata={"hnsw:space": "cosine"},
         )
+
+        # Load metadata into cache
+        self._metadata_cache = await self._load_metadata()
 
         logger.info(f"ChromaDB initialized with collection: {self.collection_name}")
         logger.info(f"File metadata will be persisted to: {self._metadata_file}")
@@ -181,70 +176,59 @@ class ChromaMemoryStore(BaseMemoryStore):
             )
 
         # Batch upsert to ChromaDB (always pass embeddings to prevent default embedding function)
-        await self._run_sync_in_executor(
-            self.chunks_collection.upsert,
+        self.chunks_collection.upsert(
             ids=ids,
             documents=documents,
             embeddings=embeddings,
             metadatas=metadatas,
         )
 
-        # Store file metadata to disk
-        metadata = await self._load_metadata()
-        if source.value not in metadata:
-            metadata[source.value] = {}
-        metadata[source.value][file_meta.path] = FileMetadata(
+        # Update file metadata in cache
+        if source.value not in self._metadata_cache:
+            self._metadata_cache[source.value] = {}
+        self._metadata_cache[source.value][file_meta.path] = FileMetadata(
             hash=file_meta.hash,
             mtime_ms=file_meta.mtime_ms,
             size=file_meta.size,
             path=file_meta.path,
             chunk_count=len(chunks),
         )
-        await self._save_metadata(metadata)
 
     async def delete_file(self, path: str, source: MemorySource) -> None:
         """Delete file and all its chunks."""
         # Query for all chunks with this path and source
-        results = await self._run_sync_in_executor(
-            self.chunks_collection.get,
+        results = self.chunks_collection.get(
             where={"$and": [{"path": path}, {"source": source.value}]},
             include=[],
         )
 
         if results["ids"]:
-            await self._run_sync_in_executor(
-                self.chunks_collection.delete,
+            self.chunks_collection.delete(
                 ids=results["ids"],
             )
 
-        # Remove from file metadata
-        metadata = await self._load_metadata()
-        if source.value in metadata:
-            metadata[source.value].pop(path, None)
-        await self._save_metadata(metadata)
+        # Remove from file metadata cache
+        if source.value in self._metadata_cache:
+            self._metadata_cache[source.value].pop(path, None)
 
     async def delete_file_chunks(self, path: str, chunk_ids: list[str]) -> None:
         """Delete specific chunks for a file."""
         if not chunk_ids:
             return
 
-        await self._run_sync_in_executor(
-            self.chunks_collection.delete,
+        self.chunks_collection.delete(
             ids=chunk_ids,
         )
 
-        # Update chunk count in file metadata
-        metadata = await self._load_metadata()
-        for source_meta in metadata.values():
+        # Update chunk count in file metadata cache
+        for source_meta in self._metadata_cache.values():
             if path in source_meta:
                 # Recalculate chunk count
-                results = await self._run_sync_in_executor(
-                    self.chunks_collection.get,
+                results = self.chunks_collection.get(
                     where={"path": path},
                     include=[],
                 )
                 source_meta[path].chunk_count = len(results["ids"])
-                await self._save_metadata(metadata)
                 break
 
     async def upsert_chunks(
@@ -282,8 +266,7 @@ class ChromaMemoryStore(BaseMemoryStore):
             )
 
         # Always pass embeddings to prevent default embedding function
-        await self._run_sync_in_executor(
-            self.chunks_collection.upsert,
+        self.chunks_collection.upsert(
             ids=ids,
             documents=documents,
             embeddings=embeddings,
@@ -292,10 +275,9 @@ class ChromaMemoryStore(BaseMemoryStore):
 
     async def list_files(self, source: MemorySource) -> list[str]:
         """List all indexed files for a source."""
-        metadata = await self._load_metadata()
-        if source.value not in metadata:
+        if source.value not in self._metadata_cache:
             return []
-        return list(metadata[source.value].keys())
+        return list(self._metadata_cache[source.value].keys())
 
     async def get_file_metadata(
         self,
@@ -303,10 +285,9 @@ class ChromaMemoryStore(BaseMemoryStore):
         source: MemorySource,
     ) -> FileMetadata | None:
         """Get file metadata with chunk count."""
-        metadata = await self._load_metadata()
-        if source.value not in metadata:
+        if source.value not in self._metadata_cache:
             return None
-        return metadata[source.value].get(path)
+        return self._metadata_cache[source.value].get(path)
 
     async def get_file_chunks(
         self,
@@ -314,8 +295,7 @@ class ChromaMemoryStore(BaseMemoryStore):
         source: MemorySource,
     ) -> list[MemoryChunk]:
         """Get all chunks for a file."""
-        results = await self._run_sync_in_executor(
-            self.chunks_collection.get,
+        results = self.chunks_collection.get(
             where={"$and": [{"path": path}, {"source": source.value}]},
             include=["documents", "embeddings", "metadatas"],
         )
@@ -364,8 +344,7 @@ class ChromaMemoryStore(BaseMemoryStore):
                 where_filter = {"source": {"$in": [s.value for s in sources]}}
 
         # Perform vector search
-        results = await self._run_sync_in_executor(
-            self.chunks_collection.query,
+        results = self.chunks_collection.query(
             query_embeddings=[query_embedding],
             n_results=limit,
             where=where_filter,
@@ -445,8 +424,7 @@ class ChromaMemoryStore(BaseMemoryStore):
             where_document = {"$or": [{"$contains": w} for w in word_variants_list]}
 
         # Get all matching documents
-        results = await self._run_sync_in_executor(
-            self.chunks_collection.get,
+        results = self.chunks_collection.get(
             where=where_filter,
             where_document=where_document,
             include=["documents", "metadatas"],
@@ -589,23 +567,27 @@ class ChromaMemoryStore(BaseMemoryStore):
     async def clear_all(self) -> None:
         """Clear all indexed data."""
         # Delete and recreate the collection
-        await self._run_sync_in_executor(
-            self.client.delete_collection,
+        self.client.delete_collection(
             name=self.collection_name,
         )
-        self.chunks_collection = await self._run_sync_in_executor(
-            self.client.get_or_create_collection,
+        self.chunks_collection = self.client.get_or_create_collection(
             name=self.collection_name,
             metadata={"hnsw:space": "cosine"},
         )
 
-        # Clear file metadata on disk
+        # Clear file metadata cache and disk
+        self._metadata_cache = {}
         await self._save_metadata({})
 
         logger.info(f"Cleared all data from ChromaDB collection: {self.collection_name}")
 
     async def close(self) -> None:
         """Close ChromaDB client and release resources."""
+        # Persist metadata cache to disk before closing
+        if self._metadata_cache:
+            await self._save_metadata(self._metadata_cache)
+
         # ChromaDB PersistentClient handles persistence automatically
         self.client = None
         self.chunks_collection = None
+        await super().close()

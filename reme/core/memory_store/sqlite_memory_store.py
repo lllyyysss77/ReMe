@@ -958,3 +958,4 @@ class SqliteMemoryStore(BaseMemoryStore):
         if self.conn:
             self.conn.close()
             self.conn = None
+        await super().close()

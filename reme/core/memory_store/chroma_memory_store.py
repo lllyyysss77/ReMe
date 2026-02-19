@@ -609,3 +609,4 @@ class ChromaMemoryStore(BaseMemoryStore):
         # ChromaDB PersistentClient handles persistence automatically
         self.client = None
         self.chunks_collection = None
+        await super().close()

@@ -63,10 +63,7 @@ class LocalMemoryStore(BaseMemoryStore):
         if not self._chunks_file.exists():
             return
         try:
-            data = await self._run_sync_in_executor(
-                self._chunks_file.read_text,
-                encoding="utf-8",
-            )
+            data = self._chunks_file.read_text(encoding="utf-8")
             self._chunks = {}
             for line in data.strip().split("\n"):
                 if not line:
@@ -96,11 +93,7 @@ class LocalMemoryStore(BaseMemoryStore):
                 }
                 lines.append(json.dumps(chunk_dict, ensure_ascii=False))
             data = "\n".join(lines)
-            await self._run_sync_in_executor(
-                self._chunks_file.write_text,
-                data,
-                encoding="utf-8",
-            )
+            self._chunks_file.write_text(data, encoding="utf-8")
             logger.debug(f"Saved {len(self._chunks)} chunks to {self._chunks_file}")
         except Exception as e:
             logger.error(f"Failed to save chunks to {self._chunks_file}: {e}")
@@ -110,10 +103,7 @@ class LocalMemoryStore(BaseMemoryStore):
         if not self._metadata_file.exists():
             return
         try:
-            data = await self._run_sync_in_executor(
-                self._metadata_file.read_text,
-                encoding="utf-8",
-            )
+            data = self._metadata_file.read_text(encoding="utf-8")
             raw: dict = json.loads(data)
             self._files = {
                 source: {path: FileMetadata(**meta) for path, meta in files.items()} for source, files in raw.items()
@@ -138,11 +128,7 @@ class LocalMemoryStore(BaseMemoryStore):
                     for path, meta in files.items()
                 }
             data = json.dumps(raw, indent=2, ensure_ascii=False)
-            await self._run_sync_in_executor(
-                self._metadata_file.write_text,
-                data,
-                encoding="utf-8",
-            )
+            self._metadata_file.write_text(data, encoding="utf-8")
             logger.debug(f"Saved file metadata to {self._metadata_file}")
         except Exception as e:
             logger.error(f"Failed to save file metadata to {self._metadata_file}: {e}")
@@ -216,9 +202,6 @@ class LocalMemoryStore(BaseMemoryStore):
             chunk_count=len(chunks),
         )
 
-        await self._save_chunks()
-        await self._save_metadata()
-
     async def delete_file(self, path: str, source: MemorySource) -> None:
         """Delete file and all its chunks."""
         to_delete = [cid for cid, rec in self._chunks.items() if rec.path == path and rec.source == source.value]
@@ -227,9 +210,6 @@ class LocalMemoryStore(BaseMemoryStore):
 
         if source.value in self._files:
             self._files[source.value].pop(path, None)
-
-        await self._save_chunks()
-        await self._save_metadata()
 
     async def delete_file_chunks(self, path: str, chunk_ids: list[str]) -> None:
         """Delete specific chunks for a file."""
@@ -243,9 +223,6 @@ class LocalMemoryStore(BaseMemoryStore):
         for source_meta in self._files.values():
             if path in source_meta:
                 source_meta[path].chunk_count = sum(1 for rec in self._chunks.values() if rec.path == path)
-
-        await self._save_chunks()
-        await self._save_metadata()
 
     async def upsert_chunks(
         self,
@@ -271,8 +248,6 @@ class LocalMemoryStore(BaseMemoryStore):
                 embedding=chunk.embedding,
                 updated_at=now,
             )
-
-        await self._save_chunks()
 
     # ------------------------------------------------------------------
     # Read operations

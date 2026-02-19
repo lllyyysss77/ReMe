@@ -1013,7 +1013,7 @@ async def cleanup_store(store: BaseMemoryStore, store_type: str):
             if db_dir.exists():
                 shutil.rmtree(db_dir)
                 logger.info(f"✓ Cleaned up directory: {db_dir}")
-            for suffix in ("_chunks.json", "_file_metadata.json"):
+            for suffix in ("_chunks.jsonl", "_file_metadata.json"):
                 json_file = db_dir.parent / f"{config.NAME}{suffix}"
                 if json_file.exists():
                     json_file.unlink()

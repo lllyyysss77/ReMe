@@ -81,32 +81,28 @@ class FsCompactor(BaseOp):
         messages_to_summarize = self._normalize_messages(messages_to_summarize)
         turn_prefix_messages = self._normalize_messages(turn_prefix_messages)
 
+        # Build prompt messages once before branching
+        history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
+        turn_prefix_prompt_messages = self._build_turn_prefix_prompt(turn_prefix_messages)
+
         if self.return_prompt:
-            result = {
-                "system": self.get_prompt("system_prompt"),
-            }
+            result = {"system": self.get_prompt("system_prompt")}
 
-            if messages_to_summarize:
-                history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
-                if len(history_prompt_messages) == 2:
-                    result["history_user"] = history_prompt_messages[-1].content
+            if len(history_prompt_messages) == 2:
+                result["history_user"] = history_prompt_messages[-1].content
 
-            if turn_prefix_messages:
-                turn_prefix_prompt_messages = self._build_turn_prefix_prompt(turn_prefix_messages)
-                if len(turn_prefix_prompt_messages) == 2:
-                    result["turn_prefix_user"] = turn_prefix_prompt_messages[-1].content
+            if len(turn_prefix_prompt_messages) == 2:
+                result["turn_prefix_user"] = turn_prefix_prompt_messages[-1].content
 
             return result
 
         else:
-            if messages_to_summarize:
-                history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
+            if history_prompt_messages:
                 history_summary = "**History Summary**:\n\n" + await self._generate_summary(history_prompt_messages)
             else:
                 history_summary = ""
 
-            if turn_prefix_messages:
-                turn_prefix_prompt_messages = self._build_turn_prefix_prompt(turn_prefix_messages)
+            if turn_prefix_prompt_messages:
                 turn_prefix_summary = "**Turn Context**:\n\n" + await self._generate_summary(
                     turn_prefix_prompt_messages,
                 )

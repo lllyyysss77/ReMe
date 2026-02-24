@@ -39,7 +39,7 @@ class FsSummarizer(BaseReact):
                     content=f"<conversation>\n{conversation}\n</conversation>\n"
                     + self.prompt_format(
                         "user_message_default",
-                        conversation=format_messages(messages, add_index=False),
+                        conversation=conversation,
                         working_dir=self.working_dir,
                         date=date_str,
                         memory_dir=self.memory_dir,

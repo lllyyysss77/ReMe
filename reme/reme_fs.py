@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-from loguru import logger
-
 from .agent.fs import FsCompactor, FsContextChecker, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
@@ -83,7 +81,6 @@ class ReMeFs(Application):
         self.service_config.metadata.setdefault("keep_recent_tokens", keep_recent_tokens)
         self.service_config.metadata.setdefault("vector_weight", vector_weight)
         self.service_config.metadata.setdefault("candidate_multiplier", candidate_multiplier)
-        logger.info(f"ReMe model_extra config: {self.service_config.metadata}")
 
     async def context_check(self, messages: list[Message | dict]) -> dict:
         """Check if messages exceed context limits."""

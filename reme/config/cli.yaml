@@ -11,7 +11,8 @@ metadata:
 llms:
   default:
     backend: openai
-    model_name: qwen3-235b-a22b-thinking-2507
+#    model_name: qwen3-235b-a22b-thinking-2507
+    model_name: qwen3.5-plus
     request_interval: 1
 
 embedding_models:

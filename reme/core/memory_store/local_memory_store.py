@@ -51,8 +51,8 @@ class LocalMemoryStore(BaseMemoryStore):
         self._chunks: dict[str, _ChunkRecord] = {}
         self._files: dict[str, dict[str, FileMetadata]] = {}  # source -> path -> meta
         # Persistence paths (mirror ChromaMemoryStore convention)
-        self._chunks_file: Path = self.db_path.parent / f"{self.store_name}_chunks.jsonl"
-        self._metadata_file: Path = self.db_path.parent / f"{self.store_name}_file_metadata.json"
+        self._chunks_file: Path = self.db_path / f"{self.store_name}_chunks.jsonl"
+        self._metadata_file: Path = self.db_path / f"{self.store_name}_file_metadata.json"
 
     # ------------------------------------------------------------------
     # Persistence helpers
@@ -142,7 +142,6 @@ class LocalMemoryStore(BaseMemoryStore):
         if self._started:
             return
         self._started = True
-        self.db_path.mkdir(parents=True, exist_ok=True)
         await self._load_metadata()
         await self._load_chunks()
         logger.info(

@@ -83,7 +83,6 @@ class MemoryStoreConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     backend: str = Field(default="sqlite")
-    db_name: str = Field(default="reme.db")
     store_name: str = Field(default="reme")
     embedding_model: str = Field(default="default")
 
@@ -114,7 +113,7 @@ class ServiceConfig(BaseModel):
 
     backend: str = Field(default="")
     app_name: str = Field(default=os.getenv("APP_NAME", "ReMe"))
-    working_dir: str | None = Field(default=None)
+    working_dir: str = Field(default=".reme")
     enable_logo: bool = Field(default=True)
     language: str = Field(default="")
     thread_pool_max_workers: int = Field(default=16)
@@ -122,8 +121,8 @@ class ServiceConfig(BaseModel):
     log_to_console: bool = Field(default=True)
     disabled_flows: list[str] = Field(default_factory=list)
     enabled_flows: list[str] = Field(default_factory=list)
-    mcp_servers: dict[str, dict] = Field(default_factory=dict)
 
+    mcp_servers: dict[str, dict] = Field(default_factory=dict)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
     http: HttpConfig = Field(default_factory=HttpConfig)
     cmd: CmdConfig = Field(default_factory=CmdConfig)

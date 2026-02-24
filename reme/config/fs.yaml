@@ -3,8 +3,8 @@ backend: cmd
 llms:
   default:
     backend: openai
-#    model_name: qwen3-30b-a3b-instruct-2507
-#    model_name: qwen3-30b-a3b-thinking-2507
+    #    model_name: qwen3-30b-a3b-instruct-2507
+    #    model_name: qwen3-30b-a3b-thinking-2507
     model_name: qwen3-235b-a22b-thinking-2507
     request_interval: 1
 #    temperature: 0.0001
@@ -17,9 +17,9 @@ embedding_models:
 
 memory_stores:
   default:
-#    backend: sqlite
+    #    backend: sqlite
     backend: chroma
-#    backend: local
+    #    backend: local
     db_name: reme.db
     store_name: reme
     embedding_model: default
@@ -30,8 +30,8 @@ file_watchers:
   default:
     backend: full
     memory_store: default
-    watch_paths: [".reme", ".reme/memory"]
-    suffix_filters: [".md"]
+    watch_paths: [ ".reme", ".reme/memory" ]
+    suffix_filters: [ ".md" ]
     recursive: false
     scan_on_start: true
 

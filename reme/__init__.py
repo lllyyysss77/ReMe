@@ -20,8 +20,7 @@ __all__ = [
     "ReMeFs",
 ]
 
-__version__ = "0.3.0.0b3"
-
+__version__ = "0.3.0.0b4"
 
 """
 conda create -n fl_test2 python=3.10

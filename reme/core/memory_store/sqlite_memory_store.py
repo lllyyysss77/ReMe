@@ -4,7 +4,6 @@ import json
 import sqlite3
 import struct
 import time
-from pathlib import Path
 
 from loguru import logger
 
@@ -63,9 +62,7 @@ class SqliteMemoryStore(BaseMemoryStore):
         if self.conn is not None:
             return
 
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.conn = sqlite3.connect(self.db_path / "reme.db", check_same_thread=False)
 
         # Only load sqlite-vec extension if vector search is enabled
         if self.vector_enabled:

@@ -59,7 +59,7 @@ token_counters:
     model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct
     use_mirror: true
 
-flow:
+flows:
   retrieve_task_memory:
     flow_content: BuildQuery() >> MemoryRetrieval() >> RerankMemory() >> RewriteMemory()
     description: "Retrieves the most relevant top-k memory experiences from historical data based on the current query to enhance task-solving capabilities"

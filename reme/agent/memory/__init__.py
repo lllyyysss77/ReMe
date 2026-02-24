@@ -1,12 +1,12 @@
 """memory agent"""
 
 from .base_memory_agent import BaseMemoryAgent
+from .personal.personal_halumem_retriever import PersonalHalumemRetriever
+from .personal.personal_halumem_summarizer import PersonalHalumemSummarizer
 from .personal.personal_retriever import PersonalRetriever
 from .personal.personal_summarizer import PersonalSummarizer
 from .personal.personal_v1_retriever import PersonalV1Retriever
 from .personal.personal_v1_summarizer import PersonalV1Summarizer
-from .personal.personal_halumem_retriever import PersonalHalumemRetriever
-from .personal.personal_halumem_summarizer import PersonalHalumemSummarizer
 from .procedural.procedural_retriever import ProceduralRetriever
 from .procedural.procedural_summarizer import ProceduralSummarizer
 from .reme_retriever import ReMeRetriever

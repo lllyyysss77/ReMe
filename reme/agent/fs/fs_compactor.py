@@ -11,6 +11,10 @@ from ...core.utils import format_messages
 class FsCompactor(BaseOp):
     """Generate summaries for conversation history compaction."""
 
+    def __init__(self, return_prompt: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self.return_prompt = return_prompt
+
     @staticmethod
     def _normalize_messages(messages: list[Message | dict]) -> list[Message]:
         """Convert dict messages to Message objects."""
@@ -27,7 +31,7 @@ class FsCompactor(BaseOp):
         return format_messages(
             messages=messages,
             add_index=False,
-            add_time=False,
+            add_time=True,
             use_name=True,
             add_reasoning=False,
             add_tools=True,
@@ -58,33 +62,57 @@ class FsCompactor(BaseOp):
 
         system_prompt = self.get_prompt("system_prompt")
         conversation_text = self._serialize_conversation(turn_prefix_messages)
-        turn_prefix_prompt = self.prompt_format("turn_prefix_summarization", conversation_text=conversation_text)
+        turn_prefix_prompt = self.prompt_format(
+            "turn_prefix_summarization",
+            conversation_text=conversation_text,
+        )
 
         return [
             Message(role=Role.SYSTEM, content=system_prompt),
             Message(role=Role.USER, content=turn_prefix_prompt),
         ]
 
-    async def execute(self) -> str:
+    async def execute(self) -> str | dict:
         """Generate summary for conversation history."""
         messages_to_summarize = self.context.get("messages_to_summarize", [])
         turn_prefix_messages = self.context.get("turn_prefix_messages", [])
         previous_summary = self.context.get("previous_summary", "")
 
         messages_to_summarize = self._normalize_messages(messages_to_summarize)
-        if messages_to_summarize:
-            history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
-            history_summary = "**History Summary**:\n\n" + await self._generate_summary(history_prompt_messages)
-        else:
-            history_summary = ""
-
         turn_prefix_messages = self._normalize_messages(turn_prefix_messages)
-        if turn_prefix_messages:
-            turn_prefix_prompt_messages = self._build_turn_prefix_prompt(turn_prefix_messages)
-            turn_prefix_summary = "**Turn Context**:\n\n" + await self._generate_summary(turn_prefix_prompt_messages)
-        else:
-            turn_prefix_summary = ""
 
-        summary = "\n\n---".join([history_summary, turn_prefix_summary])
-        logger.info(f"Generated summary: {summary}")
-        return summary
+        if self.return_prompt:
+            result = {
+                "system": self.get_prompt("system_prompt"),
+            }
+
+            if messages_to_summarize:
+                history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
+                if len(history_prompt_messages) == 2:
+                    result["history_user"] = history_prompt_messages[-1].content
+
+            if turn_prefix_messages:
+                turn_prefix_prompt_messages = self._build_turn_prefix_prompt(turn_prefix_messages)
+                if len(turn_prefix_prompt_messages) == 2:
+                    result["turn_prefix_user"] = turn_prefix_prompt_messages[-1].content
+
+            return result
+
+        else:
+            if messages_to_summarize:
+                history_prompt_messages = self._build_history_prompt(messages_to_summarize, previous_summary)
+                history_summary = "**History Summary**:\n\n" + await self._generate_summary(history_prompt_messages)
+            else:
+                history_summary = ""
+
+            if turn_prefix_messages:
+                turn_prefix_prompt_messages = self._build_turn_prefix_prompt(turn_prefix_messages)
+                turn_prefix_summary = "**Turn Context**:\n\n" + await self._generate_summary(
+                    turn_prefix_prompt_messages,
+                )
+            else:
+                turn_prefix_summary = ""
+
+            summary = "\n\n---".join([history_summary, turn_prefix_summary])
+            logger.info(f"Generated summary: {summary}")
+            return summary

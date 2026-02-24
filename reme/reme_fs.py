@@ -101,7 +101,7 @@ class ReMeFs(Application):
         previous_summary: str = "",
         language: str = "zh",
         **kwargs,
-    ) -> str:
+    ) -> str | dict:
         """Compact messages into a summary."""
         compactor = FsCompactor(language=language, **kwargs)
         return await compactor.call(
@@ -118,7 +118,7 @@ class ReMeFs(Application):
         version: str = "default",
         language: str = "zh",
         **kwargs,
-    ):
+    ) -> str | dict:
         """Generate a summary of the given messages."""
         summarizer = FsSummarizer(
             tools=[

@@ -112,8 +112,6 @@ class ChromaMemoryStore(BaseMemoryStore):
         if self.client is not None:
             return
 
-        self.db_path.mkdir(parents=True, exist_ok=True)
-
         # Initialize persistent ChromaDB client
         self.client = chromadb.PersistentClient(
             path=str(self.db_path),

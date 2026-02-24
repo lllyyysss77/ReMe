@@ -23,7 +23,7 @@ embedding_models:
 memory_stores:
   default:
     backend: chroma
-#    backend: local
+    #    backend: local
     db_name: reme.db
     store_name: reme
     embedding_model: default
@@ -34,8 +34,8 @@ file_watchers:
   default:
     backend: full
     memory_store: default
-    watch_paths: [".reme", ".reme/memory"]
-    suffix_filters: [".md"]
+    watch_paths: [ ".reme", ".reme/memory" ]
+    suffix_filters: [ ".md" ]
     recursive: false
     scan_on_start: true
 

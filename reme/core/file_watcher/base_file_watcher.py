@@ -134,10 +134,10 @@ class BaseFileWatcher:
                             existing_files.add((Change.added, str(file_path)))
 
         if existing_files:
-            logger.info(f"Found {len(existing_files)} existing files to process")
+            logger.info(f"[SCAN_ON_START] Found {len(existing_files)} existing files matching watch criteria")
             await self.on_changes(existing_files)
         else:
-            logger.info("No existing files found matching watch criteria")
+            logger.info("[SCAN_ON_START] No existing files found matching watch criteria")
 
         files: list[str] = await self.memory_store.list_files(MemorySource.MEMORY)
         for file_path in files:

@@ -136,6 +136,7 @@ class BaseFileWatcher:
         if existing_files:
             logger.info(f"[SCAN_ON_START] Found {len(existing_files)} existing files matching watch criteria")
             await self.on_changes(existing_files)
+            logger.info(f"[SCAN_ON_START] Added {len(existing_files)} files to memory store")
         else:
             logger.info("[SCAN_ON_START] No existing files found matching watch criteria")
 

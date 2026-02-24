@@ -160,7 +160,7 @@ class BaseEmbeddingModel(ABC):
                     # Each line is {cache_key: embedding}
                     cache_key, embedding = next(iter(data.items()))
 
-                    if cache_key and embedding:
+                    if cache_key and embedding and isinstance(embedding, list):
                         # Skip if already loaded (keep the newest)
                         if cache_key in self._embedding_cache:
                             continue

@@ -185,8 +185,7 @@ class LocalMemoryStore(BaseMemoryStore):
         for source_key, source_meta in self._files.items():
             if path in source_meta:
                 source_meta[path].chunk_count = sum(
-                    1 for chunk in self._chunks.values()
-                    if chunk.path == path and chunk.source.value == source_key
+                    1 for chunk in self._chunks.values() if chunk.path == path and chunk.source.value == source_key
                 )
 
     async def upsert_chunks(
@@ -249,8 +248,7 @@ class LocalMemoryStore(BaseMemoryStore):
 
         # Collect candidate chunks with embeddings
         candidates = [
-            chunk for chunk in self._chunks.values()
-            if (not sources or chunk.source in sources) and chunk.embedding
+            chunk for chunk in self._chunks.values() if (not sources or chunk.source in sources) and chunk.embedding
         ]
 
         if not candidates:

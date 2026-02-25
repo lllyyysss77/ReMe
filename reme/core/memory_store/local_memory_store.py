@@ -5,12 +5,13 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 from loguru import logger
 
 from .base_memory_store import BaseMemoryStore
 from ..enumeration import MemorySource
 from ..schema import FileMetadata, MemoryChunk, MemorySearchResult
-from ..utils.common_utils import cosine_similarity
+from ..utils.common_utils import batch_cosine_similarity
 
 
 @dataclass
@@ -305,25 +306,37 @@ class LocalMemoryStore(BaseMemoryStore):
             return []
 
         source_values = {s.value for s in sources} if sources else None
-        results = []
+
+        # Collect candidate chunks with embeddings
+        candidates: list[tuple[_ChunkRecord, list[float]]] = []
         for rec in self._chunks.values():
             if source_values and rec.source not in source_values:
                 continue
             if not rec.embedding:
                 continue
+            candidates.append((rec, rec.embedding))
 
-            similarity = cosine_similarity(query_embedding, rec.embedding)
-            results.append(
-                MemorySearchResult(
-                    path=rec.path,
-                    start_line=rec.start_line,
-                    end_line=rec.end_line,
-                    score=similarity,
-                    snippet=rec.text,
-                    source=MemorySource(rec.source),
-                    raw_metric=1.0 - similarity,  # distance equivalent
-                ),
+        if not candidates:
+            return []
+
+        # Build embedding matrix and compute similarities in batch
+        query_array = np.array([query_embedding])  # Shape: (1, emb_size)
+        chunk_embeddings = np.array([emb for _, emb in candidates])  # Shape: (n, emb_size)
+        similarities = batch_cosine_similarity(query_array, chunk_embeddings)[0]  # Shape: (n,)
+
+        # Build results
+        results = [
+            MemorySearchResult(
+                path=rec.path,
+                start_line=rec.start_line,
+                end_line=rec.end_line,
+                score=float(similarity),
+                snippet=rec.text,
+                source=MemorySource(rec.source),
+                raw_metric=1.0 - float(similarity),
             )
+            for (rec, _), similarity in zip(candidates, similarities)
+        ]
 
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:limit]

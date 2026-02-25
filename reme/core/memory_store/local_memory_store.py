@@ -1,8 +1,6 @@
 """Pure-Python in-memory storage backend for memory index, with JSON file persistence."""
 
 import json
-import time
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -12,21 +10,6 @@ from .base_memory_store import BaseMemoryStore
 from ..enumeration import MemorySource
 from ..schema import FileMetadata, MemoryChunk, MemorySearchResult
 from ..utils.common_utils import batch_cosine_similarity
-
-
-@dataclass
-class _ChunkRecord:
-    """Internal in-memory representation of a stored chunk."""
-
-    id: str
-    path: str
-    source: str
-    start_line: int
-    end_line: int
-    text: str
-    hash: str
-    embedding: list[float] | None
-    updated_at: int
 
 
 class LocalMemoryStore(BaseMemoryStore):
@@ -49,7 +32,7 @@ class LocalMemoryStore(BaseMemoryStore):
         super().__init__(**kwargs)
         self._started: bool = False
         # In-memory indexes
-        self._chunks: dict[str, _ChunkRecord] = {}
+        self._chunks: dict[str, MemoryChunk] = {}
         self._files: dict[str, dict[str, FileMetadata]] = {}  # source -> path -> meta
         # Persistence paths (mirror ChromaMemoryStore convention)
         self._chunks_file: Path = self.db_path / f"{self.store_name}_chunks.jsonl"
@@ -70,8 +53,8 @@ class LocalMemoryStore(BaseMemoryStore):
                 if not line:
                     continue
                 rec = json.loads(line)
-                chunk_id = rec["id"]
-                self._chunks[chunk_id] = _ChunkRecord(**rec)
+                chunk = MemoryChunk.model_validate(rec)
+                self._chunks[chunk.id] = chunk
             logger.debug(f"Loaded {len(self._chunks)} chunks from {self._chunks_file}")
         except Exception as e:
             logger.warning(f"Failed to load chunks from {self._chunks_file}: {e}")
@@ -80,18 +63,8 @@ class LocalMemoryStore(BaseMemoryStore):
         """Persist chunks to JSONL file."""
         try:
             lines = []
-            for rec in self._chunks.values():
-                chunk_dict = {
-                    "id": rec.id,
-                    "path": rec.path,
-                    "source": rec.source,
-                    "start_line": rec.start_line,
-                    "end_line": rec.end_line,
-                    "text": rec.text,
-                    "hash": rec.hash,
-                    "embedding": rec.embedding,
-                    "updated_at": rec.updated_at,
-                }
+            for chunk in self._chunks.values():
+                chunk_dict = chunk.model_dump(mode="json")
                 lines.append(json.dumps(chunk_dict, ensure_ascii=False))
             data = "\n".join(lines)
             self._chunks_file.write_text(data, encoding="utf-8")
@@ -178,19 +151,8 @@ class LocalMemoryStore(BaseMemoryStore):
         # Batch generate embeddings (base class returns mock embeddings when vector_enabled=False)
         chunks = await self.get_chunk_embeddings(chunks)
 
-        now = int(time.time() * 1000)
         for chunk in chunks:
-            self._chunks[chunk.id] = _ChunkRecord(
-                id=chunk.id,
-                path=file_meta.path,
-                source=source.value,
-                start_line=chunk.start_line,
-                end_line=chunk.end_line,
-                text=chunk.text,
-                hash=chunk.hash,
-                embedding=chunk.embedding,
-                updated_at=now,
-            )
+            self._chunks[chunk.id] = chunk
 
         if source.value not in self._files:
             self._files[source.value] = {}
@@ -204,7 +166,7 @@ class LocalMemoryStore(BaseMemoryStore):
 
     async def delete_file(self, path: str, source: MemorySource) -> None:
         """Delete file and all its chunks."""
-        to_delete = [cid for cid, rec in self._chunks.items() if rec.path == path and rec.source == source.value]
+        to_delete = [cid for cid, chunk in self._chunks.items() if chunk.path == path and chunk.source == source]
         for cid in to_delete:
             del self._chunks[cid]
 
@@ -219,10 +181,13 @@ class LocalMemoryStore(BaseMemoryStore):
         for cid in chunk_ids:
             self._chunks.pop(cid, None)
 
-        # Recalculate chunk_count in file metadata
-        for source_meta in self._files.values():
+        # Recalculate chunk_count in file metadata (per source)
+        for source_key, source_meta in self._files.items():
             if path in source_meta:
-                source_meta[path].chunk_count = sum(1 for rec in self._chunks.values() if rec.path == path)
+                source_meta[path].chunk_count = sum(
+                    1 for chunk in self._chunks.values()
+                    if chunk.path == path and chunk.source.value == source_key
+                )
 
     async def upsert_chunks(
         self,
@@ -235,19 +200,8 @@ class LocalMemoryStore(BaseMemoryStore):
 
         chunks = await self.get_chunk_embeddings(chunks)
 
-        now = int(time.time() * 1000)
         for chunk in chunks:
-            self._chunks[chunk.id] = _ChunkRecord(
-                id=chunk.id,
-                path=chunk.path,
-                source=source.value,
-                start_line=chunk.start_line,
-                end_line=chunk.end_line,
-                text=chunk.text,
-                hash=chunk.hash,
-                embedding=chunk.embedding,
-                updated_at=now,
-            )
+            self._chunks[chunk.id] = chunk
 
     # ------------------------------------------------------------------
     # Read operations
@@ -271,21 +225,9 @@ class LocalMemoryStore(BaseMemoryStore):
         source: MemorySource,
     ) -> list[MemoryChunk]:
         """Get all chunks for a file, sorted by start_line."""
-        records = [rec for rec in self._chunks.values() if rec.path == path and rec.source == source.value]
-        records.sort(key=lambda r: r.start_line)
-        return [
-            MemoryChunk(
-                id=rec.id,
-                path=rec.path,
-                source=MemorySource(rec.source),
-                start_line=rec.start_line,
-                end_line=rec.end_line,
-                text=rec.text,
-                hash=rec.hash,
-                embedding=rec.embedding,
-            )
-            for rec in records
-        ]
+        chunks = [chunk for chunk in self._chunks.values() if chunk.path == path and chunk.source == source]
+        chunks.sort(key=lambda c: c.start_line)
+        return chunks
 
     # ------------------------------------------------------------------
     # Search
@@ -305,37 +247,32 @@ class LocalMemoryStore(BaseMemoryStore):
         if not query_embedding:
             return []
 
-        source_values = {s.value for s in sources} if sources else None
-
         # Collect candidate chunks with embeddings
-        candidates: list[tuple[_ChunkRecord, list[float]]] = []
-        for rec in self._chunks.values():
-            if source_values and rec.source not in source_values:
-                continue
-            if not rec.embedding:
-                continue
-            candidates.append((rec, rec.embedding))
+        candidates = [
+            chunk for chunk in self._chunks.values()
+            if (not sources or chunk.source in sources) and chunk.embedding
+        ]
 
         if not candidates:
             return []
 
         # Build embedding matrix and compute similarities in batch
         query_array = np.array([query_embedding])  # Shape: (1, emb_size)
-        chunk_embeddings = np.array([emb for _, emb in candidates])  # Shape: (n, emb_size)
+        chunk_embeddings = np.array([chunk.embedding for chunk in candidates])  # Shape: (n, emb_size)
         similarities = batch_cosine_similarity(query_array, chunk_embeddings)[0]  # Shape: (n,)
 
         # Build results
         results = [
             MemorySearchResult(
-                path=rec.path,
-                start_line=rec.start_line,
-                end_line=rec.end_line,
+                path=chunk.path,
+                start_line=chunk.start_line,
+                end_line=chunk.end_line,
                 score=float(similarity),
-                snippet=rec.text,
-                source=MemorySource(rec.source),
+                snippet=chunk.text,
+                source=chunk.source,
                 raw_metric=1.0 - float(similarity),
             )
-            for (rec, _), similarity in zip(candidates, similarities)
+            for chunk, similarity in zip(candidates, similarities)
         ]
 
         results.sort(key=lambda r: r.score, reverse=True)
@@ -359,13 +296,12 @@ class LocalMemoryStore(BaseMemoryStore):
         words_lower = [w.lower() for w in words]
         n_words = len(words)
 
-        source_values = {s.value for s in sources} if sources else None
         results = []
-        for rec in self._chunks.values():
-            if source_values and rec.source not in source_values:
+        for chunk in self._chunks.values():
+            if sources and chunk.source not in sources:
                 continue
 
-            text_lower = rec.text.lower()
+            text_lower = chunk.text.lower()
             match_count = sum(1 for w in words_lower if w in text_lower)
             if match_count == 0:
                 continue
@@ -377,12 +313,12 @@ class LocalMemoryStore(BaseMemoryStore):
 
             results.append(
                 MemorySearchResult(
-                    path=rec.path,
-                    start_line=rec.start_line,
-                    end_line=rec.end_line,
+                    path=chunk.path,
+                    start_line=chunk.start_line,
+                    end_line=chunk.end_line,
                     score=score,
-                    snippet=rec.text,
-                    source=MemorySource(rec.source),
+                    snippet=chunk.text,
+                    source=chunk.source,
                 ),
             )
 
@@ -465,18 +401,21 @@ class LocalMemoryStore(BaseMemoryStore):
         merged: dict[str, MemorySearchResult] = {}
 
         for result in vector:
-            result.score = result.score * vector_weight
+            result.metadata["_weighted_score"] = result.score * vector_weight
             merged[result.merge_key] = result
 
         for result in keyword:
             key = result.merge_key
             if key in merged:
-                merged[key].score += result.score * text_weight
+                merged[key].metadata["_weighted_score"] += result.score * text_weight
             else:
-                result.score = result.score * text_weight
+                result.metadata["_weighted_score"] = result.score * text_weight
                 merged[key] = result
 
         results = list(merged.values())
+        for r in results:
+            r.score = r.metadata.pop("_weighted_score")
+
         results.sort(key=lambda r: r.score, reverse=True)
         return results
 

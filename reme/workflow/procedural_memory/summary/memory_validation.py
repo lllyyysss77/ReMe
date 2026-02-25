@@ -81,10 +81,22 @@ class MemoryValidation(BaseOp):
                     json_pattern = r"```json\s*([\s\S]*?)\s*```"
                     json_blocks = re.findall(json_pattern, response_content)
 
+                    parsed: Dict[str, Any] = {}
                     if json_blocks:
-                        parsed = json.loads(json_blocks[0])
-                    else:
-                        parsed = {}
+                        raw_json = json_blocks[0]
+                        try:
+                            parsed = json.loads(raw_json)
+                        except json.JSONDecodeError as json_err:
+                            logger.warning(
+                                f"JSONDecodeError in task_memory_validation, fallback to regex parse: {json_err}"
+                            )
+                            is_valid_match = re.search(r'"is_valid"\s*:\s*(true|false)', raw_json, re.IGNORECASE)
+                            score_match = re.search(r'"score"\s*:\s*([0-9]+(?:\.[0-9]+)?)', raw_json)
+
+                            if is_valid_match:
+                                parsed["is_valid"] = is_valid_match.group(1).lower() == "true"
+                            if score_match:
+                                parsed["score"] = float(score_match.group(1))
 
                     is_valid = parsed.get("is_valid", True)
                     score = parsed.get("score", 0.5)

@@ -56,7 +56,7 @@ class MemoryDeduplication(BaseOp):
 
         for task_memory in task_memories:
             # Generate embedding for current task memory
-            current_embedding = self._get_task_memory_embedding(task_memory)
+            current_embedding = await self._get_task_memory_embedding(task_memory)
 
             if current_embedding is None:
                 logger.warning(f"Failed to generate embedding for task memory: {str(task_memory.when_to_use)[:50]}...")

@@ -21,9 +21,9 @@ llms:
   default:
     backend: openai
     model_name: qwen3-30b-a3b-instruct-2507
-#    model_name: qwen3-30b-a3b-thinking-2507
+    #    model_name: qwen3-30b-a3b-thinking-2507
     request_interval: 1
-#    temperature: 0.0001
+  #    temperature: 0.0001
 
   qwen3_max_instruct:
     backend: openai
@@ -46,7 +46,7 @@ embedding_models:
 vector_stores:
   default:
     backend: chroma
-#    backend: local
+    #    backend: local
     embedding_model: default
     collection_name: reme
 

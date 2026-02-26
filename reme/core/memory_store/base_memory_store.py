@@ -38,6 +38,7 @@ class BaseMemoryStore(ABC):
 
         self.store_name: str = store_name
         self.db_path: Path = Path(db_path)
+        self.db_path.mkdir(parents=True, exist_ok=True)
         self.thread_pool: ThreadPoolExecutor = thread_pool
         self.embedding_model: BaseEmbeddingModel = embedding_model
         self.vector_enabled: bool = vector_enabled

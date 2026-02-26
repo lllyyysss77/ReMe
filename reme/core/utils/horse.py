@@ -20,7 +20,7 @@ def _mirror_frame(frame: str) -> str:
     return "\n".join(mirrored)
 
 
-def _play_horse_easter_egg() -> None:
+def play_horse_easter_egg() -> None:
     """Play the /horse Easter egg: fireworks, galloping horse, and a blessing."""
     cols = shutil.get_terminal_size((80, 24)).columns
     rows = shutil.get_terminal_size((80, 24)).lines

@@ -11,7 +11,7 @@ from reme.core.op import BaseTool
 from .agent.chat import FsCli
 from .core.enumeration import ChunkEnum
 from .core.schema import StreamChunk
-from .core.utils import execute_stream_task
+from .core.utils import execute_stream_task, play_horse_easter_egg
 from .reme_fs import ReMeFs
 from .tool.fs import (
     BashTool,
@@ -23,7 +23,6 @@ from .tool.fs import (
 )
 from .tool.gallery import ExecuteCode
 from .tool.search import DashscopeSearch, TavilySearch
-from .horse import _play_horse_easter_egg
 
 
 class ReMeCli(ReMeFs):
@@ -142,7 +141,7 @@ class ReMeCli(ReMeFs):
                     continue
 
                 if user_input == "/horse":
-                    _play_horse_easter_egg()
+                    play_horse_easter_egg()
                     continue
 
                 # Stream processing state

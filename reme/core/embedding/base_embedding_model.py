@@ -14,8 +14,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from ..schema import VectorNode
-from ..schema.memory_chunk import MemoryChunk
+from ..schema import VectorNode, MemoryChunk
 
 
 class BaseEmbeddingModel(ABC):
@@ -75,9 +74,6 @@ class BaseEmbeddingModel(ABC):
 
         self.cache_path: Path = Path(self.cache_dir)
         self.cache_path.mkdir(parents=True, exist_ok=True)
-
-        # Load cache from disk if available
-        self._load_cache()
 
     @property
     def api_key(self) -> str | None:
@@ -530,6 +526,14 @@ class BaseEmbeddingModel(ABC):
         else:
             logger.warning(f"Mismatch: got {len(embeddings)} vectors for {len(chunks)} chunks")
         return chunks
+
+    def start_sync(self):
+        """Synchronously initialize resources and load cache."""
+        self._load_cache()
+
+    async def start(self):
+        """Asynchronously initialize resources and load cache."""
+        self._load_cache()
 
     def close_sync(self):
         """Synchronously release resources and close connections."""

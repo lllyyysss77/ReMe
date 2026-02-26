@@ -1,0 +1,64 @@
+backend: http
+working_dir: .reme
+thread_pool_max_workers: 64
+
+mcp:
+  transport: sse
+  host: "0.0.0.0"
+  port: 8001
+
+http:
+  host: "0.0.0.0"
+  port: 8002
+  timeout_keep_alive: 600
+  limit_concurrency: 64
+
+flows:
+  test:
+    flow_content: TestOp()
+    description: "test"
+
+#  curl -X POST http://localhost:8002/simple_chat \
+#    -H "Content-Type: application/json" \
+#    -d '{
+#    "query": "hello"
+#  }'
+  simple_chat:
+    flow_content: SimpleChat()
+    description: "test"
+
+  stream_chat:
+    flow_content: StreamChat()
+    description: "test"
+    stream: true
+
+llms:
+  default:
+    backend: openai
+    model_name: qwen3.5-plus
+    request_interval: 1
+#    temperature: 0.0001
+
+embedding_models:
+  default:
+    backend: openai
+    model_name: text-embedding-v4
+    dimensions: 1024
+    enable_cache: false
+
+vector_stores:
+  default:
+    backend: chroma
+    #    backend: local
+    collection_name: reme
+    embedding_model: default
+
+token_counters:
+  default:
+    backend: base
+
+  hf:
+    backend: hf
+    model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct
+    use_mirror: true
+

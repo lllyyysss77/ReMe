@@ -320,7 +320,6 @@ class MemoryProcessor:
                 return_dict=True,
                 enable_time_filter=True,
                 enable_thinking_params=self.enable_thinking_params,
-                llm_config_name="qwen-plus-t",
             )
 
             duration_ms = (time.time() - start) * 1000
@@ -355,7 +354,6 @@ class MemoryProcessor:
             return_dict=True,
             enable_time_filter=True,
             enable_thinking_params=self.enable_thinking_params,
-            llm_config_name="qwen-plus-t",
         )
 
         # Extract memories from response
@@ -568,15 +566,6 @@ class HaluMemEvaluator:
         self.reme = ReMe(
             default_llm_config={
                 "model_name": self.config.reme_model_name,
-            },
-            llms={
-                "qwen-plus-t": {
-                    "backend": "openai",
-                    "model_name": "qwen-plus",
-                    "extra_body": {
-                        "enable_thinking": True,
-                    },
-                },
             },
         )
 

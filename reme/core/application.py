@@ -6,15 +6,17 @@ from pathlib import Path
 
 from loguru import logger
 
-from .context import PromptHandler, ServiceContext, R
 from .embedding import BaseEmbeddingModel
+from .file_store import BaseFileStore
 from .file_watcher import BaseFileWatcher
 from .flow import BaseFlow
 from .llm import BaseLLM
-from .memory_store import BaseMemoryStore
+from .prompt_handler import PromptHandler
+from .registry_factory import R
 from .schema import Response, ServiceConfig
+from .service_context import ServiceContext
 from .token_counter import BaseTokenCounter
-from .utils import execute_stream_task, PydanticConfigParser, init_logger, print_logo, MCPClient
+from .utils import execute_stream_task, PydanticConfigParser, init_logger, MCPClient, print_logo
 from .vector_store import BaseVectorStore
 
 
@@ -36,7 +38,7 @@ class Application:
         default_llm_config: dict | None = None,
         default_embedding_model_config: dict | None = None,
         default_vector_store_config: dict | None = None,
-        default_memory_store_config: dict | None = None,
+        default_file_store_config: dict | None = None,
         default_token_counter_config: dict | None = None,
         default_file_watcher_config: dict | None = None,
         **kwargs,
@@ -56,12 +58,17 @@ class Application:
             default_llm_config=default_llm_config,
             default_embedding_model_config=default_embedding_model_config,
             default_vector_store_config=default_vector_store_config,
-            default_memory_store_config=default_memory_store_config,
+            default_file_store_config=default_file_store_config,
             default_token_counter_config=default_token_counter_config,
             default_file_watcher_config=default_file_watcher_config,
             **kwargs,
         )
+
         self.prompt_handler = PromptHandler(language=self.service_config.language)
+
+        # NOTE: flows are initialized here to start service!
+        self.init_flows()
+
         self._started: bool = False
 
     @classmethod
@@ -71,40 +78,8 @@ class Application:
         await instance.start()
         return instance
 
-    @property
-    def service_config(self) -> ServiceConfig:
-        """Get the service configuration."""
-        return self.service_context.service_config
-
-    async def start(self):
-        """Start the service context by initializing all configured components."""
-        if self._started:
-            logger.warning("Application has already started.")
-            return self
-
-        init_logger(log_to_console=self.service_config.log_to_console)
-        logger.info(f"Init ReMe with config: {self.service_config.model_dump_json()}")
-
-        working_path = Path(self.service_config.working_dir)
-        working_path.mkdir(parents=True, exist_ok=True)
-
-        if self.service_config.enable_logo:
-            print_logo(service_config=self.service_config)
-
-        if self.service_config.ray_max_workers > 1:
-            import ray
-
-            if not ray.is_initialized():
-                ray.init(num_cpus=self.service_config.ray_max_workers)
-
-        if (
-            self.service_context.thread_pool is None
-            or self.service_context.thread_pool._shutdown  # pylint: disable=protected-access
-        ):
-            self.service_context.thread_pool = ThreadPoolExecutor(
-                max_workers=self.service_config.thread_pool_max_workers,
-            )
-
+    def init_flows(self):
+        """Initialize flows."""
         expression_flow_cls = None
         for name, flow_cls in R.flows.items():
             if not self._filter_flows(name):
@@ -129,12 +104,56 @@ class Application:
         else:
             logger.info("No expression flow found, please check your configuration.")
 
+    def _filter_flows(self, name: str) -> bool:
+        """Filter flows based on enabled_flows and disabled_flows configuration."""
+        if self.service_config.enabled_flows:
+            return name in self.service_config.enabled_flows
+        elif self.service_config.disabled_flows:
+            return name not in self.service_config.disabled_flows
+        else:
+            return True
+
+    @property
+    def service_config(self) -> ServiceConfig:
+        """Get the service configuration."""
+        return self.service_context.service_config
+
+    async def start(self):
+        """Start the service context by initializing all configured components."""
+        if self._started:
+            logger.warning("Application has already started.")
+            return self
+
+        init_logger(log_to_console=self.service_config.log_to_console)
+        logger.info(f"Init ReMe with config: {self.service_config.model_dump_json()}")
+
+        working_path = Path(self.service_config.working_dir)
+        working_path.mkdir(parents=True, exist_ok=True)
+
+        if self.service_config.ray_max_workers > 1:
+            import ray
+
+            if not ray.is_initialized():
+                ray.init(num_cpus=self.service_config.ray_max_workers)
+
+        if (
+            self.service_context.thread_pool is None
+            or self.service_context.thread_pool._shutdown  # pylint: disable=protected-access
+        ):
+            self.service_context.thread_pool = ThreadPoolExecutor(
+                max_workers=self.service_config.thread_pool_max_workers,
+            )
+
+        if self.service_context.service_config.enable_logo:
+            print_logo(service_config=self.service_config)
+
         for name, config in self.service_config.llms.items():
             if config.backend not in R.llms:
                 logger.warning(f"LLM backend {config.backend} is not supported.")
             else:
                 config_dict = config.model_dump(exclude={"backend"})
                 self.service_context.llms[name] = R.llms[config.backend](**config_dict)
+                await self.service_context.llms[name].start()
 
         for name, config in self.service_config.embedding_models.items():
             if config.backend not in R.embedding_models:
@@ -143,6 +162,7 @@ class Application:
                 config_dict = config.model_dump(exclude={"backend"})
                 config_dict["cache_dir"] = working_path / "embedding_cache"
                 self.service_context.embedding_models[name] = R.embedding_models[config.backend](**config_dict)
+                await self.service_context.embedding_models[name].start()
 
         for name, config in self.service_config.token_counters.items():
             if config.backend not in R.token_counters:
@@ -159,33 +179,32 @@ class Application:
                 config_dict.update(
                     {
                         "embedding_model": self.service_context.embedding_models[config.embedding_model],
-                        "thread_pool": self.service_context.thread_pool,
+                        "db_path": working_path / "vector_store",
                     },
                 )
                 self.service_context.vector_stores[name] = R.vector_stores[config.backend](**config_dict)
-                await self.service_context.vector_stores[name].create_collection(config.collection_name)
+                await self.service_context.vector_stores[name].start()
 
-        for name, config in self.service_config.memory_stores.items():
-            if config.backend not in R.memory_stores:
-                logger.warning(f"Memory store backend {config.backend} is not supported.")
+        for name, config in self.service_config.file_stores.items():
+            if config.backend not in R.file_stores:
+                logger.warning(f"File store backend {config.backend} is not supported.")
             else:
                 config_dict = config.model_dump(exclude={"backend", "embedding_model"})
                 config_dict.update(
                     {
                         "embedding_model": self.service_context.embedding_models[config.embedding_model],
-                        "thread_pool": self.service_context.thread_pool,
-                        "db_path": working_path / "memory_store",
+                        "db_path": working_path / "file_store",
                     },
                 )
-                self.service_context.memory_stores[name] = R.memory_stores[config.backend](**config_dict)
-                await self.service_context.memory_stores[name].start()
+                self.service_context.file_stores[name] = R.file_stores[config.backend](**config_dict)
+                await self.service_context.file_stores[name].start()
 
         for name, config in self.service_config.file_watchers.items():
             if config.backend not in R.file_watchers:
                 logger.warning(f"File watcher backend {config.backend} is not supported.")
             else:
-                config_dict = config.model_dump(exclude={"backend", "memory_store"})
-                config_dict["memory_store"] = self.service_context.memory_stores[config.memory_store]
+                config_dict = config.model_dump(exclude={"backend", "file_store"})
+                config_dict["file_store"] = self.service_context.file_stores[config.file_store]
                 self.service_context.file_watchers[name] = R.file_watchers[config.backend](**config_dict)
                 await self.service_context.file_watchers[name].start()
 
@@ -194,15 +213,6 @@ class Application:
 
         self._started = True
         return self
-
-    def _filter_flows(self, name: str) -> bool:
-        """Filter flows based on enabled_flows and disabled_flows configuration."""
-        if self.service_config.enabled_flows:
-            return name in self.service_config.enabled_flows
-        elif self.service_config.disabled_flows:
-            return name not in self.service_config.disabled_flows
-        else:
-            return True
 
     async def prepare_mcp_servers(self):
         """Prepare and initialize MCP server connections."""
@@ -228,9 +238,9 @@ class Application:
             logger.info(f"Closing vector store: {name}")
             await vector_store.close()
 
-        for name, memory_store in self.service_context.memory_stores.items():
-            logger.info(f"Closing memory store: {name}")
-            await memory_store.close()
+        for name, file_store in self.service_context.file_stores.items():
+            logger.info(f"Closing file store: {name}")
+            await file_store.close()
 
         for name, file_watcher in self.service_context.file_watchers.items():
             logger.info(f"Closing file watcher: {name}")
@@ -327,13 +337,13 @@ class Application:
         return self.service_context.vector_stores.get(name)
 
     @property
-    def default_memory_store(self) -> BaseMemoryStore:
-        """Get the default memory store instance."""
-        return self.service_context.memory_stores.get("default")
+    def default_file_store(self) -> BaseFileStore:
+        """Get the default file store instance."""
+        return self.service_context.file_stores.get("default")
 
-    def get_memory_store(self, name: str):
-        """Get a memory store instance by name."""
-        return self.service_context.memory_stores.get(name)
+    def get_file_store(self, name: str):
+        """Get a file store instance by name."""
+        return self.service_context.file_stores.get(name)
 
     @property
     def default_file_watcher(self) -> BaseFileWatcher:
@@ -358,7 +368,7 @@ class Application:
         import warnings
 
         warnings.filterwarnings("ignore", category=DeprecationWarning)
-        service = R.services[self.service_config.backend](service_context=self.service_context)
+        service = R.services[self.service_config.backend](app=self)
         service.run()
 
     async def reset_default_collection(self, collection_name: str):

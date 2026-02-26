@@ -23,7 +23,7 @@ class ReMeFb(Application):
         self,
         *args,
         working_dir: str = ".reme",
-        config_path: str = "fs",
+        config_path: str = "file",
         enable_logo: bool = True,
         log_to_console: bool = True,
         llm_api_key: str | None = None,

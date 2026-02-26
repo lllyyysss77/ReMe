@@ -547,12 +547,6 @@ class ReMe(Application):
         """Get the profile handler for the specified user."""
         return ProfileHandler(memory_target=user_name, profile_path=self.profile_path)
 
-    async def context_offload(self):
-        """working memory summary"""
-
-    async def context_reload(self):
-        """working memory retrieve"""
-
 
 def main():
     """Main entry point for running ReMe from command line."""

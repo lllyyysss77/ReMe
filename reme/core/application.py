@@ -6,13 +6,15 @@ from pathlib import Path
 
 from loguru import logger
 
-from .context import PromptHandler, ServiceContext, R
 from .embedding import BaseEmbeddingModel
+from .file_store import BaseFileStore
 from .file_watcher import BaseFileWatcher
 from .flow import BaseFlow
 from .llm import BaseLLM
-from .memory_store import BaseMemoryStore
+from .prompt_handler import PromptHandler
+from .registry_factory import R
 from .schema import Response, ServiceConfig
+from .service_context import ServiceContext
 from .token_counter import BaseTokenCounter
 from .utils import execute_stream_task, PydanticConfigParser, init_logger, print_logo, MCPClient
 from .vector_store import BaseVectorStore
@@ -36,7 +38,7 @@ class Application:
         default_llm_config: dict | None = None,
         default_embedding_model_config: dict | None = None,
         default_vector_store_config: dict | None = None,
-        default_memory_store_config: dict | None = None,
+        default_file_store_config: dict | None = None,
         default_token_counter_config: dict | None = None,
         default_file_watcher_config: dict | None = None,
         **kwargs,
@@ -56,7 +58,7 @@ class Application:
             default_llm_config=default_llm_config,
             default_embedding_model_config=default_embedding_model_config,
             default_vector_store_config=default_vector_store_config,
-            default_memory_store_config=default_memory_store_config,
+            default_file_store_config=default_file_store_config,
             default_token_counter_config=default_token_counter_config,
             default_file_watcher_config=default_file_watcher_config,
             **kwargs,
@@ -135,6 +137,7 @@ class Application:
             else:
                 config_dict = config.model_dump(exclude={"backend"})
                 self.service_context.llms[name] = R.llms[config.backend](**config_dict)
+                await self.service_context.llms[name].start()
 
         for name, config in self.service_config.embedding_models.items():
             if config.backend not in R.embedding_models:
@@ -143,6 +146,7 @@ class Application:
                 config_dict = config.model_dump(exclude={"backend"})
                 config_dict["cache_dir"] = working_path / "embedding_cache"
                 self.service_context.embedding_models[name] = R.embedding_models[config.backend](**config_dict)
+                await self.service_context.embedding_models[name].start()
 
         for name, config in self.service_config.token_counters.items():
             if config.backend not in R.token_counters:
@@ -159,33 +163,32 @@ class Application:
                 config_dict.update(
                     {
                         "embedding_model": self.service_context.embedding_models[config.embedding_model],
-                        "thread_pool": self.service_context.thread_pool,
+                        "db_path": working_path / "vector_store",
                     },
                 )
                 self.service_context.vector_stores[name] = R.vector_stores[config.backend](**config_dict)
-                await self.service_context.vector_stores[name].create_collection(config.collection_name)
+                await self.service_context.vector_stores[name].start()
 
-        for name, config in self.service_config.memory_stores.items():
-            if config.backend not in R.memory_stores:
-                logger.warning(f"Memory store backend {config.backend} is not supported.")
+        for name, config in self.service_config.file_stores.items():
+            if config.backend not in R.file_stores:
+                logger.warning(f"File store backend {config.backend} is not supported.")
             else:
                 config_dict = config.model_dump(exclude={"backend", "embedding_model"})
                 config_dict.update(
                     {
                         "embedding_model": self.service_context.embedding_models[config.embedding_model],
-                        "thread_pool": self.service_context.thread_pool,
-                        "db_path": working_path / "memory_store",
+                        "db_path": working_path / "file_store",
                     },
                 )
-                self.service_context.memory_stores[name] = R.memory_stores[config.backend](**config_dict)
-                await self.service_context.memory_stores[name].start()
+                self.service_context.file_stores[name] = R.file_stores[config.backend](**config_dict)
+                await self.service_context.file_stores[name].start()
 
         for name, config in self.service_config.file_watchers.items():
             if config.backend not in R.file_watchers:
                 logger.warning(f"File watcher backend {config.backend} is not supported.")
             else:
-                config_dict = config.model_dump(exclude={"backend", "memory_store"})
-                config_dict["memory_store"] = self.service_context.memory_stores[config.memory_store]
+                config_dict = config.model_dump(exclude={"backend", "file_store"})
+                config_dict["file_store"] = self.service_context.file_stores[config.file_store]
                 self.service_context.file_watchers[name] = R.file_watchers[config.backend](**config_dict)
                 await self.service_context.file_watchers[name].start()
 
@@ -228,9 +231,9 @@ class Application:
             logger.info(f"Closing vector store: {name}")
             await vector_store.close()
 
-        for name, memory_store in self.service_context.memory_stores.items():
-            logger.info(f"Closing memory store: {name}")
-            await memory_store.close()
+        for name, file_store in self.service_context.file_stores.items():
+            logger.info(f"Closing file store: {name}")
+            await file_store.close()
 
         for name, file_watcher in self.service_context.file_watchers.items():
             logger.info(f"Closing file watcher: {name}")
@@ -327,13 +330,13 @@ class Application:
         return self.service_context.vector_stores.get(name)
 
     @property
-    def default_memory_store(self) -> BaseMemoryStore:
-        """Get the default memory store instance."""
-        return self.service_context.memory_stores.get("default")
+    def default_file_store(self) -> BaseFileStore:
+        """Get the default file store instance."""
+        return self.service_context.file_stores.get("default")
 
-    def get_memory_store(self, name: str):
-        """Get a memory store instance by name."""
-        return self.service_context.memory_stores.get(name)
+    def get_file_store(self, name: str):
+        """Get a file store instance by name."""
+        return self.service_context.file_stores.get(name)
 
     @property
     def default_file_watcher(self) -> BaseFileWatcher:

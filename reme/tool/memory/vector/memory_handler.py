@@ -3,7 +3,7 @@
 import numpy as np
 from loguru import logger
 
-from ....core.context import ServiceContext
+from ....core.runtime_dict import ServiceContext
 from ....core.enumeration import MemoryType
 from ....core.schema import MemoryNode
 from ....core.utils.common_utils import batch_cosine_similarity

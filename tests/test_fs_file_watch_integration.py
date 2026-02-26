@@ -284,7 +284,7 @@ async def test_file_watch_integration():
     reme_fs = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_integration",
             "embedding_model": "default",

@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from loguru import logger
 from pydantic import BaseModel
 
-from ..context import ServiceContext
 from ..flow import BaseFlow
 from ..schema import ToolCall
+from ..service_context import ServiceContext
 from ..utils import create_pydantic_model
 
 

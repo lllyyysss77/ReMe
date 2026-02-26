@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from .base_service import BaseService
 from ..flow import BaseFlow
 from ..schema import Response
-from ..utils.common_utils import execute_stream_task
+from ..utils import execute_stream_task
 
 
 class HttpService(BaseService):

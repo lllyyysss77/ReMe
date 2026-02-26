@@ -10,11 +10,13 @@ from typing import Callable, Optional, Any
 from loguru import logger
 from tqdm import tqdm
 
-from ..context import RuntimeContext, PromptHandler, ServiceContext
 from ..embedding import BaseEmbeddingModel
+from ..file_store import BaseFileStore
 from ..llm import BaseLLM
-from ..memory_store import BaseMemoryStore
-from ..schema import Response
+from ..prompt_handler import PromptHandler
+from ..runtime_context import RuntimeContext
+from ..schema import Response, ServiceConfig
+from ..service_context import ServiceContext
 from ..token_counter import BaseTokenCounter
 from ..utils import camel_to_snake, CacheHandler, timer
 from ..vector_store import BaseVectorStore
@@ -42,7 +44,7 @@ class BaseOp(metaclass=ABCMeta):
         llm: str | BaseLLM = "default",
         embedding_model: str | BaseEmbeddingModel = "default",
         vector_store: str | BaseVectorStore = "default",
-        memory_store: str | BaseMemoryStore = "default",
+        file_store: str | BaseFileStore = "default",
         token_counter: str | BaseTokenCounter = "default",
         enable_cache: bool = False,
         cache_path: str = "cache/op",
@@ -64,7 +66,7 @@ class BaseOp(metaclass=ABCMeta):
         self._llm = llm
         self._embedding_model = embedding_model
         self._vector_store = vector_store
-        self._memory_store = memory_store
+        self._file_store = file_store
         self._token_counter = token_counter
 
         self.enable_cache = enable_cache
@@ -122,6 +124,11 @@ class BaseOp(metaclass=ABCMeta):
         return self.context.service_context
 
     @property
+    def service_config(self) -> ServiceConfig:
+        """Access the service configuration."""
+        return self.service_context.service_config
+
+    @property
     def llm(self) -> BaseLLM:
         """Get the LLM instance from ServiceContext."""
         if isinstance(self._llm, str):
@@ -143,11 +150,11 @@ class BaseOp(metaclass=ABCMeta):
         return self._vector_store
 
     @property
-    def memory_store(self) -> BaseMemoryStore:
-        """Lazily initialize and return the memory store instance."""
-        if isinstance(self._memory_store, str):
-            self._memory_store = self.service_context.memory_stores[self._memory_store]
-        return self._memory_store
+    def file_store(self) -> BaseFileStore:
+        """Lazily initialize and return the file store instance."""
+        if isinstance(self._file_store, str):
+            self._file_store = self.service_context.file_stores[self._file_store]
+        return self._file_store
 
     @property
     def token_counter(self) -> BaseTokenCounter:
@@ -159,7 +166,7 @@ class BaseOp(metaclass=ABCMeta):
     @property
     def service_metadata(self) -> dict:
         """Get service configuration metadata."""
-        return self.service_context.service_config.model_extra
+        return self.service_context.service_config.metadata
 
     @property
     def response(self) -> Response:

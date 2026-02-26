@@ -211,7 +211,7 @@ async def test_memory_search_basic():
     reme_fs = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_basic",
             "embedding_model": "default",
@@ -222,13 +222,13 @@ async def test_memory_search_basic():
 
     # Insert personal info chunks
     personal_chunks = SampleDataGenerator.create_personal_info_chunks("test_basic")
-    personal_chunks = await reme_fs.default_memory_store.get_chunk_embeddings(personal_chunks)
+    personal_chunks = await reme_fs.default_file_store.get_chunk_embeddings(personal_chunks)
 
     file_meta = SampleDataGenerator.create_file_metadata(
         "memory/personal_info.md",
         len(personal_chunks),
     )
-    await reme_fs.default_memory_store.upsert_file(
+    await reme_fs.default_file_store.upsert_file(
         file_meta,
         MemorySource.MEMORY,
         personal_chunks,
@@ -272,7 +272,7 @@ async def test_memory_search_technical_content():
     reme_fs = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_technical",
             "embedding_model": "default",
@@ -283,13 +283,13 @@ async def test_memory_search_technical_content():
 
     # Insert technical chunks
     tech_chunks = SampleDataGenerator.create_technical_chunks("test_technical")
-    tech_chunks = await reme_fs.default_memory_store.get_chunk_embeddings(tech_chunks)
+    tech_chunks = await reme_fs.default_file_store.get_chunk_embeddings(tech_chunks)
 
     file_meta = SampleDataGenerator.create_file_metadata(
         "memory/technical_notes.md",
         len(tech_chunks),
     )
-    await reme_fs.default_memory_store.upsert_file(
+    await reme_fs.default_file_store.upsert_file(
         file_meta,
         MemorySource.MEMORY,
         tech_chunks,
@@ -343,12 +343,12 @@ async def test_memory_search_with_source_filter():
 
     # Insert MEMORY source data
     personal_chunks = SampleDataGenerator.create_personal_info_chunks("test_source")
-    personal_chunks = await reme_fs.default_memory_store.get_chunk_embeddings(personal_chunks)
+    personal_chunks = await reme_fs.default_file_store.get_chunk_embeddings(personal_chunks)
     personal_meta = SampleDataGenerator.create_file_metadata(
         "memory/personal_info.md",
         len(personal_chunks),
     )
-    await reme_fs.default_memory_store.upsert_file(
+    await reme_fs.default_file_store.upsert_file(
         personal_meta,
         MemorySource.MEMORY,
         personal_chunks,
@@ -357,12 +357,12 @@ async def test_memory_search_with_source_filter():
 
     # Insert SESSIONS source data
     session_chunks = SampleDataGenerator.create_session_chunks("test_source")
-    session_chunks = await reme_fs.default_memory_store.get_chunk_embeddings(session_chunks)
+    session_chunks = await reme_fs.default_file_store.get_chunk_embeddings(session_chunks)
     session_meta = SampleDataGenerator.create_file_metadata(
         "sessions/2024-01-15.jsonl",
         len(session_chunks),
     )
-    await reme_fs.default_memory_store.upsert_file(
+    await reme_fs.default_file_store.upsert_file(
         session_meta,
         MemorySource.SESSIONS,
         session_chunks,
@@ -441,7 +441,7 @@ async def test_memory_search_score_filtering():
     reme_fs = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_score_filter",
             "embedding_model": "default",
@@ -452,12 +452,12 @@ async def test_memory_search_score_filtering():
 
     # Insert test data
     chunks = SampleDataGenerator.create_technical_chunks("test_score")
-    chunks = await reme_fs.default_memory_store.get_chunk_embeddings(chunks)
+    chunks = await reme_fs.default_file_store.get_chunk_embeddings(chunks)
     file_meta = SampleDataGenerator.create_file_metadata(
         "memory/technical_notes.md",
         len(chunks),
     )
-    await reme_fs.default_memory_store.upsert_file(
+    await reme_fs.default_file_store.upsert_file(
         file_meta,
         MemorySource.MEMORY,
         chunks,
@@ -507,7 +507,7 @@ async def test_memory_search_max_results():
     reme_fs = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_max_results",
             "embedding_model": "default",
@@ -521,14 +521,14 @@ async def test_memory_search_max_results():
     tech_chunks = SampleDataGenerator.create_technical_chunks("test_max")
     all_chunks = personal_chunks + tech_chunks
 
-    all_chunks = await reme_fs.default_memory_store.get_chunk_embeddings(all_chunks)
+    all_chunks = await reme_fs.default_file_store.get_chunk_embeddings(all_chunks)
 
     # Insert as one file for simplicity
     combined_meta = SampleDataGenerator.create_file_metadata(
         "memory/combined.md",
         len(all_chunks),
     )
-    await reme_fs.default_memory_store.upsert_file(
+    await reme_fs.default_file_store.upsert_file(
         combined_meta,
         MemorySource.MEMORY,
         all_chunks,
@@ -573,7 +573,7 @@ async def test_memory_search_hybrid_mode():
     reme_fs = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_hybrid",
             "embedding_model": "default",
@@ -584,12 +584,12 @@ async def test_memory_search_hybrid_mode():
 
     # Insert test data
     chunks = SampleDataGenerator.create_technical_chunks("test_hybrid")
-    chunks = await reme_fs.default_memory_store.get_chunk_embeddings(chunks)
+    chunks = await reme_fs.default_file_store.get_chunk_embeddings(chunks)
     file_meta = SampleDataGenerator.create_file_metadata(
         "memory/technical_notes.md",
         len(chunks),
     )
-    await reme_fs.default_memory_store.upsert_file(
+    await reme_fs.default_file_store.upsert_file(
         file_meta,
         MemorySource.MEMORY,
         chunks,
@@ -604,7 +604,7 @@ async def test_memory_search_hybrid_mode():
     reme_fs_hybrid = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_hybrid",
             "embedding_model": "default",
@@ -633,7 +633,7 @@ async def test_memory_search_hybrid_mode():
     reme_fs_vector = ReMeFs(
         enable_logo=False,
         working_dir=TestConfig.WORKING_DIR,
-        default_memory_store_config={
+        default_file_store_config={
             "backend": "sqlite",
             "store_name": "test_hybrid",
             "embedding_model": "default",
@@ -665,7 +665,7 @@ async def test_memory_search_hybrid_mode():
         reme_fs_weights = ReMeFs(
             enable_logo=False,
             working_dir=TestConfig.WORKING_DIR,
-            default_memory_store_config={
+            default_file_store_config={
                 "backend": "sqlite",
                 "store_name": "test_hybrid",
                 "embedding_model": "default",

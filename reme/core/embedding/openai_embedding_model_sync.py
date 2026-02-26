@@ -28,6 +28,10 @@ class OpenAIEmbeddingModelSync(OpenAIEmbeddingModel):
             result_emb[emb.index] = emb.embedding
         return result_emb
 
+    def start_sync(self):
+        """Initialize the synchronous OpenAI embedding model and load cache."""
+        super().start_sync()
+
     def close_sync(self):
         """Close the synchronous OpenAI client and release network resources."""
         if self._client is not None:

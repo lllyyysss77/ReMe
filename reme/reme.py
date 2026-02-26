@@ -36,24 +36,24 @@ class ReMe(Application):
     """ReMe with config file support and flow execution methods."""
 
     def __init__(
-            self,
-            *args,
-            llm_api_key: str | None = None,
-            llm_base_url: str | None = None,
-            embedding_api_key: str | None = None,
-            embedding_base_url: str | None = None,
-            working_dir: str = ".reme",
-            config_path: str = "vector",
-            enable_logo: bool = True,
-            log_to_console: bool = True,
-            default_llm_config: dict | None = None,
-            default_embedding_model_config: dict | None = None,
-            default_vector_store_config: dict | None = None,
-            default_token_counter_config: dict | None = None,
-            target_user_names: list[str] | None = None,
-            target_task_names: list[str] | None = None,
-            target_tool_names: list[str] | None = None,
-            **kwargs,
+        self,
+        *args,
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+        working_dir: str = ".reme",
+        config_path: str = "vector",
+        enable_logo: bool = True,
+        log_to_console: bool = True,
+        default_llm_config: dict | None = None,
+        default_embedding_model_config: dict | None = None,
+        default_vector_store_config: dict | None = None,
+        default_token_counter_config: dict | None = None,
+        target_user_names: list[str] | None = None,
+        target_task_names: list[str] | None = None,
+        target_tool_names: list[str] | None = None,
+        **kwargs,
     ):
         """Initialize ReMe with config.
 
@@ -114,9 +114,9 @@ class ReMe(Application):
 
     @staticmethod
     def _resolve_memory_target(
-            user_name: str = "",
-            task_name: str = "",
-            tool_name: str = "",
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
     ) -> tuple[MemoryType, str]:
         """Resolve memory type and target from user_name, task_name, or tool_name.
 
@@ -152,18 +152,18 @@ class ReMe(Application):
         return memory_type, memory_target
 
     async def summarize_memory(
-            self,
-            messages: list[Message | dict],
-            description: str = "",
-            user_name: str | list[str] = "",
-            task_name: str | list[str] = "",
-            tool_name: str | list[str] = "",
-            enable_thinking_params: bool = True,
-            version: str = "default",
-            retrieve_top_k: int = 20,
-            return_dict: bool = False,
-            llm_config_name: str = "default",
-            **kwargs,
+        self,
+        messages: list[Message | dict],
+        description: str = "",
+        user_name: str | list[str] = "",
+        task_name: str | list[str] = "",
+        tool_name: str | list[str] = "",
+        enable_thinking_params: bool = True,
+        version: str = "default",
+        retrieve_top_k: int = 20,
+        return_dict: bool = False,
+        llm_config_name: str = "default",
+        **kwargs,
     ) -> str | dict:
         """Summarize personal, procedural and tool memories for the given context."""
         format_messages: list[Message] = []
@@ -255,7 +255,7 @@ class ReMe(Application):
             memory_agents = [personal_summarizer, procedural_summarizer, tool_summarizer]
 
         reme_summarizer: BaseMemoryAgent = ReMeSummarizer(
-            tools=[AddHistory(), DelegateTask(memory_agents=memory_agents)]
+            tools=[AddHistory(), DelegateTask(memory_agents=memory_agents)],
         )
 
         result = await reme_summarizer.call(
@@ -272,20 +272,20 @@ class ReMe(Application):
             return result["answer"]
 
     async def retrieve_memory(
-            self,
-            query: str = "",
-            description: str = "",
-            messages: list[dict] | None = None,
-            user_name: str | list[str] = "",
-            task_name: str | list[str] = "",
-            tool_name: str | list[str] = "",
-            enable_thinking_params: bool = True,
-            version: str = "default",
-            retrieve_top_k: int = 20,
-            enable_time_filter: bool = True,
-            return_dict: bool = False,
-            llm_config_name: str = "default",
-            **kwargs,
+        self,
+        query: str = "",
+        description: str = "",
+        messages: list[dict] | None = None,
+        user_name: str | list[str] = "",
+        task_name: str | list[str] = "",
+        tool_name: str | list[str] = "",
+        enable_thinking_params: bool = True,
+        version: str = "default",
+        retrieve_top_k: int = 20,
+        enable_time_filter: bool = True,
+        return_dict: bool = False,
+        llm_config_name: str = "default",
+        **kwargs,
     ) -> str | dict:
         """Retrieve relevant personal, procedural and tool memories for a query."""
 
@@ -358,7 +358,7 @@ class ReMe(Application):
             memory_agents = [personal_retriever, procedural_retriever, tool_retriever]
 
         reme_retriever: BaseMemoryAgent = ReMeRetriever(
-            tools=[DelegateTask(memory_agents=memory_agents)]
+            tools=[DelegateTask(memory_agents=memory_agents)],
         )
 
         result = await reme_retriever.call(
@@ -376,17 +376,17 @@ class ReMe(Application):
             return result["answer"]
 
     async def add_memory(
-            self,
-            memory_content: str,
-            user_name: str = "",
-            task_name: str = "",
-            tool_name: str = "",
-            when_to_use: str = "",
-            message_time: str = "",
-            ref_memory_id: str = "",
-            author: str = "",
-            score: float = 0.0,
-            **kwargs,
+        self,
+        memory_content: str,
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
+        when_to_use: str = "",
+        message_time: str = "",
+        ref_memory_id: str = "",
+        author: str = "",
+        score: float = 0.0,
+        **kwargs,
     ):
         """Add memory to the vector store.
 
@@ -421,8 +421,8 @@ class ReMe(Application):
         return memory_node
 
     async def get_memory(
-            self,
-            memory_id: str,
+        self,
+        memory_id: str,
     ):
         """Get a memory node by its memory_id.
 
@@ -436,8 +436,8 @@ class ReMe(Application):
         return MemoryNode.from_vector_node(vector_node)
 
     async def delete_memory(
-            self,
-            memory_id: str,
+        self,
+        memory_id: str,
     ):
         """Delete a memory node by its memory_id.
 
@@ -451,18 +451,18 @@ class ReMe(Application):
         await self.default_vector_store.delete_all()
 
     async def update_memory(
-            self,
-            memory_id: str,
-            user_name: str = "",
-            task_name: str = "",
-            tool_name: str = "",
-            memory_content: str | None = None,
-            when_to_use: str | None = None,
-            message_time: str | None = None,
-            ref_memory_id: str | None = None,
-            author: str | None = None,
-            score: float | None = None,
-            **kwargs,
+        self,
+        memory_id: str,
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
+        memory_content: str | None = None,
+        when_to_use: str | None = None,
+        message_time: str | None = None,
+        ref_memory_id: str | None = None,
+        author: str | None = None,
+        score: float | None = None,
+        **kwargs,
     ):
         """Update a memory node's content and/or metadata.
 
@@ -499,14 +499,14 @@ class ReMe(Application):
         return memory_node
 
     async def list_memory(
-            self,
-            user_name: str = "",
-            task_name: str = "",
-            tool_name: str = "",
-            filters: dict | None = None,
-            limit: int | None = None,
-            sort_key: str | None = None,
-            reverse: bool = True,
+        self,
+        user_name: str = "",
+        task_name: str = "",
+        tool_name: str = "",
+        filters: dict | None = None,
+        limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = True,
     ):
         """List memory nodes with optional filtering and sorting.
 
@@ -556,6 +556,9 @@ class ReMe(Application):
 
 def main():
     """Main entry point for running ReMe from command line."""
+    from . import extension  # noqa: F401  # pylint: disable=unused-import
+    from . import memory  # noqa: F401  # pylint: disable=unused-import
+
     ReMe(*sys.argv[1:], config_path="service").run_service()
 
 

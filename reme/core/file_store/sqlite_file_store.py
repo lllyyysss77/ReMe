@@ -530,10 +530,10 @@ class SqliteFileStore(BaseFileStore):
             cursor.close()
 
     async def vector_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform vector similarity search."""
         if not self.vector_enabled or not query:
@@ -679,10 +679,10 @@ class SqliteFileStore(BaseFileStore):
         return cleaned
 
     async def keyword_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform keyword search.
 
@@ -712,10 +712,10 @@ class SqliteFileStore(BaseFileStore):
         return await self._like_search(cleaned, words, limit, sources)
 
     async def _fts_trigram_search(
-            self,
-            words: list[str],
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        words: list[str],
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """FTS5 trigram search. All terms must be >= 3 characters."""
         escaped_words = [w.replace('"', '""') for w in words]
@@ -766,11 +766,11 @@ class SqliteFileStore(BaseFileStore):
             cursor.close()
 
     async def _like_search(
-            self,
-            phrase: str,
-            words: list[str],
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        phrase: str,
+        words: list[str],
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """LIKE-based substring search with Python-side relevance scoring.
 
@@ -846,12 +846,12 @@ class SqliteFileStore(BaseFileStore):
             cursor.close()
 
     async def hybrid_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
-            vector_weight: float = 0.7,
-            candidate_multiplier: float = 3.0,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
+        vector_weight: float = 0.7,
+        candidate_multiplier: float = 3.0,
     ) -> list[MemorySearchResult]:
         """Perform hybrid search combining vector and keyword search.
 
@@ -918,10 +918,10 @@ class SqliteFileStore(BaseFileStore):
 
     @staticmethod
     def _merge_hybrid_results(
-            vector: list[MemorySearchResult],
-            keyword: list[MemorySearchResult],
-            vector_weight: float,
-            text_weight: float,
+        vector: list[MemorySearchResult],
+        keyword: list[MemorySearchResult],
+        vector_weight: float,
+        text_weight: float,
     ) -> list[MemorySearchResult]:
         """Merge vector and keyword search results with weighted scoring."""
         merged: dict[str, MemorySearchResult] = {}

@@ -20,27 +20,27 @@ class ReMeFb(Application):
     """ReMe File Based"""
 
     def __init__(
-            self,
-            *args,
-            working_dir: str = ".reme",
-            config_path: str = "fs",
-            enable_logo: bool = True,
-            log_to_console: bool = True,
-            llm_api_key: str | None = None,
-            llm_base_url: str | None = None,
-            embedding_api_key: str | None = None,
-            embedding_base_url: str | None = None,
-            default_llm_config: dict | None = None,
-            default_embedding_model_config: dict | None = None,
-            default_file_store_config: dict | None = None,
-            default_token_counter_config: dict | None = None,
-            default_file_watcher_config: dict | None = None,
-            context_window_tokens: int = 128000,
-            reserve_tokens: int = 36000,
-            keep_recent_tokens: int = 20000,
-            vector_weight: float = 0.7,
-            candidate_multiplier: float = 3.0,
-            **kwargs,
+        self,
+        *args,
+        working_dir: str = ".reme",
+        config_path: str = "fs",
+        enable_logo: bool = True,
+        log_to_console: bool = True,
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+        default_llm_config: dict | None = None,
+        default_embedding_model_config: dict | None = None,
+        default_file_store_config: dict | None = None,
+        default_token_counter_config: dict | None = None,
+        default_file_watcher_config: dict | None = None,
+        context_window_tokens: int = 128000,
+        reserve_tokens: int = 36000,
+        keep_recent_tokens: int = 20000,
+        vector_weight: float = 0.7,
+        candidate_multiplier: float = 3.0,
+        **kwargs,
     ):
         """Initialize ReMe with config."""
         working_path = Path(working_dir)
@@ -91,12 +91,12 @@ class ReMeFb(Application):
         return await checker.call(messages=messages, service_context=self.service_context)
 
     async def compact(
-            self,
-            messages_to_summarize: list[Message | dict] = None,
-            turn_prefix_messages: list[Message | dict] = None,
-            previous_summary: str = "",
-            language: str = "zh",
-            **kwargs,
+        self,
+        messages_to_summarize: list[Message | dict] = None,
+        turn_prefix_messages: list[Message | dict] = None,
+        previous_summary: str = "",
+        language: str = "zh",
+        **kwargs,
     ) -> str | dict:
         """Compact messages into a summary."""
         compactor = FbCompactor(language=language, **kwargs)
@@ -108,12 +108,12 @@ class ReMeFb(Application):
         )
 
     async def summary(
-            self,
-            messages: list[Message | dict],
-            date: str,
-            version: str = "default",
-            language: str = "zh",
-            **kwargs,
+        self,
+        messages: list[Message | dict],
+        date: str,
+        version: str = "default",
+        language: str = "zh",
+        **kwargs,
     ) -> str | dict:
         """Generate a summary of the given messages."""
         summarizer = FbSummarizer(

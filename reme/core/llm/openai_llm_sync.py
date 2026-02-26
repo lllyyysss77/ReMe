@@ -17,10 +17,10 @@ class OpenAILLMSync(OpenAILLM):
         return OpenAI(api_key=self.api_key, base_url=self.base_url)
 
     def _stream_chat_sync(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            stream_kwargs: dict | None = None,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        stream_kwargs: dict | None = None,
     ) -> Generator[StreamChunk, None, None]:
         """Synchronously generate a stream of chat completion chunks including text, reasoning, and tool calls."""
         stream_kwargs = stream_kwargs or {}

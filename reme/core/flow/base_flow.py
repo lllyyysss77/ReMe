@@ -20,15 +20,15 @@ class BaseFlow(ABC):
     """Abstract base class for flow execution with caching, streaming, and operation tree management."""
 
     def __init__(
-            self,
-            name: str = "",
-            stream: bool = False,
-            raise_exception: bool = True,
-            enable_cache: bool = False,
-            cache_path: str = "cache/flow",
-            cache_expire_hours: float = 0.1,
-            service_context: ServiceContext | None = None,
-            **kwargs,
+        self,
+        name: str = "",
+        stream: bool = False,
+        raise_exception: bool = True,
+        enable_cache: bool = False,
+        cache_path: str = "cache/flow",
+        cache_expire_hours: float = 0.1,
+        service_context: ServiceContext | None = None,
+        **kwargs,
     ):
         """Initialize flow configuration and execution state."""
         super().__init__()

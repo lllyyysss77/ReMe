@@ -18,6 +18,20 @@ flows:
     flow_content: TestOp()
     description: "test"
 
+#  curl -X POST http://localhost:8002/simple_chat \
+#    -H "Content-Type: application/json" \
+#    -d '{
+#    "query": "hello"
+#  }'
+  simple_chat:
+    flow_content: SimpleChat()
+    description: "test"
+
+  stream_chat:
+    flow_content: StreamChat()
+    description: "test"
+    stream: true
+
 llms:
   default:
     backend: openai

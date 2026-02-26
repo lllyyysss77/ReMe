@@ -24,17 +24,17 @@ class ChromaVectorStore(BaseVectorStore):
     """ChromaDB-based vector store implementation for local or remote storage."""
 
     def __init__(
-            self,
-            collection_name: str,
-            db_path: str | Path,
-            embedding_model: BaseEmbeddingModel,
-            client: chromadb.ClientAPI | None = None,
-            host: str | None = None,
-            port: int | None = None,
-            api_key: str | None = None,
-            tenant: str | None = None,
-            database: str | None = None,
-            **kwargs,
+        self,
+        collection_name: str,
+        db_path: str | Path,
+        embedding_model: BaseEmbeddingModel,
+        client: chromadb.ClientAPI | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        api_key: str | None = None,
+        tenant: str | None = None,
+        database: str | None = None,
+        **kwargs,
     ):
         """Initialize the ChromaDB vector store with the provided configuration."""
         if _CHROMADB_IMPORT_ERROR is not None:
@@ -72,8 +72,8 @@ class ChromaVectorStore(BaseVectorStore):
 
     @staticmethod
     def _parse_results(
-            results: dict,
-            include_score: bool = False,
+        results: dict,
+        include_score: bool = False,
     ) -> list[VectorNode]:
         """Convert ChromaDB query results into a list of VectorNode objects."""
         nodes = []
@@ -267,7 +267,7 @@ class ChromaVectorStore(BaseVectorStore):
         batch_size = kwargs.get("batch_size", 100)
 
         for i in range(0, len(nodes_to_insert), batch_size):
-            batch_nodes = nodes_to_insert[i: i + batch_size]
+            batch_nodes = nodes_to_insert[i : i + batch_size]
             self.collection.add(
                 ids=[n.vector_id for n in batch_nodes],
                 documents=[n.content for n in batch_nodes],
@@ -277,11 +277,11 @@ class ChromaVectorStore(BaseVectorStore):
         logger.info(f"Inserted {len(nodes_to_insert)} nodes into {self.collection_name}")
 
     async def search(
-            self,
-            query: str,
-            limit: int = 5,
-            filters: dict | None = None,
-            **kwargs,
+        self,
+        query: str,
+        limit: int = 5,
+        filters: dict | None = None,
+        **kwargs,
     ) -> list[VectorNode]:
         """Search for the most similar vector nodes based on a text query."""
         query_vector = await self.get_embedding(query)
@@ -361,11 +361,11 @@ class ChromaVectorStore(BaseVectorStore):
         return nodes[0] if is_single and nodes else (nodes if not is_single else None)
 
     async def list(
-            self,
-            filters: dict | None = None,
-            limit: int | None = None,
-            sort_key: str | None = None,
-            reverse: bool = False,
+        self,
+        filters: dict | None = None,
+        limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
         """List vector nodes matching optional metadata filters.
 

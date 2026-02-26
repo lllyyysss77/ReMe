@@ -24,20 +24,20 @@ class HttpService(BaseService):
 
         @asynccontextmanager
         async def lifespan(_: FastAPI):
-            await self.service_context.start()
+            await self.app.start()
             yield
-            await self.service_context.close()
+            await self.app.close()
 
-        self.app = FastAPI(title=self.service_config.app_name, lifespan=lifespan)
+        self.http_service = FastAPI(title=self.service_config.app_name, lifespan=lifespan)
 
-        self.app.add_middleware(
+        self.http_service.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        self.app.get("/health")(lambda: {"status": "healthy"})
+        self.http_service.get("/health")(lambda: {"status": "healthy"})
 
     def _integrate_flow(self, flow: BaseFlow) -> str:
         """Register a standard flow as a POST endpoint."""
@@ -46,7 +46,7 @@ class HttpService(BaseService):
         async def execute_endpoint(request: request_model) -> Response:
             return await flow.call(**request.model_dump(exclude_none=True))
 
-        self.app.post(
+        self.http_service.post(
             path=f"/{tool_call.name}",
             response_model=Response,
             description=tool_call.description,
@@ -63,16 +63,16 @@ class HttpService(BaseService):
 
             async def generate_stream() -> AsyncGenerator[bytes, None]:
                 async for chunk in execute_stream_task(
-                        stream_queue=stream_queue,
-                        task=task,
-                        task_name=tool_call.name,
-                        output_format="bytes",
+                    stream_queue=stream_queue,
+                    task=task,
+                    task_name=tool_call.name,
+                    output_format="bytes",
                 ):
                     yield chunk
 
             return StreamingResponse(generate_stream(), media_type="text/event-stream")
 
-        self.app.post(f"/{tool_call.name}")(execute_stream_endpoint)
+        self.http_service.post(f"/{tool_call.name}")(execute_stream_endpoint)
         return tool_call.name
 
     def integrate_flow(self, flow: BaseFlow) -> str | None:
@@ -84,7 +84,7 @@ class HttpService(BaseService):
         super().run()
         cfg = self.service_config.http
         uvicorn.run(
-            self.app,
+            self.http_service,
             host=cfg.host,
             port=cfg.port,
             timeout_keep_alive=cfg.timeout_keep_alive,

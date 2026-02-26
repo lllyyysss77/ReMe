@@ -63,7 +63,7 @@ class MemoryGet(BaseTool):
         # Check file exists, is not a symlink, and is a regular file
         file_path = Path(abs_path)
         assert (
-                file_path.exists() and not file_path.is_symlink() and file_path.is_file()
+            file_path.exists() and not file_path.is_symlink() and file_path.is_file()
         ), f"File not found or not a regular file: {abs_path}"
 
         with open(abs_path, "r", encoding="utf-8") as f:
@@ -89,7 +89,7 @@ class MemoryGet(BaseTool):
             count = total_lines - start + 1
 
         # Extract slice (1-indexed to 0-indexed conversion)
-        selected = lines[start - 1: start - 1 + count]
+        selected = lines[start - 1 : start - 1 + count]
         return "\n".join(selected)
 
     async def call(self, context: RuntimeContext = None, **kwargs):

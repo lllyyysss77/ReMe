@@ -40,20 +40,20 @@ class QdrantVectorStore(BaseVectorStore):
     """Vector store implementation using Qdrant for dense vector search."""
 
     def __init__(
-            self,
-            collection_name: str,
-            db_path: str | Path,
-            embedding_model: BaseEmbeddingModel,
-            host: str | None = None,
-            port: int = 6333,
-            url: str | None = None,
-            api_key: str | None = None,
-            https: bool | None = None,
-            grpc_port: int = 6334,
-            prefer_grpc: bool = False,
-            distance: str = "cosine",
-            on_disk: bool = False,
-            **kwargs: Any,
+        self,
+        collection_name: str,
+        db_path: str | Path,
+        embedding_model: BaseEmbeddingModel,
+        host: str | None = None,
+        port: int = 6333,
+        url: str | None = None,
+        api_key: str | None = None,
+        https: bool | None = None,
+        grpc_port: int = 6334,
+        prefer_grpc: bool = False,
+        distance: str = "cosine",
+        on_disk: bool = False,
+        **kwargs: Any,
     ):
         """Initialize the Qdrant client and collection configuration.
 
@@ -225,7 +225,7 @@ class QdrantVectorStore(BaseVectorStore):
             try:
                 point_id = int(node.vector_id)
             except ValueError:
-                point_id = abs(hash(node.vector_id)) % (10 ** 18)
+                point_id = abs(hash(node.vector_id)) % (10**18)
 
             point = PointStruct(
                 id=point_id,
@@ -317,11 +317,11 @@ class QdrantVectorStore(BaseVectorStore):
         return Filter(must=conditions) if conditions else None
 
     async def search(
-            self,
-            query: str,
-            limit: int = 5,
-            filters: dict | None = None,
-            **kwargs: Any,
+        self,
+        query: str,
+        limit: int = 5,
+        filters: dict | None = None,
+        **kwargs: Any,
     ) -> list[VectorNode]:
         """Search for the most similar vectors based on a text query."""
         query_vector = await self.get_embedding(query)
@@ -360,7 +360,7 @@ class QdrantVectorStore(BaseVectorStore):
             try:
                 point_id = int(vector_id)
             except ValueError:
-                point_id = abs(hash(vector_id)) % (10 ** 18)
+                point_id = abs(hash(vector_id)) % (10**18)
             point_ids.append(point_id)
 
         wait = kwargs.get("wait", True)
@@ -405,7 +405,7 @@ class QdrantVectorStore(BaseVectorStore):
             try:
                 point_id = int(node.vector_id)
             except ValueError:
-                point_id = abs(hash(node.vector_id)) % (10 ** 18)
+                point_id = abs(hash(node.vector_id)) % (10**18)
 
             point = PointStruct(
                 id=point_id,
@@ -438,7 +438,7 @@ class QdrantVectorStore(BaseVectorStore):
             try:
                 point_id = int(vector_id)
             except ValueError:
-                point_id = abs(hash(vector_id)) % (10 ** 18)
+                point_id = abs(hash(vector_id)) % (10**18)
             point_ids.append(point_id)
 
         points = await self.client.retrieve(
@@ -465,11 +465,11 @@ class QdrantVectorStore(BaseVectorStore):
         return results[0] if single_result and results else results
 
     async def list(
-            self,
-            filters: dict | None = None,
-            limit: int | None = None,
-            sort_key: str | None = None,
-            reverse: bool = False,
+        self,
+        filters: dict | None = None,
+        limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
         """List all vector nodes in the collection matching the filter criteria.
 

@@ -9,6 +9,8 @@ from .reme import ReMe
 from .reme_cli import ReMeCli
 from .reme_fb import ReMeFb
 
+__version__ = "0.3.0.0b5"
+
 __all__ = [
     "config",
     "core",
@@ -19,8 +21,6 @@ __all__ = [
     "ReMeCli",
     "ReMeFb",
 ]
-
-__version__ = "0.3.0.0b5"
 
 """
 conda create -n fl_test2 python=3.10

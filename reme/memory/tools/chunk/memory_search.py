@@ -14,13 +14,13 @@ class MemorySearch(BaseTool):
     """Semantically search MEMORY.md and memory files."""
 
     def __init__(
-            self,
-            sources: list[MemorySource] | None = None,
-            min_score: float = 0.1,
-            max_results: int = 5,
-            vector_weight: float = 0.7,
-            candidate_multiplier: float = 3.0,
-            **kwargs,
+        self,
+        sources: list[MemorySource] | None = None,
+        min_score: float = 0.1,
+        max_results: int = 5,
+        vector_weight: float = 0.7,
+        candidate_multiplier: float = 3.0,
+        **kwargs,
     ):
         """Initialize memory search tool."""
         assert 0.0 <= vector_weight <= 1.0, f"vector_weight must be between 0 and 1, got {vector_weight}"
@@ -71,10 +71,10 @@ class MemorySearch(BaseTool):
 
         assert query, "Query cannot be empty"
         assert (
-                isinstance(min_score, float) and 0.0 <= min_score <= 1.0
+            isinstance(min_score, float) and 0.0 <= min_score <= 1.0
         ), f"min_score must be between 0 and 1, got {min_score}"
         assert (
-                isinstance(max_results, int) and max_results > 0
+            isinstance(max_results, int) and max_results > 0
         ), f"max_results must be a positive integer, got {max_results}"
 
         # Use hybrid_search from file_store

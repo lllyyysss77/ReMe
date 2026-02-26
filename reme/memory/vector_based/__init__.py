@@ -26,8 +26,8 @@ __all__ = [
 for name in __all__:
     agent_class = globals()[name]
     if (
-            isinstance(agent_class, type)
-            and issubclass(agent_class, BaseMemoryAgent)
-            and agent_class is not BaseMemoryAgent
+        isinstance(agent_class, type)
+        and issubclass(agent_class, BaseMemoryAgent)
+        and agent_class is not BaseMemoryAgent
     ):
         R.ops.register(agent_class)

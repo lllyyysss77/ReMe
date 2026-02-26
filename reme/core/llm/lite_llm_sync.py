@@ -11,10 +11,10 @@ class LiteLLMSync(LiteLLM):
     """Synchronous LiteLLM client for executing chat completions and streaming responses."""
 
     def _stream_chat_sync(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            stream_kwargs: dict | None = None,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        stream_kwargs: dict | None = None,
     ) -> Generator[StreamChunk, None, None]:
         """Internal synchronous generator for processing streaming chat completion chunks."""
         import litellm

@@ -12,11 +12,11 @@ class AddDraftAndRetrieveSimilarMemory(BaseMemoryTool):
     """Tool to add draft memory and retrieve similar memories"""
 
     def __init__(
-            self,
-            top_k: int = 20,
-            enable_memory_target: bool = False,
-            enable_when_to_use: bool = False,
-            **kwargs,
+        self,
+        top_k: int = 20,
+        enable_memory_target: bool = False,
+        enable_when_to_use: bool = False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.top_k: int = top_k

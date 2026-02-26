@@ -25,17 +25,17 @@ class BaseFileWatcher:
     """
 
     def __init__(
-            self,
-            watch_paths: list[str] | str,
-            suffix_filters: list[str] | None = None,
-            recursive: bool = False,
-            debounce: int = 500,  # Millisecond debounce
-            chunk_tokens: int = 400,
-            chunk_overlap: int = 80,
-            file_store: BaseFileStore | None = None,
-            callback: Callable[[set[tuple[Change, str]]], None | Coroutine[Any, Any, None]] | None = None,
-            scan_on_start: bool = False,
-            **kwargs,
+        self,
+        watch_paths: list[str] | str,
+        suffix_filters: list[str] | None = None,
+        recursive: bool = False,
+        debounce: int = 500,  # Millisecond debounce
+        chunk_tokens: int = 400,
+        chunk_overlap: int = 80,
+        file_store: BaseFileStore | None = None,
+        callback: Callable[[set[tuple[Change, str]]], None | Coroutine[Any, Any, None]] | None = None,
+        scan_on_start: bool = False,
+        **kwargs,
     ):
         """
         Initialize the file watcher
@@ -153,11 +153,11 @@ class BaseFileWatcher:
 
         try:
             async for changes in awatch(
-                    *self.watch_paths,
-                    watch_filter=self.watch_filter,
-                    recursive=self.recursive,
-                    debounce=self.debounce,
-                    stop_event=self._stop_event,
+                *self.watch_paths,
+                watch_filter=self.watch_filter,
+                recursive=self.recursive,
+                debounce=self.debounce,
+                stop_event=self._stop_event,
             ):
                 if self._stop_event.is_set():
                     break

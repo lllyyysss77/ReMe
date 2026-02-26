@@ -40,12 +40,12 @@ class ReMeSummarizer(BaseMemoryAgent):
         return messages
 
     async def _acting_step(
-            self,
-            assistant_message: Message,
-            tools: list[BaseTool],
-            step: int,
-            stage: str = "",
-            **kwargs,
+        self,
+        assistant_message: Message,
+        tools: list[BaseTool],
+        step: int,
+        stage: str = "",
+        **kwargs,
     ) -> tuple[list[BaseTool], list[Message]]:
         return await super()._acting_step(
             assistant_message,

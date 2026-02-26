@@ -17,12 +17,12 @@ class FbCli(BaseReactStream):
     """FbCli agent with system prompt."""
 
     def __init__(
-            self,
-            working_dir: str,
-            context_window_tokens: int = 128000,
-            reserve_tokens: int = 36000,
-            keep_recent_tokens: int = 20000,
-            **kwargs,
+        self,
+        working_dir: str,
+        context_window_tokens: int = 128000,
+        reserve_tokens: int = 36000,
+        keep_recent_tokens: int = 20000,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.working_dir: str = working_dir

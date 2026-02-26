@@ -25,19 +25,19 @@ class BaseEmbeddingModel(ABC):
     """
 
     def __init__(
-            self,
-            api_key: str | None = None,
-            base_url: str | None = None,
-            model_name: str = "",
-            dimensions: int | None = 1024,
-            max_batch_size: int = 10,
-            max_retries: int = 3,
-            raise_exception: bool = True,
-            max_input_length: int = 8192,
-            cache_dir: str | Path = ".reme",
-            max_cache_size: int = 2000,
-            enable_cache: bool = True,
-            **kwargs,
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model_name: str = "",
+        dimensions: int | None = 1024,
+        max_batch_size: int = 10,
+        max_retries: int = 3,
+        raise_exception: bool = True,
+        max_input_length: int = 8192,
+        cache_dir: str | Path = ".reme",
+        max_cache_size: int = 2000,
+        enable_cache: bool = True,
+        **kwargs,
     ):
         """Initialize model configuration and parameters.
 
@@ -332,8 +332,8 @@ class BaseEmbeddingModel(ABC):
         # Compute embeddings for uncached texts in batches
         uncached_texts = [text for _, text in texts_to_compute]
         for i in range(0, len(uncached_texts), self.max_batch_size):
-            batch_texts = uncached_texts[i: i + self.max_batch_size]
-            batch_indices = [idx for idx, _ in texts_to_compute[i: i + self.max_batch_size]]
+            batch_texts = uncached_texts[i : i + self.max_batch_size]
+            batch_indices = [idx for idx, _ in texts_to_compute[i : i + self.max_batch_size]]
 
             # Process each batch with retry logic
             for retry in range(self.max_retries):
@@ -404,8 +404,8 @@ class BaseEmbeddingModel(ABC):
         # Compute embeddings for uncached texts in batches
         uncached_texts = [text for _, text in texts_to_compute]
         for i in range(0, len(uncached_texts), self.max_batch_size):
-            batch_texts = uncached_texts[i: i + self.max_batch_size]
-            batch_indices = [idx for idx, _ in texts_to_compute[i: i + self.max_batch_size]]
+            batch_texts = uncached_texts[i : i + self.max_batch_size]
+            batch_indices = [idx for idx, _ in texts_to_compute[i : i + self.max_batch_size]]
 
             # Process each batch with retry logic
             for retry in range(self.max_retries):

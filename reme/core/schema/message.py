@@ -87,13 +87,13 @@ class Message(BaseModel):
         )
 
     def simple_dump(
-            self,
-            add_name: bool = False,
-            add_reasoning: bool = True,
-            add_time_created: bool = False,
-            add_metadata: bool = False,
-            enable_argument_dict: bool = False,
-            as_dict: bool = True,
+        self,
+        add_name: bool = False,
+        add_reasoning: bool = True,
+        add_time_created: bool = False,
+        add_metadata: bool = False,
+        enable_argument_dict: bool = False,
+        as_dict: bool = True,
     ) -> dict | str:
         """Transforms the message into a simplified dictionary for standard APIs."""
         result = {}
@@ -127,13 +127,13 @@ class Message(BaseModel):
         return result if as_dict else json.dumps(result, ensure_ascii=False)
 
     def format_message(
-            self,
-            index: int | None = None,
-            add_time: bool = False,
-            use_name: bool = False,
-            add_reasoning: bool = True,
-            add_tools: bool = True,
-            strip_markdown_headers: bool = False,
+        self,
+        index: int | None = None,
+        add_time: bool = False,
+        use_name: bool = False,
+        add_reasoning: bool = True,
+        add_tools: bool = True,
+        strip_markdown_headers: bool = False,
     ) -> str:
         """Generates a human-readable string representation of the message."""
         prefix = f"round{index} " if index is not None else ""

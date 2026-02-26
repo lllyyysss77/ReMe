@@ -14,12 +14,12 @@ class FbSummarizer(BaseReact):
     """Retrieve personal memories through vector search and history reading."""
 
     def __init__(
-            self,
-            working_dir: str,
-            memory_dir: str = "memory",
-            version: str = "default",
-            return_prompt: bool = False,
-            **kwargs,
+        self,
+        working_dir: str,
+        memory_dir: str = "memory",
+        version: str = "default",
+        return_prompt: bool = False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.working_dir: str = working_dir
@@ -37,7 +37,7 @@ class FbSummarizer(BaseReact):
                 Message(
                     role=Role.USER,
                     content=f"<conversation>\n{conversation}\n</conversation>\n"
-                            + self.prompt_format(
+                    + self.prompt_format(
                         "user_message_default",
                         conversation=conversation,
                         working_dir=self.working_dir,

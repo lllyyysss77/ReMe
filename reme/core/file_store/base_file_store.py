@@ -13,13 +13,13 @@ class BaseFileStore(ABC):
     """Abstract base class for file storage backends."""
 
     def __init__(
-            self,
-            store_name: str,
-            db_path: str | Path,
-            embedding_model: BaseEmbeddingModel,
-            vector_enabled: bool = False,
-            fts_enabled: bool = True,
-            **kwargs,
+        self,
+        store_name: str,
+        db_path: str | Path,
+        embedding_model: BaseEmbeddingModel,
+        vector_enabled: bool = False,
+        fts_enabled: bool = True,
+        **kwargs,
     ):
         """Initialize"""
         # Validate store_name to prevent SQL injection
@@ -122,10 +122,10 @@ class BaseFileStore(ABC):
 
     @abstractmethod
     async def vector_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform vector similarity search.
 
@@ -140,10 +140,10 @@ class BaseFileStore(ABC):
 
     @abstractmethod
     async def keyword_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform keyword/full-text search.
 
@@ -158,12 +158,12 @@ class BaseFileStore(ABC):
 
     @abstractmethod
     async def hybrid_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
-            vector_weight: float = 0.7,
-            candidate_multiplier: float = 3.0,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
+        vector_weight: float = 0.7,
+        candidate_multiplier: float = 3.0,
     ) -> list[MemorySearchResult]:
         """Perform hybrid search combining vector and keyword search.
 

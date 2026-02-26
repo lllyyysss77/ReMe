@@ -10,14 +10,14 @@ from ..schema import Message, Trajectory, MemoryNode
 
 
 def format_messages(
-        messages: list[Message | dict],
-        add_index: bool = True,
-        add_time: bool = True,
-        use_name: bool = True,
-        add_reasoning: bool = True,
-        add_tools: bool = True,
-        strip_markdown_headers: bool = True,
-        enable_system: bool = False,
+    messages: list[Message | dict],
+    add_index: bool = True,
+    add_time: bool = True,
+    use_name: bool = True,
+    add_reasoning: bool = True,
+    add_tools: bool = True,
+    strip_markdown_headers: bool = True,
+    enable_system: bool = False,
 ) -> str:
     """Formats a list of messages into a single string, optionally filtering system roles."""
     formatted_lines = []
@@ -112,8 +112,8 @@ def parse_json_experience_response(response: str) -> list[dict]:
                 experiences = []
                 for exp_data in parsed:
                     if isinstance(exp_data, dict) and (
-                            ("when_to_use" in exp_data and "experience" in exp_data)
-                            or ("condition" in exp_data and "experience" in exp_data)
+                        ("when_to_use" in exp_data and "experience" in exp_data)
+                        or ("condition" in exp_data and "experience" in exp_data)
                     ):
                         experiences.append(exp_data)
 
@@ -121,8 +121,8 @@ def parse_json_experience_response(response: str) -> list[dict]:
 
             # Handle single object
             elif isinstance(parsed, dict) and (
-                    ("when_to_use" in parsed and "experience" in parsed)
-                    or ("condition" in parsed and "experience" in parsed)
+                ("when_to_use" in parsed and "experience" in parsed)
+                or ("condition" in parsed and "experience" in parsed)
             ):
                 return [parsed]
 
@@ -150,18 +150,18 @@ def get_trajectory_context(trajectory: Trajectory, step_sequence: list[Message])
                 break
 
         # Extract before and after context
-        context_before = trajectory.messages[max(0, start_idx - 2): start_idx]
-        context_after = trajectory.messages[start_idx + len(step_sequence): start_idx + len(step_sequence) + 2]
+        context_before = trajectory.messages[max(0, start_idx - 2) : start_idx]
+        context_after = trajectory.messages[start_idx + len(step_sequence) : start_idx + len(step_sequence) + 2]
 
         context = f"Query: {trajectory.metadata.get('query', 'N/A')}\n"
 
         if context_before:
             context += (
-                    "Previous steps:\n"
-                    + "\n".join(
-                [f"- {step.content[:100]}..." for step in context_before],
-            )
-                    + "\n"
+                "Previous steps:\n"
+                + "\n".join(
+                    [f"- {step.content[:100]}..." for step in context_before],
+                )
+                + "\n"
             )
 
         if context_after:

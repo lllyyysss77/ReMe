@@ -11,16 +11,16 @@ class MCPTool(BaseTool):
     """Operator for calling remote MCP (Model Context Protocol) tools."""
 
     def __init__(
-            self,
-            mcp_server: str = "",
-            tool_name: str = "",
-            parameter_required: list[str] | None = None,
-            parameter_optional: list[str] | None = None,
-            parameter_deleted: list[str] | None = None,
-            max_retries: int = 3,
-            timeout: float | None = None,
-            raise_exception: bool = False,
-            **kwargs,
+        self,
+        mcp_server: str = "",
+        tool_name: str = "",
+        parameter_required: list[str] | None = None,
+        parameter_optional: list[str] | None = None,
+        parameter_deleted: list[str] | None = None,
+        max_retries: int = 3,
+        timeout: float | None = None,
+        raise_exception: bool = False,
+        **kwargs,
     ):
         super().__init__(max_retries=max_retries, raise_exception=raise_exception, **kwargs)
 

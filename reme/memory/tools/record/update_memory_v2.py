@@ -11,11 +11,11 @@ class UpdateMemoryV2(BaseMemoryTool):
     """Tool to update memories in vector store by deleting and adding memory entries"""
 
     def __init__(
-            self,
-            name="update_memory",
-            enable_memory_target: bool = False,
-            enable_when_to_use: bool = False,
-            **kwargs,
+        self,
+        name="update_memory",
+        enable_memory_target: bool = False,
+        enable_when_to_use: bool = False,
+        **kwargs,
     ):
         kwargs["enable_multiple"] = True
         super().__init__(name=name, **kwargs)

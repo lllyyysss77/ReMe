@@ -16,7 +16,7 @@ from .registry_factory import R
 from .schema import Response, ServiceConfig
 from .service_context import ServiceContext
 from .token_counter import BaseTokenCounter
-from .utils import execute_stream_task, PydanticConfigParser, init_logger, print_logo, MCPClient
+from .utils import execute_stream_task, PydanticConfigParser, init_logger, MCPClient, print_logo
 from .vector_store import BaseVectorStore
 
 
@@ -24,24 +24,24 @@ class Application:
     """Application wrapper that wires together service context, flows, and runtimes."""
 
     def __init__(
-            self,
-            *args,
-            llm_api_key: str | None = None,
-            llm_base_url: str | None = None,
-            embedding_api_key: str | None = None,
-            embedding_base_url: str | None = None,
-            working_dir: str | None = None,
-            config_path: str | None = None,
-            enable_logo: bool = True,
-            log_to_console: bool = True,
-            parser: type[PydanticConfigParser] | None = None,
-            default_llm_config: dict | None = None,
-            default_embedding_model_config: dict | None = None,
-            default_vector_store_config: dict | None = None,
-            default_file_store_config: dict | None = None,
-            default_token_counter_config: dict | None = None,
-            default_file_watcher_config: dict | None = None,
-            **kwargs,
+        self,
+        *args,
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+        working_dir: str | None = None,
+        config_path: str | None = None,
+        enable_logo: bool = True,
+        log_to_console: bool = True,
+        parser: type[PydanticConfigParser] | None = None,
+        default_llm_config: dict | None = None,
+        default_embedding_model_config: dict | None = None,
+        default_vector_store_config: dict | None = None,
+        default_file_store_config: dict | None = None,
+        default_token_counter_config: dict | None = None,
+        default_file_watcher_config: dict | None = None,
+        **kwargs,
     ):
         self.service_context = ServiceContext(
             *args,
@@ -63,7 +63,12 @@ class Application:
             default_file_watcher_config=default_file_watcher_config,
             **kwargs,
         )
+
         self.prompt_handler = PromptHandler(language=self.service_config.language)
+
+        # NOTE: flows are initialized here to start service!
+        self.init_flows()
+
         self._started: bool = False
 
     @classmethod
@@ -73,40 +78,8 @@ class Application:
         await instance.start()
         return instance
 
-    @property
-    def service_config(self) -> ServiceConfig:
-        """Get the service configuration."""
-        return self.service_context.service_config
-
-    async def start(self):
-        """Start the service context by initializing all configured components."""
-        if self._started:
-            logger.warning("Application has already started.")
-            return self
-
-        init_logger(log_to_console=self.service_config.log_to_console)
-        logger.info(f"Init ReMe with config: {self.service_config.model_dump_json()}")
-
-        working_path = Path(self.service_config.working_dir)
-        working_path.mkdir(parents=True, exist_ok=True)
-
-        if self.service_config.enable_logo:
-            print_logo(service_config=self.service_config)
-
-        if self.service_config.ray_max_workers > 1:
-            import ray
-
-            if not ray.is_initialized():
-                ray.init(num_cpus=self.service_config.ray_max_workers)
-
-        if (
-                self.service_context.thread_pool is None
-                or self.service_context.thread_pool._shutdown  # pylint: disable=protected-access
-        ):
-            self.service_context.thread_pool = ThreadPoolExecutor(
-                max_workers=self.service_config.thread_pool_max_workers,
-            )
-
+    def init_flows(self):
+        """Initialize flows."""
         expression_flow_cls = None
         for name, flow_cls in R.flows.items():
             if not self._filter_flows(name):
@@ -130,6 +103,49 @@ class Application:
                 self.service_context.flows[flow.name] = flow
         else:
             logger.info("No expression flow found, please check your configuration.")
+
+    def _filter_flows(self, name: str) -> bool:
+        """Filter flows based on enabled_flows and disabled_flows configuration."""
+        if self.service_config.enabled_flows:
+            return name in self.service_config.enabled_flows
+        elif self.service_config.disabled_flows:
+            return name not in self.service_config.disabled_flows
+        else:
+            return True
+
+    @property
+    def service_config(self) -> ServiceConfig:
+        """Get the service configuration."""
+        return self.service_context.service_config
+
+    async def start(self):
+        """Start the service context by initializing all configured components."""
+        if self._started:
+            logger.warning("Application has already started.")
+            return self
+
+        init_logger(log_to_console=self.service_config.log_to_console)
+        logger.info(f"Init ReMe with config: {self.service_config.model_dump_json()}")
+
+        working_path = Path(self.service_config.working_dir)
+        working_path.mkdir(parents=True, exist_ok=True)
+
+        if self.service_config.ray_max_workers > 1:
+            import ray
+
+            if not ray.is_initialized():
+                ray.init(num_cpus=self.service_config.ray_max_workers)
+
+        if (
+            self.service_context.thread_pool is None
+            or self.service_context.thread_pool._shutdown  # pylint: disable=protected-access
+        ):
+            self.service_context.thread_pool = ThreadPoolExecutor(
+                max_workers=self.service_config.thread_pool_max_workers,
+            )
+
+        if self.service_context.service_config.enable_logo:
+            print_logo(service_config=self.service_config)
 
         for name, config in self.service_config.llms.items():
             if config.backend not in R.llms:
@@ -197,15 +213,6 @@ class Application:
 
         self._started = True
         return self
-
-    def _filter_flows(self, name: str) -> bool:
-        """Filter flows based on enabled_flows and disabled_flows configuration."""
-        if self.service_config.enabled_flows:
-            return name in self.service_config.enabled_flows
-        elif self.service_config.disabled_flows:
-            return name not in self.service_config.disabled_flows
-        else:
-            return True
 
     async def prepare_mcp_servers(self):
         """Prepare and initialize MCP server connections."""
@@ -287,10 +294,10 @@ class Application:
         stream_queue = asyncio.Queue()
         task = asyncio.create_task(flow.call(stream_queue=stream_queue, **kwargs))
         async for chunk in execute_stream_task(
-                stream_queue=stream_queue,
-                task=task,
-                task_name=name,
-                output_format="str",
+            stream_queue=stream_queue,
+            task=task,
+            task_name=name,
+            output_format="str",
         ):
             yield chunk
 
@@ -361,7 +368,7 @@ class Application:
         import warnings
 
         warnings.filterwarnings("ignore", category=DeprecationWarning)
-        service = R.services[self.service_config.backend](service_context=self.service_context)
+        service = R.services[self.service_config.backend](app=self)
         service.run()
 
     async def reset_default_collection(self, collection_name: str):

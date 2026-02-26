@@ -45,21 +45,21 @@ class PGVectorStore(BaseVectorStore):
             )
 
     def __init__(
-            self,
-            collection_name: str,
-            db_path: str | Path,
-            embedding_model: BaseEmbeddingModel,
-            host: str = "localhost",
-            port: int = 5432,
-            database: str = "postgres",
-            user: str = "postgres",
-            password: str = "",
-            min_size: int = 1,
-            max_size: int = 10,
-            dsn: str | None = None,
-            use_hnsw: bool = True,
-            use_diskann: bool = False,
-            **kwargs,
+        self,
+        collection_name: str,
+        db_path: str | Path,
+        embedding_model: BaseEmbeddingModel,
+        host: str = "localhost",
+        port: int = 5432,
+        database: str = "postgres",
+        user: str = "postgres",
+        password: str = "",
+        min_size: int = 1,
+        max_size: int = 10,
+        dsn: str | None = None,
+        use_hnsw: bool = True,
+        use_diskann: bool = False,
+        **kwargs,
     ):
         """Initialize the PGVector store with connection parameters and index settings."""
         if _ASYNCPG_IMPORT_ERROR is not None:
@@ -322,11 +322,11 @@ class PGVectorStore(BaseVectorStore):
         return filter_clause, params
 
     async def search(
-            self,
-            query: str,
-            limit: int = 5,
-            filters: dict | None = None,
-            **kwargs,
+        self,
+        query: str,
+        limit: int = 5,
+        filters: dict | None = None,
+        **kwargs,
     ) -> list[VectorNode]:
         """Perform vector similarity search with optional metadata filtering."""
         query_vector = await self.get_embedding(query)
@@ -499,11 +499,11 @@ class PGVectorStore(BaseVectorStore):
         return results
 
     async def list(
-            self,
-            filters: dict | None = None,
-            limit: int | None = None,
-            sort_key: str | None = None,
-            reverse: bool = False,
+        self,
+        filters: dict | None = None,
+        limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
         """Return a list of vector nodes matching the provided filters and limit.
 

@@ -48,14 +48,14 @@ class FullFileWatcher(BaseFileWatcher):
             if change_type in [Change.added, Change.modified]:
                 file_meta = await self._build_file_metadata(path)
                 chunks = (
-                        chunk_markdown(
-                            file_meta.content,
-                            file_meta.path,
-                            MemorySource.MEMORY,
-                            self.chunk_tokens,
-                            self.chunk_overlap,
-                        )
-                        or []
+                    chunk_markdown(
+                        file_meta.content,
+                        file_meta.path,
+                        MemorySource.MEMORY,
+                        self.chunk_tokens,
+                        self.chunk_overlap,
+                    )
+                    or []
                 )
                 if chunks:
                     chunks = await self.file_store.get_chunk_embeddings(chunks)

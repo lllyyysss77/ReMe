@@ -72,12 +72,12 @@ class PersonalRetriever(BaseMemoryAgent):
         ]
 
     async def _acting_step(
-            self,
-            assistant_message: Message,
-            tools: list[BaseTool],
-            step: int,
-            stage: str = "",
-            **kwargs,
+        self,
+        assistant_message: Message,
+        tools: list[BaseTool],
+        step: int,
+        stage: str = "",
+        **kwargs,
     ) -> tuple[list[BaseTool], list[Message]]:
         """Execute tool calls with memory context."""
         return await super()._acting_step(

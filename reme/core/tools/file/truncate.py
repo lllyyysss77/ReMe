@@ -49,9 +49,9 @@ def truncate_line(text: str, max_length: int = GREP_MAX_LINE_LENGTH) -> tuple[st
 
 
 def truncate_tail(
-        text: str,
-        max_lines: int = DEFAULT_MAX_LINES,
-        max_bytes: int = DEFAULT_MAX_BYTES,
+    text: str,
+    max_lines: int = DEFAULT_MAX_LINES,
+    max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> TruncationResult:
     """Truncate text to keep only the tail (last portion).
 
@@ -133,9 +133,9 @@ def truncate_tail(
 
 
 def truncate_head(
-        text: str,
-        max_lines: int = FIND_MAX_LINES,
-        max_bytes: int = FIND_MAX_BYTES,
+    text: str,
+    max_lines: int = FIND_MAX_LINES,
+    max_bytes: int = FIND_MAX_BYTES,
 ) -> TruncationResult:
     """Truncate text to keep only the head (first portion).
 

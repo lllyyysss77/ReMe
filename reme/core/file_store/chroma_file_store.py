@@ -35,8 +35,8 @@ class ChromaFileStore(BaseFileStore):
     """
 
     def __init__(
-            self,
-            **kwargs,
+        self,
+        **kwargs,
     ):
         if not CHROMADB_AVAILABLE:
             raise ImportError(
@@ -135,10 +135,10 @@ class ChromaFileStore(BaseFileStore):
         logger.info(f"File metadata will be persisted to: {self._metadata_file}")
 
     async def upsert_file(
-            self,
-            file_meta: FileMetadata,
-            source: MemorySource,
-            chunks: list[MemoryChunk],
+        self,
+        file_meta: FileMetadata,
+        source: MemorySource,
+        chunks: list[MemoryChunk],
     ) -> None:
         """Insert or update file and its chunks."""
         if not chunks:
@@ -230,9 +230,9 @@ class ChromaFileStore(BaseFileStore):
                 break
 
     async def upsert_chunks(
-            self,
-            chunks: list[MemoryChunk],
-            source: MemorySource,
+        self,
+        chunks: list[MemoryChunk],
+        source: MemorySource,
     ) -> None:
         """Insert or update specific chunks without affecting other chunks."""
         if not chunks:
@@ -278,9 +278,9 @@ class ChromaFileStore(BaseFileStore):
         return list(self._metadata_cache[source.value].keys())
 
     async def get_file_metadata(
-            self,
-            path: str,
-            source: MemorySource,
+        self,
+        path: str,
+        source: MemorySource,
     ) -> FileMetadata | None:
         """Get file metadata with chunk count."""
         if source.value not in self._metadata_cache:
@@ -301,9 +301,9 @@ class ChromaFileStore(BaseFileStore):
         )
 
     async def get_file_chunks(
-            self,
-            path: str,
-            source: MemorySource,
+        self,
+        path: str,
+        source: MemorySource,
     ) -> list[MemoryChunk]:
         """Get all chunks for a file."""
         results = self.chunks_collection.get(
@@ -332,10 +332,10 @@ class ChromaFileStore(BaseFileStore):
         return chunks
 
     async def vector_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform vector similarity search."""
         if not self.vector_enabled or not query:
@@ -389,10 +389,10 @@ class ChromaFileStore(BaseFileStore):
         return search_results
 
     async def keyword_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform keyword/full-text search.
 
@@ -476,12 +476,12 @@ class ChromaFileStore(BaseFileStore):
         return search_results[:limit]
 
     async def hybrid_search(
-            self,
-            query: str,
-            limit: int,
-            sources: list[MemorySource] | None = None,
-            vector_weight: float = 0.7,
-            candidate_multiplier: float = 3.0,
+        self,
+        query: str,
+        limit: int,
+        sources: list[MemorySource] | None = None,
+        vector_weight: float = 0.7,
+        candidate_multiplier: float = 3.0,
     ) -> list[MemorySearchResult]:
         """Perform hybrid search combining vector and keyword search.
 
@@ -548,10 +548,10 @@ class ChromaFileStore(BaseFileStore):
 
     @staticmethod
     def _merge_hybrid_results(
-            vector: list[MemorySearchResult],
-            keyword: list[MemorySearchResult],
-            vector_weight: float,
-            text_weight: float,
+        vector: list[MemorySearchResult],
+        keyword: list[MemorySearchResult],
+        vector_weight: float,
+        text_weight: float,
     ) -> list[MemorySearchResult]:
         """Merge vector and keyword search results with weighted scoring."""
         merged: dict[str, MemorySearchResult] = {}

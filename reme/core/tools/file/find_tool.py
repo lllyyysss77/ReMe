@@ -35,7 +35,7 @@ class FindTool(BaseFileTool):
                         "pattern": {
                             "type": "string",
                             "description": "Glob pattern to match files, "
-                                           "e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
+                            "e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
                         },
                         "path": {
                             "type": "string",

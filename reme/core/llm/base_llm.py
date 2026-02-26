@@ -18,14 +18,14 @@ class BaseLLM(ABC):
     """Base class for LLM interactions."""
 
     def __init__(
-            self,
-            api_key: str | None = None,
-            base_url: str | None = None,
-            model_name: str = "",
-            max_retries: int = 10,
-            raise_exception: bool = False,
-            request_interval: float = 0.0,
-            **kwargs,
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model_name: str = "",
+        max_retries: int = 10,
+        raise_exception: bool = False,
+        request_interval: float = 0.0,
+        **kwargs,
     ):
         """Initialize LLM client.
 
@@ -96,37 +96,37 @@ class BaseLLM(ABC):
 
     @abstractmethod
     def _build_stream_kwargs(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            log_params: bool = True,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        log_params: bool = True,
+        model_name: str | None = None,
+        **kwargs,
     ) -> dict:
         """Build provider-specific streaming parameters."""
 
     async def _stream_chat(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None,
-            stream_kwargs: dict,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None,
+        stream_kwargs: dict,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Async generator for streaming response chunks."""
 
     def _stream_chat_sync(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            stream_kwargs: dict | None = None,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        stream_kwargs: dict | None = None,
     ) -> Generator[StreamChunk, None, None]:
         """Sync generator for streaming response chunks."""
 
     async def stream_chat(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        model_name: str | None = None,
+        **kwargs,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Stream chat completions with retries and return final message."""
         if self.request_interval > 0:
@@ -141,11 +141,11 @@ class BaseLLM(ABC):
             yield chunk
 
     async def _stream_chat_impl(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        model_name: str | None = None,
+        **kwargs,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Stream chat with retry logic."""
         stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
@@ -170,11 +170,11 @@ class BaseLLM(ABC):
                 await asyncio.sleep(i + 1)
 
     def stream_chat_sync(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        model_name: str | None = None,
+        **kwargs,
     ) -> Generator[StreamChunk, None, None]:
         """Stream chat completions synchronously with retries."""
         stream_kwargs = self._build_stream_kwargs(messages, tools, model_name=model_name, **kwargs)
@@ -197,12 +197,12 @@ class BaseLLM(ABC):
                 time.sleep(i + 1)
 
     async def _chat(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            enable_stream_print: bool = False,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        enable_stream_print: bool = False,
+        model_name: str | None = None,
+        **kwargs,
     ) -> Message:
         """Aggregate full response by consuming the stream."""
         state = {
@@ -256,12 +256,12 @@ class BaseLLM(ABC):
         )
 
     def _chat_sync(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            enable_stream_print: bool = False,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        enable_stream_print: bool = False,
+        model_name: str | None = None,
+        **kwargs,
     ) -> Message:
         """Aggregate full response synchronously by consuming the stream."""
         state = {
@@ -315,14 +315,14 @@ class BaseLLM(ABC):
         )
 
     async def chat(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            enable_stream_print: bool = False,
-            callback_fn: Callable[[Message], Any] | None = None,
-            default_value: Any = None,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        enable_stream_print: bool = False,
+        callback_fn: Callable[[Message], Any] | None = None,
+        default_value: Any = None,
+        model_name: str | None = None,
+        **kwargs,
     ) -> Message | Any:
         """Chat completion with retries and error handling."""
         if self.request_interval > 0:
@@ -344,14 +344,14 @@ class BaseLLM(ABC):
         )
 
     async def _chat_impl(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            enable_stream_print: bool = False,
-            callback_fn: Callable[[Message], Any] | None = None,
-            default_value: Any = None,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        enable_stream_print: bool = False,
+        callback_fn: Callable[[Message], Any] | None = None,
+        default_value: Any = None,
+        model_name: str | None = None,
+        **kwargs,
     ) -> Message | Any:
         """Chat with retry and error handling logic."""
         effective_model = model_name if model_name is not None else self.model_name
@@ -371,9 +371,9 @@ class BaseLLM(ABC):
                 error_message = str(e.args[0]) if e.args else str(e)
                 is_inappropriate_content = "inappropriate content" in error_message.lower()
                 is_rate_limit_error = (
-                        "request rate increased too quickly" in error_message.lower()
-                        or "exceeded your current quota" in error_message.lower()
-                        or "insufficient_quota" in error_message.lower()
+                    "request rate increased too quickly" in error_message.lower()
+                    or "exceeded your current quota" in error_message.lower()
+                    or "insufficient_quota" in error_message.lower()
                 )
 
                 if is_inappropriate_content:
@@ -408,14 +408,14 @@ class BaseLLM(ABC):
         return default_value
 
     def chat_sync(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            enable_stream_print: bool = False,
-            callback_fn: Callable[[Message], Any] | None = None,
-            default_value: Any = None,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        enable_stream_print: bool = False,
+        callback_fn: Callable[[Message], Any] | None = None,
+        default_value: Any = None,
+        model_name: str | None = None,
+        **kwargs,
     ) -> Message | Any:
         """Chat completion synchronously with retries and error handling."""
         effective_model = model_name if model_name is not None else self.model_name
@@ -435,9 +435,9 @@ class BaseLLM(ABC):
                 error_message = str(e.args[0]) if e.args else str(e)
                 is_inappropriate_content = "inappropriate content" in error_message.lower()
                 is_rate_limit_error = (
-                        "request rate increased too quickly" in error_message.lower()
-                        or "exceeded your current quota" in error_message.lower()
-                        or "insufficient_quota" in error_message.lower()
+                    "request rate increased too quickly" in error_message.lower()
+                    or "exceeded your current quota" in error_message.lower()
+                    or "insufficient_quota" in error_message.lower()
                 )
 
                 if is_inappropriate_content:
@@ -472,12 +472,12 @@ class BaseLLM(ABC):
         return default_value
 
     async def simple_request(
-            self,
-            prompt: str,
-            model_name: str | None = None,
-            callback_fn: Callable[[Message], Any] | None = None,
-            default_value: Any = None,
-            **kwargs,
+        self,
+        prompt: str,
+        model_name: str | None = None,
+        callback_fn: Callable[[Message], Any] | None = None,
+        default_value: Any = None,
+        **kwargs,
     ) -> str:
         """Make a simple request using the LLM."""
         assistant_message = await self.chat(
@@ -490,10 +490,10 @@ class BaseLLM(ABC):
         return assistant_message.content
 
     async def simple_request_for_json(
-            self,
-            prompt: str,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        prompt: str,
+        model_name: str | None = None,
+        **kwargs,
     ) -> dict:
         """Make a simple request using the LLM and extract JSON."""
 

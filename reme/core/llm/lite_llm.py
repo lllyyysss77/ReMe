@@ -18,12 +18,12 @@ class LiteLLM(BaseLLM):
         self.custom_llm_provider: str = custom_llm_provider
 
     def _build_stream_kwargs(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            log_params: bool = True,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        log_params: bool = True,
+        model_name: str | None = None,
+        **kwargs,
     ) -> dict:
         """Construct and log the parameters dictionary for LiteLLM API calls.
 
@@ -70,10 +70,10 @@ class LiteLLM(BaseLLM):
         return llm_kwargs
 
     async def _stream_chat(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            stream_kwargs: dict | None = None,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        stream_kwargs: dict | None = None,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Execute async streaming chat requests and yield processed response chunks."""
         import litellm

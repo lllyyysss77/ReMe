@@ -41,7 +41,7 @@ class DelegateTask(BaseMemoryTool):
                                     "memory_target": {
                                         "type": "string",
                                         "description": "The memory_target identifier to "
-                                                       "delegate to the corresponding agent",
+                                        "delegate to the corresponding agent",
                                     },
                                 },
                                 "required": ["memory_target"],

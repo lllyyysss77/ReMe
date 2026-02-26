@@ -96,10 +96,10 @@ class ReMeCli(ReMeFb):
                 ),
             )
             async for _chunk in execute_stream_task(
-                    stream_queue=stream_queue,
-                    task=task,
-                    task_name="cli",
-                    output_format="chunk",
+                stream_queue=stream_queue,
+                task=task,
+                task_name="cli",
+                output_format="chunk",
             ):
                 yield _chunk
 

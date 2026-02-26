@@ -32,12 +32,12 @@ class OpenAILLM(BaseLLM):
         return self._client
 
     def _build_stream_kwargs(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None = None,
-            log_params: bool = True,
-            model_name: str | None = None,
-            **kwargs,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None = None,
+        log_params: bool = True,
+        model_name: str | None = None,
+        **kwargs,
     ) -> dict:
         """Construct the parameter dictionary for the OpenAI Chat Completions API call.
 
@@ -74,10 +74,10 @@ class OpenAILLM(BaseLLM):
         return llm_kwargs
 
     async def _stream_chat(
-            self,
-            messages: list[Message],
-            tools: list[ToolCall] | None,
-            stream_kwargs: dict,
+        self,
+        messages: list[Message],
+        tools: list[ToolCall] | None,
+        stream_kwargs: dict,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Generate a stream of chat completion chunks including text, reasoning content, and tool calls."""
         stream_kwargs = stream_kwargs or {}

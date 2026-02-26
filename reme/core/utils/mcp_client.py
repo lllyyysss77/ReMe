@@ -102,11 +102,11 @@ class MCPClient:
         return tool_calls
 
     async def call_tool(
-            self,
-            server_name: str,
-            tool_name: str,
-            arguments: dict[str, Any],
-            parse_text_result: bool = False,
+        self,
+        server_name: str,
+        tool_name: str,
+        arguments: dict[str, Any],
+        parse_text_result: bool = False,
     ) -> CallToolResult | str:
         """Execute a tool on a specific server."""
         async with self.connect_to_server(server_name) as session:

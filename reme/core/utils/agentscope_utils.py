@@ -20,9 +20,9 @@ class DashScopeToAgentScopeConverter:
         self.default_name = default_name
 
     def convert_message(
-            self,
-            dashscope_msg: dict[str, Any],
-            name: str | None = None,
+        self,
+        dashscope_msg: dict[str, Any],
+        name: str | None = None,
     ) -> "Msg":
         """Convert a single DashScope format message to AgentScope Msg.
 
@@ -141,8 +141,8 @@ class DashScopeToAgentScopeConverter:
         )
 
     def convert_messages(
-            self,
-            dashscope_msgs: list[dict[str, Any]],
+        self,
+        dashscope_msgs: list[dict[str, Any]],
     ) -> list["Msg"]:
         """Convert a list of DashScope format messages to AgentScope Msgs.
 
@@ -178,8 +178,8 @@ class DashScopeToAgentScopeConverter:
         return False
 
     def _convert_content_to_blocks(
-            self,
-            content: str | list[dict[str, Any]],
+        self,
+        content: str | list[dict[str, Any]],
     ) -> list[Any]:
         """Convert DashScope content to AgentScope content blocks.
 
@@ -290,8 +290,8 @@ class DashScopeToAgentScopeConverter:
         return blocks
 
     def _convert_tool_calls_to_blocks(
-            self,
-            tool_calls: list[dict[str, Any]],
+        self,
+        tool_calls: list[dict[str, Any]],
     ) -> list[Any]:
         """Convert DashScope tool_calls to AgentScope ToolUseBlocks.
 
@@ -329,8 +329,8 @@ class DashScopeToAgentScopeConverter:
         return blocks
 
     def _convert_tool_result_to_blocks(
-            self,
-            dashscope_msg: dict[str, Any],
+        self,
+        dashscope_msg: dict[str, Any],
     ) -> list[Any]:
         """Convert DashScope tool result message to AgentScope ToolResultBlock.
 
@@ -358,9 +358,9 @@ class DashScopeToAgentScopeConverter:
 
 
 def convert_dashscope_to_agentscope(
-        dashscope_msg: dict[str, Any] | list[dict[str, Any]],
-        name: str | None = None,
-        default_name: str = "assistant",
+    dashscope_msg: dict[str, Any] | list[dict[str, Any]],
+    name: str | None = None,
+    default_name: str = "assistant",
 ) -> "Msg | list[Msg]":
     """Convenience function to convert DashScope format to AgentScope Msg.
 

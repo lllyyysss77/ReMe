@@ -11,11 +11,11 @@ class FbContextChecker(BaseOp):
     """Check if context exceeds token limits and find cut point for compaction."""
 
     def __init__(
-            self,
-            context_window_tokens: int = 128000,
-            reserve_tokens: int = 36000,
-            keep_recent_tokens: int = 20000,
-            **kwargs,
+        self,
+        context_window_tokens: int = 128000,
+        reserve_tokens: int = 36000,
+        keep_recent_tokens: int = 20000,
+        **kwargs,
     ):
         """
         Initialize context checker.
@@ -52,10 +52,10 @@ class FbContextChecker(BaseOp):
         return -1
 
     def _find_cut_point(
-            self,
-            messages: list[Message],
-            token_count: int,
-            threshold: int,
+        self,
+        messages: list[Message],
+        token_count: int,
+        threshold: int,
     ) -> CutPointResult:
         """
         Find cut point with split turn detection.

@@ -28,17 +28,17 @@ class ESVectorStore(BaseVectorStore):
     """Elasticsearch-based vector store for dense vector storage and kNN search."""
 
     def __init__(
-            self,
-            collection_name: str,
-            db_path: str | Path,
-            embedding_model: BaseEmbeddingModel,
-            hosts: str | list[str] | None = None,
-            basic_auth: tuple[str, str] | None = None,
-            cloud_id: str | None = None,
-            api_key: str | None = None,
-            verify_certs: bool = True,
-            headers: dict[str, str] | None = None,
-            **kwargs,
+        self,
+        collection_name: str,
+        db_path: str | Path,
+        embedding_model: BaseEmbeddingModel,
+        hosts: str | list[str] | None = None,
+        basic_auth: tuple[str, str] | None = None,
+        cloud_id: str | None = None,
+        api_key: str | None = None,
+        verify_certs: bool = True,
+        headers: dict[str, str] | None = None,
+        **kwargs,
     ):
         """Initialize the Elasticsearch client and vector store configuration.
 
@@ -235,11 +235,11 @@ class ESVectorStore(BaseVectorStore):
             await self.client.indices.refresh(index=self.collection_name)
 
     async def search(
-            self,
-            query: str,
-            limit: int = 5,
-            filters: dict | None = None,
-            **kwargs,
+        self,
+        query: str,
+        limit: int = 5,
+        filters: dict | None = None,
+        **kwargs,
     ) -> list[VectorNode]:
         """Perform a kNN similarity search based on a text query.
 
@@ -444,11 +444,11 @@ class ESVectorStore(BaseVectorStore):
         return results[0] if single_result and results else results
 
     async def list(
-            self,
-            filters: dict | None = None,
-            limit: int | None = None,
-            sort_key: str | None = None,
-            reverse: bool = False,
+        self,
+        filters: dict | None = None,
+        limit: int | None = None,
+        sort_key: str | None = None,
+        reverse: bool = False,
     ) -> list[VectorNode]:
         """Retrieve a list of nodes filtered by metadata or limit.
 

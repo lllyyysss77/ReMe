@@ -135,10 +135,10 @@ class ReadTool(BaseFileTool):
 
     @staticmethod
     async def _read_text(
-        absolute_path: str,
-        _display_path: str,
-        offset: int | None,
-        limit: int | None,
+            absolute_path: str,
+            _display_path: str,
+            offset: int | None,
+            limit: int | None,
     ) -> str:
         """Read text file with smart truncation.
 

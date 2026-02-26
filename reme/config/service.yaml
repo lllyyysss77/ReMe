@@ -1,4 +1,5 @@
 backend: http
+working_dir: .reme
 thread_pool_max_workers: 64
 
 mcp:
@@ -20,35 +21,23 @@ flows:
 llms:
   default:
     backend: openai
-    model_name: qwen3-30b-a3b-instruct-2507
-    #    model_name: qwen3-30b-a3b-thinking-2507
+    model_name: qwen3.5-plus
     request_interval: 1
-  #    temperature: 0.0001
-
-  qwen3_max_instruct:
-    backend: openai
-    model_name: qwen3-max
-    request_interval: 2
-
-  qwen-plus-thinking:
-    backend: openai
-    model_name: qwen-plus
-    request_interval: 1
-    extra_body:
-      enable_thinking: True
+#    temperature: 0.0001
 
 embedding_models:
   default:
     backend: openai
     model_name: text-embedding-v4
     dimensions: 1024
+    enable_cache: false
 
 vector_stores:
   default:
     backend: chroma
     #    backend: local
-    embedding_model: default
     collection_name: reme
+    embedding_model: default
 
 token_counters:
   default:

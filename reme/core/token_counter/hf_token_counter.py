@@ -12,12 +12,12 @@ class HFTokenCounter(BaseTokenCounter):
     """Token counter using transformers.AutoTokenizer.apply_chat_template."""
 
     def __init__(
-        self,
-        model_name: str,
-        use_fast: bool = False,
-        trust_remote_code: bool = False,
-        use_mirror: bool = True,
-        **kwargs,
+            self,
+            model_name: str,
+            use_fast: bool = False,
+            trust_remote_code: bool = False,
+            use_mirror: bool = True,
+            **kwargs,
     ):
         """Initialize the counter with model config and lazy tokenizer loading."""
         super().__init__(model_name=model_name, **kwargs)
@@ -56,10 +56,10 @@ class HFTokenCounter(BaseTokenCounter):
             raise
 
     def count_token(
-        self,
-        messages: list[Message],
-        tools: list[ToolCall] | None = None,
-        **kwargs,
+            self,
+            messages: list[Message],
+            tools: list[ToolCall] | None = None,
+            **kwargs,
     ) -> int:
         """Calculate total tokens for messages and tools using the chat template."""
         tokenizer = self._ensure_tokenizer()

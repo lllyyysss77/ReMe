@@ -20,11 +20,11 @@ class LocalVectorStore(BaseVectorStore):
     """
 
     def __init__(
-        self,
-        collection_name: str,
-        db_path: str | Path,
-        embedding_model: BaseEmbeddingModel,
-        **kwargs,
+            self,
+            collection_name: str,
+            db_path: str | Path,
+            embedding_model: BaseEmbeddingModel,
+            **kwargs,
     ):
         """Initialize the local vector store with a db_path and collection name."""
         super().__init__(
@@ -187,11 +187,11 @@ class LocalVectorStore(BaseVectorStore):
         logger.info(f"Inserted {len(nodes_to_insert)} nodes into {self.collection_name}")
 
     async def search(
-        self,
-        query: str,
-        limit: int = 5,
-        filters: dict | None = None,
-        **kwargs,
+            self,
+            query: str,
+            limit: int = 5,
+            filters: dict | None = None,
+            **kwargs,
     ) -> list[VectorNode]:
         """Search for nodes similar to the query using batch cosine similarity."""
         query_vector = await self.get_embedding(query)
@@ -295,11 +295,11 @@ class LocalVectorStore(BaseVectorStore):
         return results[0] if is_single and results else results
 
     async def list(
-        self,
-        filters: dict | None = None,
-        limit: int | None = None,
-        sort_key: str | None = None,
-        reverse: bool = True,
+            self,
+            filters: dict | None = None,
+            limit: int | None = None,
+            sort_key: str | None = None,
+            reverse: bool = True,
     ) -> list[VectorNode]:
         """List vector nodes from cache with optional filtering and limits.
 

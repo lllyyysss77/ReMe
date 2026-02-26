@@ -51,14 +51,14 @@ class MemoryHandler:
         return memory_nodes
 
     async def add(
-        self,
-        content: str,
-        when_to_use: str = "",
-        message_time: str = "",
-        ref_memory_id: str = "",
-        author: str = "",
-        score: float = 0.0,
-        **kwargs,
+            self,
+            content: str,
+            when_to_use: str = "",
+            message_time: str = "",
+            ref_memory_id: str = "",
+            author: str = "",
+            score: float = 0.0,
+            **kwargs,
     ) -> MemoryNode:
         """Add a single memory node and return its memory_id."""
         memory_dict = {
@@ -140,15 +140,15 @@ class MemoryHandler:
         return updated_nodes
 
     async def update(
-        self,
-        memory_id: str,
-        content: str | None = None,
-        when_to_use: str | None = None,
-        message_time: str | None = None,
-        ref_memory_id: str | None = None,
-        author: str | None = None,
-        score: float | None = None,
-        **kwargs,
+            self,
+            memory_id: str,
+            content: str | None = None,
+            when_to_use: str | None = None,
+            message_time: str | None = None,
+            ref_memory_id: str | None = None,
+            author: str | None = None,
+            score: float | None = None,
+            **kwargs,
     ) -> MemoryNode:
         """Update a memory node's content, when_to_use, or other fields."""
         update_dict: dict = {"memory_id": memory_id}
@@ -171,11 +171,11 @@ class MemoryHandler:
         return memory_nodes[0]
 
     async def search(
-        self,
-        query: str | list[str],
-        limit: int = 5,
-        filters: dict | None = None,
-        **kwargs,
+            self,
+            query: str | list[str],
+            limit: int = 5,
+            filters: dict | None = None,
+            **kwargs,
     ) -> list[MemoryNode]:
         """Search for similar memory nodes based on query text."""
         filters = filters or {}
@@ -272,11 +272,11 @@ class MemoryHandler:
             return list(seen_ids.values())
 
     async def list(
-        self,
-        filters: dict | None = None,
-        limit: int | None = None,
-        sort_key: str | None = None,
-        reverse: bool = True,
+            self,
+            filters: dict | None = None,
+            limit: int | None = None,
+            sort_key: str | None = None,
+            reverse: bool = True,
     ) -> list[MemoryNode]:
         """List memory nodes with optional filtering and sorting."""
         filters = filters or {}

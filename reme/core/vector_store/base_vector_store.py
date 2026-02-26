@@ -11,11 +11,11 @@ class BaseVectorStore(ABC):
     """Abstract base class defining the interface for vector storage and retrieval."""
 
     def __init__(
-        self,
-        collection_name: str,
-        db_path: str | Path,
-        embedding_model: BaseEmbeddingModel,
-        **kwargs,
+            self,
+            collection_name: str,
+            db_path: str | Path,
+            embedding_model: BaseEmbeddingModel,
+            **kwargs,
     ):
         """Initialize the vector store with a collection name and an embedding model."""
         self.collection_name: str = collection_name
@@ -96,11 +96,11 @@ class BaseVectorStore(ABC):
 
     @abstractmethod
     async def list(
-        self,
-        filters: dict | None = None,
-        limit: int | None = None,
-        sort_key: str | None = None,
-        reverse: bool = True,
+            self,
+            filters: dict | None = None,
+            limit: int | None = None,
+            sort_key: str | None = None,
+            reverse: bool = True,
     ) -> list[VectorNode]:
         """Retrieve vectors from the collection that match the given filters.
 

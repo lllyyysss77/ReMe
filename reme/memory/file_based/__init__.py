@@ -1,16 +1,16 @@
 """File-based memory operations."""
 
-from .fs_cli import FsCli
-from .fs_compactor import FsCompactor
-from .fs_context_checker import FsContextChecker
-from .fs_summarizer import FsSummarizer
+from .fb_cli import FbCli
+from .fb_compactor import FbCompactor
+from .fb_context_checker import FbContextChecker
+from .fb_summarizer import FbSummarizer
 from ...core.registry_factory import R
 
 __all__ = [
-    "FsCli",
-    "FsCompactor",
-    "FsContextChecker",
-    "FsSummarizer",
+    "FbCli",
+    "FbCompactor",
+    "FbContextChecker",
+    "FbSummarizer",
 ]
 
 for name in __all__:

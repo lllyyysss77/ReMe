@@ -8,7 +8,7 @@ from ...core.schema import Message
 from ...core.utils import format_messages
 
 
-class FsCompactor(BaseOp):
+class FbCompactor(BaseOp):
     """Generate summaries for conversation history compaction."""
 
     def __init__(self, return_prompt: bool = False, **kwargs):

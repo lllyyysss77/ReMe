@@ -61,10 +61,10 @@ class DeltaFileWatcher(BaseFileWatcher):
         )
 
     def _find_cutoff_line(
-        self,
-        old_chunks: list[MemoryChunk],
-        old_file_meta: FileMetadata,
-        new_file_meta: FileMetadata,
+            self,
+            old_chunks: list[MemoryChunk],
+            old_file_meta: FileMetadata,
+            new_file_meta: FileMetadata,
     ) -> int | None:
         """Find the safe cutoff line for incremental update.
 
@@ -105,7 +105,7 @@ class DeltaFileWatcher(BaseFileWatcher):
         # Sample check: verify first chunk still matches
         first_chunk = old_chunks_sorted[0]
         first_chunk_lines = first_chunk.text.split("\n")
-        new_first_lines = new_lines[first_chunk.start_line - 1 : first_chunk.end_line]
+        new_first_lines = new_lines[first_chunk.start_line - 1: first_chunk.end_line]
 
         # Compare (allowing for minor whitespace differences at boundaries)
         if len(first_chunk_lines) > 0 and len(new_first_lines) > 0:
@@ -136,7 +136,7 @@ class DeltaFileWatcher(BaseFileWatcher):
         if start_line > len(lines):
             return ""
         # start_line is 1-indexed, array is 0-indexed
-        return "\n".join(lines[start_line - 1 :])
+        return "\n".join(lines[start_line - 1:])
 
     async def _on_changes(self, changes: set[tuple[Change, str]]):
         """Handle file changes with incremental synchronization."""
@@ -147,14 +147,14 @@ class DeltaFileWatcher(BaseFileWatcher):
                 # New file: process everything
                 file_meta = await self._build_file_metadata(path)
                 chunks = (
-                    chunk_markdown(
-                        file_meta.content,
-                        file_meta.path,
-                        MemorySource.MEMORY,
-                        self.chunk_tokens,
-                        self.chunk_overlap,
-                    )
-                    or []
+                        chunk_markdown(
+                            file_meta.content,
+                            file_meta.path,
+                            MemorySource.MEMORY,
+                            self.chunk_tokens,
+                            self.chunk_overlap,
+                        )
+                        or []
                 )
 
                 if chunks:
@@ -177,14 +177,14 @@ class DeltaFileWatcher(BaseFileWatcher):
                 if not old_chunks or not old_file_meta:
                     logger.debug(f"No existing chunks for {path}, doing full update")
                     chunks = (
-                        chunk_markdown(
-                            file_meta.content,
-                            file_meta.path,
-                            MemorySource.MEMORY,
-                            self.chunk_tokens,
-                            self.chunk_overlap,
-                        )
-                        or []
+                            chunk_markdown(
+                                file_meta.content,
+                                file_meta.path,
+                                MemorySource.MEMORY,
+                                self.chunk_tokens,
+                                self.chunk_overlap,
+                            )
+                            or []
                     )
                     if chunks:
                         chunks = await self.file_store.get_chunk_embeddings(chunks)
@@ -206,14 +206,14 @@ class DeltaFileWatcher(BaseFileWatcher):
                     # Not append-only, do full update
                     logger.debug(f"File {path} has modifications, doing full update")
                     chunks = (
-                        chunk_markdown(
-                            file_meta.content,
-                            file_meta.path,
-                            MemorySource.MEMORY,
-                            self.chunk_tokens,
-                            self.chunk_overlap,
-                        )
-                        or []
+                            chunk_markdown(
+                                file_meta.content,
+                                file_meta.path,
+                                MemorySource.MEMORY,
+                                self.chunk_tokens,
+                                self.chunk_overlap,
+                            )
+                            or []
                     )
                     if chunks:
                         chunks = await self.file_store.get_chunk_embeddings(chunks)
@@ -226,14 +226,14 @@ class DeltaFileWatcher(BaseFileWatcher):
                     new_content_part = self._extract_content_from_line(file_meta.content, cutoff_line)
 
                     new_chunks = (
-                        chunk_markdown(
-                            new_content_part,
-                            file_meta.path,
-                            MemorySource.MEMORY,
-                            self.chunk_tokens,
-                            self.chunk_overlap,
-                        )
-                        or []
+                            chunk_markdown(
+                                new_content_part,
+                                file_meta.path,
+                                MemorySource.MEMORY,
+                                self.chunk_tokens,
+                                self.chunk_overlap,
+                            )
+                            or []
                     )
 
                     if not new_chunks:

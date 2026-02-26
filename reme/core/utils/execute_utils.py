@@ -48,9 +48,9 @@ async def run_shell_command(cmd: str, timeout: float | None = 30) -> tuple[str, 
 
 
 def exec_code(
-    code: str,
-    timeout: float | None = 30,
-    executor: concurrent.futures.ThreadPoolExecutor | None = None,
+        code: str,
+        timeout: float | None = 30,
+        executor: concurrent.futures.ThreadPoolExecutor | None = None,
 ) -> str:
     """Execute Python code and capture the output.
 
@@ -96,9 +96,9 @@ def exec_code(
 
 
 async def async_exec_code(
-    code: str,
-    timeout: float | None = 30,
-    executor: concurrent.futures.ThreadPoolExecutor | None = None,
+        code: str,
+        timeout: float | None = 30,
+        executor: concurrent.futures.ThreadPoolExecutor | None = None,
 ) -> str:
     """Execute Python code asynchronously and capture the output.
 

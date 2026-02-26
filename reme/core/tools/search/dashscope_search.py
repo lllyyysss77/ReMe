@@ -22,11 +22,11 @@ class DashscopeSearch(BaseTool):
     """
 
     def __init__(
-        self,
-        model: str = "qwen-plus",  # qwen-flash
-        search_strategy: Literal["turbo", "max", "agent"] = "turbo",  # agent only for qwen3-max
-        enable_role_prompt: bool = True,
-        **kwargs,
+            self,
+            model: str = "qwen-plus",  # qwen-flash
+            search_strategy: Literal["turbo", "max", "agent"] = "turbo",  # agent only for qwen3-max
+            enable_role_prompt: bool = True,
+            **kwargs,
     ):
 
         super().__init__(**kwargs)

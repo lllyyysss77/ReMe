@@ -57,9 +57,9 @@ class SuccessExtraction(BaseOp):
         self.context.success_task_memories = success_task_memories
 
     async def _extract_success_task_memory_from_steps(
-        self,
-        steps: List[Message],
-        trajectory: Trajectory,
+            self,
+            steps: List[Message],
+            trajectory: Trajectory,
     ) -> List[MemoryNode]:
         """Extract task memory from successful step sequences"""
         step_content = merge_messages_content(steps)

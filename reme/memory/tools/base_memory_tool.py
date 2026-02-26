@@ -12,11 +12,11 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
     """Base class for memory tool"""
 
     def __init__(
-        self,
-        enable_multiple: bool = True,
-        enable_thinking_params: bool = False,
-        profile_dir: str = "",
-        **kwargs,
+            self,
+            enable_multiple: bool = True,
+            enable_thinking_params: bool = False,
+            profile_dir: str = "",
+            **kwargs,
     ):
         super().__init__(**kwargs)
         self.enable_multiple: bool = enable_multiple
@@ -48,7 +48,7 @@ class BaseMemoryTool(BaseTool, metaclass=ABCMeta):
                             "thinking": ToolAttr(
                                 type="string",
                                 description="Your complete and detailed thinking process "
-                                "about how to fill in each parameter",
+                                            "about how to fill in each parameter",
                             ),
                             **parameters.properties,
                         }

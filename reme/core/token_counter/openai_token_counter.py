@@ -29,10 +29,10 @@ class OpenAITokenCounter(BaseTokenCounter):
         return self._encoding
 
     def count_token(
-        self,
-        messages: list[Message],
-        tools: list[ToolCall] | None = None,
-        **_kwargs,
+            self,
+            messages: list[Message],
+            tools: list[ToolCall] | None = None,
+            **_kwargs,
     ) -> int:
         """Calculate total tokens for a request including messages and tool definitions."""
         enc = self.encoding

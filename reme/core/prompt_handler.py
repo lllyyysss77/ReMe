@@ -20,9 +20,9 @@ class PromptHandler(BaseDict):
         object.__setattr__(self, "language", language.strip())
 
     def load_prompt_by_file(
-        self,
-        prompt_file_path: Optional[Union[Path, str]] = None,
-        overwrite: bool = True,
+            self,
+            prompt_file_path: Optional[Union[Path, str]] = None,
+            overwrite: bool = True,
     ) -> "PromptHandler":
         """Load prompt configurations from a YAML or JSON file."""
         if prompt_file_path is None:
@@ -48,9 +48,9 @@ class PromptHandler(BaseDict):
         return self
 
     def load_prompt_dict(
-        self,
-        prompt_dict: Optional[Dict[str, Any]] = None,
-        overwrite: bool = True,
+            self,
+            prompt_dict: Optional[Dict[str, Any]] = None,
+            overwrite: bool = True,
     ) -> "PromptHandler":
         """Merge a dictionary of prompt strings into the current context."""
         if not prompt_dict:
@@ -118,7 +118,7 @@ class PromptHandler(BaseDict):
             if matched_flag is None:
                 filtered_lines.append(line)
             elif flags[matched_flag]:
-                filtered_lines.append(line[len(f"[{matched_flag}]") :])
+                filtered_lines.append(line[len(f"[{matched_flag}]"):])
         return "\n".join(filtered_lines)
 
     def prompt_format(self, prompt_name: str, validate: bool = True, **kwargs) -> str:

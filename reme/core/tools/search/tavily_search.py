@@ -22,11 +22,11 @@ class TavilySearch(BaseTool):
     """
 
     def __init__(
-        self,
-        enable_extract: bool = True,
-        item_max_char_count: int = 20000,
-        all_max_char_count: int = 50000,
-        **kwargs,
+            self,
+            enable_extract: bool = True,
+            item_max_char_count: int = 20000,
+            all_max_char_count: int = 50000,
+            **kwargs,
     ):
         super().__init__(**kwargs)
         self.enable_extract: bool = enable_extract

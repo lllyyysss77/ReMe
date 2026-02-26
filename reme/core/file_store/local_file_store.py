@@ -136,10 +136,10 @@ class LocalFileStore(BaseFileStore):
     # ------------------------------------------------------------------
 
     async def upsert_file(
-        self,
-        file_meta: FileMetadata,
-        source: MemorySource,
-        chunks: list[MemoryChunk],
+            self,
+            file_meta: FileMetadata,
+            source: MemorySource,
+            chunks: list[MemoryChunk],
     ) -> None:
         """Insert or update file and its chunks."""
         if not chunks:
@@ -189,9 +189,9 @@ class LocalFileStore(BaseFileStore):
                 )
 
     async def upsert_chunks(
-        self,
-        chunks: list[MemoryChunk],
-        source: MemorySource,
+            self,
+            chunks: list[MemoryChunk],
+            source: MemorySource,
     ) -> None:
         """Insert or update specific chunks without affecting other chunks."""
         if not chunks:
@@ -211,9 +211,9 @@ class LocalFileStore(BaseFileStore):
         return list(self._files.get(source.value, {}).keys())
 
     async def get_file_metadata(
-        self,
-        path: str,
-        source: MemorySource,
+            self,
+            path: str,
+            source: MemorySource,
     ) -> FileMetadata | None:
         """Get file metadata."""
         return self._files.get(source.value, {}).get(path)
@@ -232,9 +232,9 @@ class LocalFileStore(BaseFileStore):
         )
 
     async def get_file_chunks(
-        self,
-        path: str,
-        source: MemorySource,
+            self,
+            path: str,
+            source: MemorySource,
     ) -> list[MemoryChunk]:
         """Get all chunks for a file, sorted by start_line."""
         chunks = [chunk for chunk in self._chunks.values() if chunk.path == path and chunk.source == source]
@@ -246,10 +246,10 @@ class LocalFileStore(BaseFileStore):
     # ------------------------------------------------------------------
 
     async def vector_search(
-        self,
-        query: str,
-        limit: int,
-        sources: list[MemorySource] | None = None,
+            self,
+            query: str,
+            limit: int,
+            sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform cosine-similarity vector search over in-memory embeddings."""
         if not self.vector_enabled or not query:
@@ -290,10 +290,10 @@ class LocalFileStore(BaseFileStore):
         return results[:limit]
 
     async def keyword_search(
-        self,
-        query: str,
-        limit: int,
-        sources: list[MemorySource] | None = None,
+            self,
+            query: str,
+            limit: int,
+            sources: list[MemorySource] | None = None,
     ) -> list[MemorySearchResult]:
         """Perform keyword/full-text search via Python substring matching."""
         if not self.fts_enabled or not query:
@@ -337,12 +337,12 @@ class LocalFileStore(BaseFileStore):
         return results[:limit]
 
     async def hybrid_search(
-        self,
-        query: str,
-        limit: int,
-        sources: list[MemorySource] | None = None,
-        vector_weight: float = 0.7,
-        candidate_multiplier: float = 3.0,
+            self,
+            query: str,
+            limit: int,
+            sources: list[MemorySource] | None = None,
+            vector_weight: float = 0.7,
+            candidate_multiplier: float = 3.0,
     ) -> list[MemorySearchResult]:
         """Perform hybrid search combining vector and keyword search.
 
@@ -403,10 +403,10 @@ class LocalFileStore(BaseFileStore):
 
     @staticmethod
     def _merge_hybrid_results(
-        vector: list[MemorySearchResult],
-        keyword: list[MemorySearchResult],
-        vector_weight: float,
-        text_weight: float,
+            vector: list[MemorySearchResult],
+            keyword: list[MemorySearchResult],
+            vector_weight: float,
+            text_weight: float,
     ) -> list[MemorySearchResult]:
         """Merge vector and keyword search results with weighted scoring."""
         merged: dict[str, MemorySearchResult] = {}

@@ -8,9 +8,38 @@ from ....core.utils import format_messages
 
 
 class PersonalRetriever(BaseMemoryAgent):
-    """Retrieve personal memories through vector search and history reading."""
+    """Retrieve personal memories through vector search and history reading.
+
+    clear && python benchmark/halumem/eval_reme.py \
+        --data_path /Users/yuli/workspace/HaluMem/data/HaluMem-Medium.jsonl \
+        --reme_model_name qwen3-30b-a3b-instruct-2507 \
+        --algo_version v1 \
+        --enable_thinking_params
+
+    📊 Question Answering (with LLM answer):
+      Correct (all):       0.8537
+      Hallucination (all): 0.1159
+      Omission (all):      0.0305
+      Correct (valid):     0.8537
+      Hallucination (valid): 0.1159
+      Omission (valid):    0.0305
+      Valid/Total:         164/164
+
+    📊 Question Answering (with original memories):
+      Correct (all):       0.9085
+      Hallucination (all): 0.0671
+      Omission (all):      0.0244
+      Correct (valid):     0.9085
+      Hallucination (valid): 0.0671
+      Omission (valid):    0.0244
+      Valid/Total:         164/164
+    """
 
     memory_type: MemoryType = MemoryType.PERSONAL
+
+    def __init__(self, return_memory_nodes: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self.return_memory_nodes: bool = return_memory_nodes
 
     async def build_messages(self) -> list[Message]:
         if self.context.get("query"):
@@ -31,28 +60,24 @@ class PersonalRetriever(BaseMemoryAgent):
 
         return [
             Message(
-                role=Role.SYSTEM,
+                role=Role.USER,
                 content=self.prompt_format(
-                    prompt_name="system_prompt",
+                    prompt_name="user_message",
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
                     user_profile=all_profiles,
                     context=context.strip(),
                 ),
             ),
-            Message(
-                role=Role.USER,
-                content=self.get_prompt("user_message"),
-            ),
         ]
 
     async def _acting_step(
-        self,
-        assistant_message: Message,
-        tools: list[BaseTool],
-        step: int,
-        stage: str = "",
-        **kwargs,
+            self,
+            assistant_message: Message,
+            tools: list[BaseTool],
+            step: int,
+            stage: str = "",
+            **kwargs,
     ) -> tuple[list[BaseTool], list[Message]]:
         """Execute tool calls with memory context."""
         return await super()._acting_step(
@@ -67,15 +92,14 @@ class PersonalRetriever(BaseMemoryAgent):
 
     async def execute(self):
         result = await super().execute()
-        answer = result["answer"]
-        if "MEMORY_NOT_FOUND" in answer:
+        if self.return_memory_nodes:
             result["answer"] = "\n".join(
                 [
                     n.format(
                         include_memory_id=False,
                         include_when_to_use=False,
                         include_content=True,
-                        include_message_time=False,
+                        include_message_time=True,
                         ref_memory_id_key="",
                     )
                     for n in self.retrieved_nodes

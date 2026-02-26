@@ -24,24 +24,24 @@ class Application:
     """Application wrapper that wires together service context, flows, and runtimes."""
 
     def __init__(
-        self,
-        *args,
-        llm_api_key: str | None = None,
-        llm_base_url: str | None = None,
-        embedding_api_key: str | None = None,
-        embedding_base_url: str | None = None,
-        working_dir: str | None = None,
-        config_path: str | None = None,
-        enable_logo: bool = True,
-        log_to_console: bool = True,
-        parser: type[PydanticConfigParser] | None = None,
-        default_llm_config: dict | None = None,
-        default_embedding_model_config: dict | None = None,
-        default_vector_store_config: dict | None = None,
-        default_file_store_config: dict | None = None,
-        default_token_counter_config: dict | None = None,
-        default_file_watcher_config: dict | None = None,
-        **kwargs,
+            self,
+            *args,
+            llm_api_key: str | None = None,
+            llm_base_url: str | None = None,
+            embedding_api_key: str | None = None,
+            embedding_base_url: str | None = None,
+            working_dir: str | None = None,
+            config_path: str | None = None,
+            enable_logo: bool = True,
+            log_to_console: bool = True,
+            parser: type[PydanticConfigParser] | None = None,
+            default_llm_config: dict | None = None,
+            default_embedding_model_config: dict | None = None,
+            default_vector_store_config: dict | None = None,
+            default_file_store_config: dict | None = None,
+            default_token_counter_config: dict | None = None,
+            default_file_watcher_config: dict | None = None,
+            **kwargs,
     ):
         self.service_context = ServiceContext(
             *args,
@@ -100,8 +100,8 @@ class Application:
                 ray.init(num_cpus=self.service_config.ray_max_workers)
 
         if (
-            self.service_context.thread_pool is None
-            or self.service_context.thread_pool._shutdown  # pylint: disable=protected-access
+                self.service_context.thread_pool is None
+                or self.service_context.thread_pool._shutdown  # pylint: disable=protected-access
         ):
             self.service_context.thread_pool = ThreadPoolExecutor(
                 max_workers=self.service_config.thread_pool_max_workers,
@@ -287,10 +287,10 @@ class Application:
         stream_queue = asyncio.Queue()
         task = asyncio.create_task(flow.call(stream_queue=stream_queue, **kwargs))
         async for chunk in execute_stream_task(
-            stream_queue=stream_queue,
-            task=task,
-            task_name=name,
-            output_format="str",
+                stream_queue=stream_queue,
+                task=task,
+                task_name=name,
+                output_format="str",
         ):
             yield chunk
 

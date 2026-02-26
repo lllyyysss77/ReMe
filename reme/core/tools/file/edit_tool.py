@@ -111,9 +111,9 @@ class EditTool(BaseFileTool):
         # Perform replacement
         base_content = match_result.content_for_replacement
         new_content = (
-            base_content[: match_result.index]
-            + normalized_new_text
-            + base_content[match_result.index + match_result.match_length :]
+                base_content[: match_result.index]
+                + normalized_new_text
+                + base_content[match_result.index + match_result.match_length:]
         )
 
         # Verify replacement changed something

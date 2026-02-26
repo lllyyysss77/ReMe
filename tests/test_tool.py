@@ -168,7 +168,7 @@ async def test_stream_chat(app):
     """
     from reme.agent.chat import StreamChat
     from reme.core.utils import execute_stream_task
-    from reme.core.runtime_dict import RuntimeContext
+    from reme.core import RuntimeContext
     from asyncio import Queue
 
     op = StreamChat()

@@ -17,11 +17,11 @@ class BaseReact(BaseOp):
     """ReAct agent that performs reasoning and acting cycles with tools."""
 
     def __init__(
-        self,
-        tools: list["BaseTool"],
-        tool_call_interval: float = 0,
-        max_steps: int = 10,
-        **kwargs,
+            self,
+            tools: list["BaseTool"],
+            tool_call_interval: float = 0,
+            max_steps: int = 10,
+            **kwargs,
     ):
         """Initialize ReAct agent with tools and execution parameters."""
         kwargs["sub_ops"] = tools or []
@@ -56,12 +56,12 @@ class BaseReact(BaseOp):
         return messages
 
     async def _reasoning_step(
-        self,
-        messages: list[Message],
-        tools: list["BaseTool"],
-        step: int,
-        stage: str = "",
-        **kwargs,
+            self,
+            messages: list[Message],
+            tools: list["BaseTool"],
+            step: int,
+            stage: str = "",
+            **kwargs,
     ) -> tuple[Message, bool]:
         """Execute one reasoning step where LLM decides whether to use tools."""
         # Get tool definitions for LLM
@@ -78,12 +78,12 @@ class BaseReact(BaseOp):
         return assistant_message, should_act
 
     async def _acting_step(
-        self,
-        assistant_message: Message,
-        tools: list["BaseTool"],
-        step: int,
-        stage: str = "",
-        **kwargs,
+            self,
+            assistant_message: Message,
+            tools: list["BaseTool"],
+            step: int,
+            stage: str = "",
+            **kwargs,
     ) -> tuple[list["BaseTool"], list[Message]]:
         """Execute tool calls requested by the assistant and collect results."""
         tool_list: list["BaseTool"] = []

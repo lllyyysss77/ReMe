@@ -13,11 +13,11 @@ class HttpClient:
     """Async client for flow endpoints with automated retries and error handling."""
 
     def __init__(
-        self,
-        base_url: str = "http://localhost:8001",
-        timeout: float = 3600.0,
-        max_retries: int = 3,
-        raise_exception: bool = True,
+            self,
+            base_url: str = "http://localhost:8001",
+            timeout: float = 3600.0,
+            max_retries: int = 3,
+            raise_exception: bool = True,
     ):
         """Initialize the client with base configuration."""
         self.base_url = base_url.rstrip("/")

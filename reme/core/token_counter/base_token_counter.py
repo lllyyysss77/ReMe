@@ -26,10 +26,10 @@ class BaseTokenCounter:
         return cn_count, len(text) - cn_count
 
     def count_token(
-        self,
-        messages: list[Message],
-        tools: list[ToolCall] | None = None,
-        **_kwargs,
+            self,
+            messages: list[Message],
+            tools: list[ToolCall] | None = None,
+            **_kwargs,
     ) -> int:
         """Calculate total tokens using the 1:2 (CN) and 1:4 (Other) rule."""
         cn_total = 0

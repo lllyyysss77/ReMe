@@ -12,12 +12,12 @@ class RetrieveMemory(BaseMemoryTool):
     """Tool to retrieve memories using similarity search"""
 
     def __init__(
-        self,
-        top_k: int = 20,
-        enable_memory_target: bool = False,
-        enable_time_filter: bool = False,
-        hybrid_threshold: float | None = None,
-        **kwargs,
+            self,
+            top_k: int = 20,
+            enable_memory_target: bool = False,
+            enable_time_filter: bool = False,
+            hybrid_threshold: float | None = None,
+            **kwargs,
     ):
         super().__init__(**kwargs)
         self.top_k: int = top_k
@@ -39,8 +39,8 @@ class RetrieveMemory(BaseMemoryTool):
             properties["time_filter"] = {
                 "type": "string",
                 "description": "Optional time filter to narrow down search results by date. "
-                "Format: single date '20200101' for exact date match, "
-                "or date range '20200101,20200102' for inclusive range filtering.",
+                               "Format: single date '20200101' for exact date match, "
+                               "or date range '20200101,20200102' for inclusive range filtering.",
             }
 
         if self.enable_memory_target:

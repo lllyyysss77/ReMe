@@ -1,4 +1,4 @@
-"""FsCli system prompt"""
+"""FbCli system prompt"""
 
 import asyncio
 from datetime import datetime
@@ -13,8 +13,8 @@ from ...core.tools import BashTool, LsTool, ReadTool, WriteTool, EditTool
 from ...core.utils import format_messages
 
 
-class FsCli(BaseReactStream):
-    """FsCli agent with system prompt."""
+class FbCli(BaseReactStream):
+    """FbCli agent with system prompt."""
 
     def __init__(
             self,
@@ -50,11 +50,11 @@ class FsCli(BaseReactStream):
                 remaining_tasks.append(task)
         self.summary_tasks = remaining_tasks
 
-        from .fs_summarizer import FsSummarizer
+        from .fb_summarizer import FbSummarizer
 
         # Summarize current conversation and save to memory files
         current_date = datetime.now().strftime("%Y-%m-%d")
-        summarizer = FsSummarizer(
+        summarizer = FbSummarizer(
             tools=[
                 BashTool(cwd=self.working_dir),
                 LsTool(cwd=self.working_dir),
@@ -94,10 +94,10 @@ class FsCli(BaseReactStream):
     async def context_check(self) -> dict:
         """Check if messages exceed token limits."""
         # Import required modules
-        from .fs_context_checker import FsContextChecker
+        from .fb_context_checker import FbContextChecker
 
         # Step 1: Check and find cut point
-        checker = FsContextChecker(
+        checker = FbContextChecker(
             context_window_tokens=self.context_window_tokens,
             reserve_tokens=self.reserve_tokens,
             keep_recent_tokens=self.keep_recent_tokens,
@@ -120,7 +120,7 @@ class FsCli(BaseReactStream):
             return "No history to compact."
 
         # Import required modules
-        from .fs_compactor import FsCompactor
+        from .fb_compactor import FbCompactor
 
         # Step 1: Check and find cut point
         cut_result = await self.context_check()
@@ -137,7 +137,7 @@ class FsCli(BaseReactStream):
             turn_prefix_messages = cut_result.get("turn_prefix_messages", [])
             left_messages = cut_result.get("left_messages", [])
 
-        compactor = FsCompactor(language=self.language)
+        compactor = FbCompactor(language=self.language)
         summary_content = await compactor.call(
             messages_to_summarize=messages_to_summarize,
             turn_prefix_messages=turn_prefix_messages,

@@ -96,7 +96,7 @@ class ReadHistoryV2(BaseMemoryTool):
 
             message_blocks = []
             for i in range(0, len(messages), self.message_block_size):
-                block = messages[i : i + self.message_block_size]
+                block = messages[i: i + self.message_block_size]
                 message_blocks.append(block)
 
             block_similarities = []

@@ -1,47 +1,46 @@
-"""ReMe File System"""
+"""ReMe File Based"""
 
 from pathlib import Path
 
-from .agent.fs import FsCompactor, FsContextChecker, FsSummarizer
 from .config import ReMeConfigParser
 from .core import Application
 from .core.schema import Message
-from .tool.fs import (
+from .core.tools import (
     BashTool,
     EditTool,
-    FsMemoryGet,
-    FsMemorySearch,
     LsTool,
     ReadTool,
     WriteTool,
 )
+from .memory.file_based import FbCompactor, FbContextChecker, FbSummarizer
+from .memory.tools import MemoryGet, MemorySearch
 
 
-class ReMeFs(Application):
-    """ReMe File System"""
+class ReMeFb(Application):
+    """ReMe File Based"""
 
     def __init__(
-        self,
-        *args,
-        working_dir: str = ".reme",
-        config_path: str = "fs",
-        enable_logo: bool = True,
-        log_to_console: bool = True,
-        llm_api_key: str | None = None,
-        llm_base_url: str | None = None,
-        embedding_api_key: str | None = None,
-        embedding_base_url: str | None = None,
-        default_llm_config: dict | None = None,
-        default_embedding_model_config: dict | None = None,
-        default_file_store_config: dict | None = None,
-        default_token_counter_config: dict | None = None,
-        default_file_watcher_config: dict | None = None,
-        context_window_tokens: int = 128000,
-        reserve_tokens: int = 36000,
-        keep_recent_tokens: int = 20000,
-        vector_weight: float = 0.7,
-        candidate_multiplier: float = 3.0,
-        **kwargs,
+            self,
+            *args,
+            working_dir: str = ".reme",
+            config_path: str = "fs",
+            enable_logo: bool = True,
+            log_to_console: bool = True,
+            llm_api_key: str | None = None,
+            llm_base_url: str | None = None,
+            embedding_api_key: str | None = None,
+            embedding_base_url: str | None = None,
+            default_llm_config: dict | None = None,
+            default_embedding_model_config: dict | None = None,
+            default_file_store_config: dict | None = None,
+            default_token_counter_config: dict | None = None,
+            default_file_watcher_config: dict | None = None,
+            context_window_tokens: int = 128000,
+            reserve_tokens: int = 36000,
+            keep_recent_tokens: int = 20000,
+            vector_weight: float = 0.7,
+            candidate_multiplier: float = 3.0,
+            **kwargs,
     ):
         """Initialize ReMe with config."""
         working_path = Path(working_dir)
@@ -84,7 +83,7 @@ class ReMeFs(Application):
 
     async def context_check(self, messages: list[Message | dict]) -> dict:
         """Check if messages exceed context limits."""
-        checker = FsContextChecker(
+        checker = FbContextChecker(
             context_window_tokens=self.service_config.metadata["context_window_tokens"],
             reserve_tokens=self.service_config.metadata["reserve_tokens"],
             keep_recent_tokens=self.service_config.metadata["keep_recent_tokens"],
@@ -92,15 +91,15 @@ class ReMeFs(Application):
         return await checker.call(messages=messages, service_context=self.service_context)
 
     async def compact(
-        self,
-        messages_to_summarize: list[Message | dict] = None,
-        turn_prefix_messages: list[Message | dict] = None,
-        previous_summary: str = "",
-        language: str = "zh",
-        **kwargs,
+            self,
+            messages_to_summarize: list[Message | dict] = None,
+            turn_prefix_messages: list[Message | dict] = None,
+            previous_summary: str = "",
+            language: str = "zh",
+            **kwargs,
     ) -> str | dict:
         """Compact messages into a summary."""
-        compactor = FsCompactor(language=language, **kwargs)
+        compactor = FbCompactor(language=language, **kwargs)
         return await compactor.call(
             messages_to_summarize=messages_to_summarize or [],
             turn_prefix_messages=turn_prefix_messages or [],
@@ -109,15 +108,15 @@ class ReMeFs(Application):
         )
 
     async def summary(
-        self,
-        messages: list[Message | dict],
-        date: str,
-        version: str = "default",
-        language: str = "zh",
-        **kwargs,
+            self,
+            messages: list[Message | dict],
+            date: str,
+            version: str = "default",
+            language: str = "zh",
+            **kwargs,
     ) -> str | dict:
         """Generate a summary of the given messages."""
-        summarizer = FsSummarizer(
+        summarizer = FbSummarizer(
             tools=[
                 BashTool(cwd=self.working_dir),
                 LsTool(cwd=self.working_dir),
@@ -146,7 +145,7 @@ class ReMeFs(Application):
         Returns:
             Search results as formatted string
         """
-        search_tool = FsMemorySearch(
+        search_tool = MemorySearch(
             vector_weight=self.service_config.metadata["vector_weight"],
             candidate_multiplier=self.service_config.metadata["candidate_multiplier"],
         )
@@ -170,13 +169,13 @@ class ReMeFs(Application):
         Returns:
             Memory file content as string
         """
-        get_tool = FsMemoryGet(cwd=self.working_dir)
+        get_tool = MemoryGet(cwd=self.working_dir)
         return await get_tool.call(path=path, offset=offset, limit=limit, service_context=self.service_context)
 
     async def needs_compaction(self, messages: list[Message | dict]) -> bool:
         """Check if messages need compaction based on context window limits."""
         messages = [Message(**message) if isinstance(message, dict) else message for message in messages]
-        checker = FsContextChecker(
+        checker = FbContextChecker(
             context_window_tokens=self.service_config.metadata["context_window_tokens"],
             reserve_tokens=self.service_config.metadata["reserve_tokens"],
         )

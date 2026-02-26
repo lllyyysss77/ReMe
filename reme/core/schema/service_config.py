@@ -41,7 +41,6 @@ class OpConfig(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    name: str = Field(default="")
     prompt_dict: dict[str, str] = Field(default_factory=dict)
     params: dict = Field(default_factory=dict)
 

@@ -12,9 +12,9 @@ class PersonalRetriever(BaseMemoryAgent):
 
     clear && python benchmark/halumem/eval_reme.py \
         --data_path /Users/yuli/workspace/HaluMem/data/HaluMem-Medium.jsonl \
-        --reme_model_name qwen3-30b-a3b-instruct-2507 \
-        --algo_version v1 \
-        --enable_thinking_params
+        --reme_model_name qwen3.5-plus \
+        --batch_size 10000 \
+        --algo_version default
 
     📊 Question Answering (with LLM answer):
       Correct (all):       0.8537

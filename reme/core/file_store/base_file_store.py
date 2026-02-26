@@ -16,7 +16,7 @@ class BaseFileStore(ABC):
         self,
         store_name: str,
         db_path: str | Path,
-        embedding_model: BaseEmbeddingModel,
+        embedding_model: BaseEmbeddingModel | None = None,
         vector_enabled: bool = False,
         fts_enabled: bool = True,
         **kwargs,
@@ -31,10 +31,14 @@ class BaseFileStore(ABC):
         if not vector_enabled and not fts_enabled:
             raise ValueError("At least one of vector_enabled or fts_enabled must be True.")
 
+        # Ensure embedding_model is provided when vector search is enabled
+        if vector_enabled and embedding_model is None:
+            raise ValueError("embedding_model is required when vector_enabled is True.")
+
         self.store_name: str = store_name
         self.db_path: Path = Path(db_path)
         self.db_path.mkdir(parents=True, exist_ok=True)
-        self.embedding_model: BaseEmbeddingModel = embedding_model
+        self.embedding_model: BaseEmbeddingModel | None = embedding_model
         self.vector_enabled: bool = vector_enabled
         self.fts_enabled: bool = fts_enabled
         self.kwargs: dict = kwargs
@@ -42,6 +46,8 @@ class BaseFileStore(ABC):
     @property
     def embedding_dim(self) -> int:
         """Get the embedding model's dimensionality."""
+        if self.embedding_model is None:
+            return 1024
         return self.embedding_model.dimensions
 
     def _get_mock_embedding(self) -> list[float]:

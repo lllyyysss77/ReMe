@@ -9,20 +9,20 @@ from loguru import logger
 from ...core.enumeration import Role, ChunkEnum
 from ...core.op import BaseReactStream
 from ...core.schema import Message, StreamChunk
+from ...core.tools import BashTool, LsTool, ReadTool, WriteTool, EditTool
 from ...core.utils import format_messages
-from ...tool.fs import BashTool, LsTool, ReadTool, WriteTool, EditTool
 
 
 class FsCli(BaseReactStream):
     """FsCli agent with system prompt."""
 
     def __init__(
-        self,
-        working_dir: str,
-        context_window_tokens: int = 128000,
-        reserve_tokens: int = 36000,
-        keep_recent_tokens: int = 20000,
-        **kwargs,
+            self,
+            working_dir: str,
+            context_window_tokens: int = 128000,
+            reserve_tokens: int = 36000,
+            keep_recent_tokens: int = 20000,
+            **kwargs,
     ):
         super().__init__(**kwargs)
         self.working_dir: str = working_dir
@@ -50,7 +50,7 @@ class FsCli(BaseReactStream):
                 remaining_tasks.append(task)
         self.summary_tasks = remaining_tasks
 
-        from ..fs import FsSummarizer
+        from .fs_summarizer import FsSummarizer
 
         # Summarize current conversation and save to memory files
         current_date = datetime.now().strftime("%Y-%m-%d")
@@ -94,7 +94,7 @@ class FsCli(BaseReactStream):
     async def context_check(self) -> dict:
         """Check if messages exceed token limits."""
         # Import required modules
-        from ..fs import FsContextChecker
+        from .fs_context_checker import FsContextChecker
 
         # Step 1: Check and find cut point
         checker = FsContextChecker(
@@ -120,7 +120,7 @@ class FsCli(BaseReactStream):
             return "No history to compact."
 
         # Import required modules
-        from ..fs import FsCompactor
+        from .fs_compactor import FsCompactor
 
         # Step 1: Check and find cut point
         cut_result = await self.context_check()

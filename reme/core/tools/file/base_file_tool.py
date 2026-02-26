@@ -34,6 +34,7 @@ class BaseFileTool(BaseTool):
             response = await self.execute()
             response = await self.after_execute(response)
             return response
+
         except Exception as e:
             # Return error message to LLM instead of raising
             error_msg = f"{self.__class__.__name__} failed: {str(e)}"

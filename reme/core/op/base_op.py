@@ -16,6 +16,7 @@ from ..llm import BaseLLM
 from ..prompt_handler import PromptHandler
 from ..runtime_context import RuntimeContext
 from ..schema import Response, ServiceConfig
+from ..schema.service_config import OpConfig
 from ..service_context import ServiceContext
 from ..token_counter import BaseTokenCounter
 from ..utils import camel_to_snake, CacheHandler, timer
@@ -174,12 +175,42 @@ class BaseOp(metaclass=ABCMeta):
         return self.context.response
 
     def before_execute_sync(self):
-        """Prepare context and validate before sync execution."""
+        """Prepare context and validate before sync execution.
+
+        This method performs the following steps:
+        1. Apply input mapping to transform context variables
+        2. Load operator-specific configuration from service config if available
+        3. Override operator parameters and prompts based on config
+        """
         self.context.apply_mapping(self.input_mapping)
+
+        if self.context.service_context is None:
+            return
+
+        service_config = self.service_context.service_config
+        if self.name not in service_config.ops:
+            return
+
+        op_config: OpConfig = service_config.ops[self.name]
+
+        # Override operator parameters from config
+        if op_config.params:
+            for k, v in op_config.params.items():
+                if hasattr(self, k):
+                    setattr(self, k, v)
+                    logger.info(f"[{self.__class__.__name__}] Set attribute '{k}' = {v}")
+                else:
+                    self.op_params[k] = v
+                    logger.info(f"[{self.__class__.__name__}] Set op_param '{k}' = {v}")
+
+        # Load custom prompt templates from config
+        if op_config.prompt_dict:
+            self.prompt.load_prompt_dict(op_config.prompt_dict)
+            logger.info(f"[{self.__class__.__name__}] Loaded prompt keys={list(op_config.prompt_dict.keys())}")
 
     async def before_execute(self):
         """Prepare context and validate before async execution."""
-        self.context.apply_mapping(self.input_mapping)
+        self.before_execute_sync()
 
     def execute_sync(self):
         """Define core sync logic in subclasses."""

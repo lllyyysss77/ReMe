@@ -3,16 +3,20 @@
 import os
 from pathlib import Path
 
-from reme.core.schema import ToolCall
-from .base_fs_tool import BaseFsTool
+from loguru import logger
+
+from ....core import RuntimeContext
+from ....core.op import BaseTool
+from ....core.schema import ToolCall
 
 
-class FsMemoryGet(BaseFsTool):
+class MemoryGet(BaseTool):
     """Read specific snippets from memory files."""
 
     def __init__(self, cwd: str | None = None, **kwargs):
         """Initialize memory get tool."""
-        kwargs.setdefault("name", "memory_get")
+        kwargs.setdefault("max_retries", 1)
+        kwargs.setdefault("raise_exception", False)
         super().__init__(**kwargs)
         self.cwd = cwd or os.getcwd()
 
@@ -59,7 +63,7 @@ class FsMemoryGet(BaseFsTool):
         # Check file exists, is not a symlink, and is a regular file
         file_path = Path(abs_path)
         assert (
-            file_path.exists() and not file_path.is_symlink() and file_path.is_file()
+                file_path.exists() and not file_path.is_symlink() and file_path.is_file()
         ), f"File not found or not a regular file: {abs_path}"
 
         with open(abs_path, "r", encoding="utf-8") as f:
@@ -85,5 +89,25 @@ class FsMemoryGet(BaseFsTool):
             count = total_lines - start + 1
 
         # Extract slice (1-indexed to 0-indexed conversion)
-        selected = lines[start - 1 : start - 1 + count]
+        selected = lines[start - 1: start - 1 + count]
         return "\n".join(selected)
+
+    async def call(self, context: RuntimeContext = None, **kwargs):
+        """Execute the tool with unified error handling.
+
+        This method catches all exceptions and returns error messages
+        to the LLM instead of raising them.
+        """
+        self.context = RuntimeContext.from_context(context, **kwargs)
+
+        try:
+            await self.before_execute()
+            response = await self.execute()
+            response = await self.after_execute(response)
+            return response
+
+        except Exception as e:
+            # Return error message to LLM instead of raising
+            error_msg = f"{self.__class__.__name__} failed: {str(e)}"
+            logger.error(error_msg)
+            return await self.after_execute(error_msg)

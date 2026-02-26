@@ -2,9 +2,9 @@
 
 from loguru import logger
 
-from ...core.enumeration import Role, ChunkEnum
-from ...core.op import BaseTool
-from ...core.schema import Message, ToolCall
+from ..core.enumeration import Role, ChunkEnum
+from ..core.op import BaseTool
+from ..core.schema import Message, ToolCall
 
 
 class StreamChat(BaseTool):

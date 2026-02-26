@@ -2,50 +2,60 @@
 
 from .base_memory_tool import BaseMemoryTool
 from .delegate_task import DelegateTask
+
+# chunk tools
+from .chunk.memory_get import MemoryGet
+from .chunk.memory_search import MemorySearch
+
+# history tools
 from .history.add_history import AddHistory
 from .history.read_history import ReadHistory
 from .history.read_history_v2 import ReadHistoryV2
+
+# profiles tools
 from .profiles.add_draft_and_read_all_profiles import AddDraftAndReadAllProfiles
 from .profiles.add_profile import AddProfile
 from .profiles.delete_profile import DeleteProfile
-from .profiles.profile_handler import ProfileHandler
 from .profiles.read_all_profiles import ReadAllProfiles
 from .profiles.update_profile import UpdateProfile
 from .profiles.update_profiles_v1 import UpdateProfilesV1
-from .vector.add_and_retrieve_similar_memory import AddAndRetrieveSimilarMemory
-from .vector.add_draft_and_retrieve_similar_memory import AddDraftAndRetrieveSimilarMemory
-from .vector.add_memory import AddMemory
-from .vector.delete_memory import DeleteMemory
-from .vector.memory_handler import MemoryHandler
-from .vector.retrieve_memory import RetrieveMemory
-from .vector.retrieve_recent_memory import RetrieveRecentMemory
-from .vector.update_memory import UpdateMemory
-from .vector.update_memory_v1 import UpdateMemoryV1
-from .vector.update_memory_v2 import UpdateMemoryV2
+
+# record tools
+from .record.add_and_retrieve_similar_memory import AddAndRetrieveSimilarMemory
+from .record.add_draft_and_retrieve_similar_memory import AddDraftAndRetrieveSimilarMemory
+from .record.add_memory import AddMemory
+from .record.delete_memory import DeleteMemory
+from .record.retrieve_memory import RetrieveMemory
+from .record.retrieve_recent_memory import RetrieveRecentMemory
+from .record.update_memory import UpdateMemory
+from .record.update_memory_v1 import UpdateMemoryV1
+from .record.update_memory_v2 import UpdateMemoryV2
+
 from ...core import R
 
 __all__ = [
-    # Base
+    # base
     "BaseMemoryTool",
     "DelegateTask",
-    # History
+    # chunk tools
+    "MemoryGet",
+    "MemorySearch",
+    # history tools
     "AddHistory",
     "ReadHistory",
     "ReadHistoryV2",
-    # Profiles
+    # profiles tools
     "AddDraftAndReadAllProfiles",
     "AddProfile",
-    "ProfileHandler",
+    "DeleteProfile",
     "ReadAllProfiles",
     "UpdateProfile",
-    "DeleteProfile",
     "UpdateProfilesV1",
-    # Vector
+    # record tools
     "AddAndRetrieveSimilarMemory",
     "AddDraftAndRetrieveSimilarMemory",
     "AddMemory",
     "DeleteMemory",
-    "MemoryHandler",
     "RetrieveMemory",
     "RetrieveRecentMemory",
     "UpdateMemory",
@@ -55,5 +65,4 @@ __all__ = [
 
 for name in __all__:
     tool_class = globals()[name]
-    if isinstance(tool_class, type) and issubclass(tool_class, BaseMemoryTool) and tool_class is not BaseMemoryTool:
-        R.ops.register(tool_class)
+    R.ops.register(tool_class)

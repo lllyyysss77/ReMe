@@ -4,9 +4,9 @@ from pathlib import Path
 
 from loguru import logger
 
-from ...core.enumeration import Role
-from ...core.op import BaseOp
-from ...core.schema import Message
+from ..core.enumeration import Role
+from ..core.op import BaseOp
+from ..core.schema import Message
 
 
 class TranslateTs(BaseOp):

@@ -2,26 +2,30 @@
 
 import json
 
-from reme.core.enumeration import MemorySource
-from reme.core.schema import ToolCall
-from .base_fs_tool import BaseFsTool
+from loguru import logger
+
+from ....core.enumeration import MemorySource
+from ....core.op import BaseTool
+from ....core.runtime_context import RuntimeContext
+from ....core.schema import ToolCall
 
 
-class FsMemorySearch(BaseFsTool):
+class MemorySearch(BaseTool):
     """Semantically search MEMORY.md and memory files."""
 
     def __init__(
-        self,
-        sources: list[MemorySource] | None = None,
-        min_score: float = 0.1,
-        max_results: int = 5,
-        vector_weight: float = 0.7,
-        candidate_multiplier: float = 3.0,
-        **kwargs,
+            self,
+            sources: list[MemorySource] | None = None,
+            min_score: float = 0.1,
+            max_results: int = 5,
+            vector_weight: float = 0.7,
+            candidate_multiplier: float = 3.0,
+            **kwargs,
     ):
         """Initialize memory search tool."""
         assert 0.0 <= vector_weight <= 1.0, f"vector_weight must be between 0 and 1, got {vector_weight}"
-        kwargs.setdefault("name", "memory_search")
+        kwargs.setdefault("max_retries", 1)
+        kwargs.setdefault("raise_exception", False)
         super().__init__(**kwargs)
         self.sources = sources or [MemorySource.MEMORY]
         self.min_score = min_score
@@ -67,10 +71,10 @@ class FsMemorySearch(BaseFsTool):
 
         assert query, "Query cannot be empty"
         assert (
-            isinstance(min_score, float) and 0.0 <= min_score <= 1.0
+                isinstance(min_score, float) and 0.0 <= min_score <= 1.0
         ), f"min_score must be between 0 and 1, got {min_score}"
         assert (
-            isinstance(max_results, int) and max_results > 0
+                isinstance(max_results, int) and max_results > 0
         ), f"max_results must be a positive integer, got {max_results}"
 
         # Use hybrid_search from file_store
@@ -86,3 +90,23 @@ class FsMemorySearch(BaseFsTool):
         results = [r for r in results if r.score >= min_score]
 
         return json.dumps([result.model_dump(exclude_none=True) for result in results], indent=2, ensure_ascii=False)
+
+    async def call(self, context: RuntimeContext = None, **kwargs):
+        """Execute the tool with unified error handling.
+
+        This method catches all exceptions and returns error messages
+        to the LLM instead of raising them.
+        """
+        self.context = RuntimeContext.from_context(context, **kwargs)
+
+        try:
+            await self.before_execute()
+            response = await self.execute()
+            response = await self.after_execute(response)
+            return response
+
+        except Exception as e:
+            # Return error message to LLM instead of raising
+            error_msg = f"{self.__class__.__name__} failed: {str(e)}"
+            logger.error(error_msg)
+            return await self.after_execute(error_msg)

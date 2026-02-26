@@ -3,7 +3,7 @@
 from loguru import logger
 
 from .base_memory_tool import BaseMemoryTool
-from ...agent.memory import BaseMemoryAgent
+from ..vector_based import BaseMemoryAgent
 from ...core.enumeration import MemoryType
 from ...core.schema import ToolCall
 

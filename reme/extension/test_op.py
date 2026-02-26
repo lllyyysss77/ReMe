@@ -2,7 +2,7 @@
 
 from loguru import logger
 
-from ...core.op import BaseOp
+from ..core.op import BaseOp
 
 
 class TestOp(BaseOp):

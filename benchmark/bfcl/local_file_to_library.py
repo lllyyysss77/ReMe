@@ -1,6 +1,8 @@
+"""Load the library data and convert them to the new format"""
+
 import json
 
-with open("../../file_vector_store/bfcl_test.jsonl", "r") as f:
+with open("../../file_vector_store/bfcl_test.jsonl", "r", encoding="utf-8") as f:
     bfcl = [json.loads(line) for line in f]
 
 new_bfcl = []

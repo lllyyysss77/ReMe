@@ -1,3 +1,6 @@
+# pylint: disable=W0621
+"""Preprocess multi-turn test cases"""
+
 import json
 
 
@@ -18,13 +21,12 @@ def process_multi_turn_test_case(file_path, output_path):
     Multi-turn test cases don't have the function doc in the prompt. We need to add them here.
     """
     test_cases = []
-    with open(output_path, "w") as outf:
-        
-        with open(file_path) as f:
+    with open(output_path, "w", encoding="utf-8") as outf:
+        with open(file_path, encoding="utf-8") as f:
             file = f.readlines()
             for line in file:
                 entry = json.loads(line)
-                if not "multi_turn" in entry["id"]:
+                if "multi_turn" not in entry["id"]:
                     continue
                 test_category: str = entry["id"].rsplit("_", 1)[0]
                 involved_classes = entry["involved_classes"]
@@ -32,7 +34,7 @@ def process_multi_turn_test_case(file_path, output_path):
                 for func_collection in involved_classes:
                     # func_doc is a list of dict
                     func_doc = load_file(
-                        MULTI_TURN_FUNC_DOC_PATH / MULTI_TURN_FUNC_DOC_FILE_MAPPING[func_collection]
+                        MULTI_TURN_FUNC_DOC_PATH / MULTI_TURN_FUNC_DOC_FILE_MAPPING[func_collection],
                     )
                     entry["function"].extend(func_doc)
 
@@ -48,19 +50,22 @@ def process_multi_turn_test_case(file_path, output_path):
                                     # Remove it from the function list
                                     entry["function"].pop(i)
                                     break
-                
+
                 functions = func_doc_language_specific_pre_processing(entry["function"], test_category)
                 tools = convert_to_tool(functions, GORILLA_TO_OPENAPI, ModelStyle.OpenAI_Completions)
 
-                test_cases.append({
-                    "id": entry["id"],
-                    "messages": entry["question"][0],
-                    "tools": tools,
-                    "extra": entry,
-                })
+                test_cases.append(
+                    {
+                        "id": entry["id"],
+                        "messages": entry["question"][0],
+                        "tools": tools,
+                        "extra": entry,
+                    },
+                )
                 outf.write(json.dumps(test_cases[-1], ensure_ascii=False) + "\n")
 
     return test_cases
+
 
 if __name__ == "__main__":
     file_path = Path("./gorilla/berkeley-function-call-leaderboard/bfcl_eval/data/BFCL_v3_multi_turn_base.json")

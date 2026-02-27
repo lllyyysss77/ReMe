@@ -7,6 +7,7 @@ from loguru import logger
 from ...core.enumeration import Role
 from ...core.schema.message import Message, Trajectory
 
+
 def merge_messages_content(messages: list[Message | dict]) -> str:
     """Merge messages content into a formatted string representation.
 
@@ -139,4 +140,3 @@ def get_trajectory_context(trajectory: Trajectory, step_sequence: list[Message])
     except Exception as e:
         logger.error(f"Error getting trajectory context: {e}")
         return f"Query: {trajectory.metadata.get('query', 'N/A')}"
-

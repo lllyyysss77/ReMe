@@ -68,7 +68,11 @@ class MemoryDeduplication(BaseOp):
                 continue
 
             # Check similarity with current batch task memories
-            if await self._is_similar_to_current_task_memories(current_embedding, unique_task_memories, similarity_threshold):
+            if await self._is_similar_to_current_task_memories(
+                current_embedding,
+                unique_task_memories,
+                similarity_threshold,
+            ):
                 logger.debug(f"Skipping duplicate in current batch: {str(task_memory.when_to_use)[:50]}...")
                 continue
 

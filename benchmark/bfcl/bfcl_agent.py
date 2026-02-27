@@ -1,26 +1,23 @@
 # flake8: noqa: E402
-import os
-
-os.environ["BFCL_DATA_PATH"] = "data/multiturn_data_base_val.jsonl"
-os.environ["BFCL_ANSWER_PATH"] = "data/possible_answer"
-from dotenv import load_dotenv
-
-load_dotenv("../../.env")
+# pylint: disable=too-many-return-statements
+"""A minimal ReAct Agent for BFCL-v3(multi-turn) tasks."""
 
 import re
+import os
 import time
 import json
-import ray
 import warnings
 import tempfile
-import requests
 import datetime
-
-from tqdm import tqdm
 from pathlib import Path
+from typing import Dict, List, Any
+
+import ray
+import requests
+from tqdm import tqdm
 from loguru import logger
 from openai import OpenAI
-from typing import Dict, List, Any
+from dotenv import load_dotenv
 
 from bfcl_utils import (
     load_test_case,
@@ -47,6 +44,10 @@ from bfcl_eval.utils import (
     find_file_with_suffix,
     load_file,
 )
+
+os.environ["BFCL_DATA_PATH"] = "data/multiturn_data_base_val.jsonl"
+os.environ["BFCL_ANSWER_PATH"] = "data/possible_answer"
+load_dotenv("../../.env")
 
 
 @ray.remote
@@ -109,6 +110,7 @@ class BFCLAgent:
                 self.init_state(run_id, task_index)
 
     def init_state(self, run_id, i) -> Dict[str, Any]:
+        """Initialize the state of the agent."""
         self.test_entry[run_id].append(load_test_case(self.data_path, self.task_ids[i]))
         self.original_test_entry[run_id].append(self.test_entry[run_id][i].get("extra", {}))
         self.tool_schema[run_id].append(extract_tool_schema(self.test_entry[run_id][i].get("tools", [{}])))
@@ -119,12 +121,13 @@ class BFCLAgent:
         self.current_turn[run_id][i] = 1
 
     def update_task_history_with_memory(self, run_id, task_index, previous_memories: None):
+        """Update the task history with memory."""
         query = self.history[run_id][task_index][0]["content"]
         if len(previous_memories) == 0:
             response = self.get_memory(query)
             if response and "memory_list" in response["metadata"]:
                 self.retrieved_memory_list[run_id][task_index] = response["metadata"]["memory_list"]
-                task_memory = re.sub(r'\bMemory\s*(\d+)\s*[:]', r'Experience \1 :', response["answer"])
+                task_memory = re.sub(r"\bMemory\s*(\d+)\s*[:]", r"Experience \1 :", response["answer"])
                 logger.info(f"loaded task_memory: {task_memory}")
                 self.history[run_id][task_index][0] = self.get_query_with_memory(query, task_memory)
         else:
@@ -137,17 +140,20 @@ class BFCLAgent:
             self.history[run_id][task_index][0] = self.get_query_with_memory(query, "\n".join(formatted_memories))
 
     def get_query_with_memory(self, query: str, memory: str):
+        """Get the query with memory."""
         return {
             "role": "user",
             "content": "Task:\n" + query + "\n\nSome Related Experience to help you to complete the task:\n" + memory,
         }
 
     def get_query_without_experience(self, query: str):
+        """Get the query without experience."""
         if "\n\nSome Related Experience" in query:
             query = query.split("\n\nSome Related Experience")[0].split("Task:\n")[-1]
         return query
 
     def get_traj_from_task_history(self, task_id: str, task_history: list, reward: float):
+        """Get the trajectory from the task history."""
         return {
             "task_id": task_id,
             "messages": task_history,
@@ -201,19 +207,21 @@ class BFCLAgent:
 
         # Extract memory list from response
         memory_list = result.get("metadata", {}).get("memory_list", [])
-        logger.info(f'add new memories: {memory_list}')
+        logger.info(f"add new memories: {memory_list}")
         return memory_list
 
     def add_memory(self, memory_list):
+        """Add the memory to the memory pool."""
         response = requests.post(
             url=f"{self.memory_base_url}add_task_memory",
             json={
-                "memory_list": memory_list
-            }
+                "memory_list": memory_list,
+            },
         )
         response.raise_for_status()
 
     def update_memory_information(self, memory_list, update_utility: bool = False):
+        """Update the memory information."""
         response = requests.post(
             url=f"{self.memory_base_url}record_task_memory",
             json={
@@ -225,6 +233,7 @@ class BFCLAgent:
         logger.info(response.json())
 
     def delete_memory(self):
+        """Delete the memory from the memory pool."""
         response = requests.post(
             url=f"{self.memory_base_url}delete_task_memory",
             json={
@@ -235,6 +244,7 @@ class BFCLAgent:
         response.raise_for_status()
 
     def call_llm(self, messages: list, tool_schemas: list[dict]) -> str:
+        """Call the LLM."""
         for i in range(100):
             try:
                 response = self.llm_client.chat.completions.create(
@@ -262,46 +272,45 @@ class BFCLAgent:
                         if not chunk.choices:
                             # Handle usage information
                             continue
+
+                        delta = chunk.choices[0].delta
+                        # Handle AI's thought process (chain reasoning)
+                        if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
+                            reasoning_content += delta.reasoning_content
+                        # Handle final response content
                         else:
-                            delta = chunk.choices[0].delta
-                            # Handle AI's thought process (chain reasoning)
-                            if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
-                                reasoning_content += delta.reasoning_content
+                            if not is_answering:  # Print title when entering the response phase for the first time
+                                is_answering = True
+                            if delta.content is not None:
+                                answer_content += delta.content
 
-                            # Handle final response content
-                            else:
-                                if not is_answering:  # Print title when entering the response phase for the first time
-                                    is_answering = True
-                                if delta.content is not None:
-                                    answer_content += delta.content
+                            # Handle tool invocation information (support parallel tool calls)
+                            if delta.tool_calls is not None:
+                                for tool_call in delta.tool_calls:
+                                    index = tool_call.index  # Tool call index, used for parallel calls
 
-                                # Handle tool invocation information (support parallel tool calls)
-                                if delta.tool_calls is not None:
-                                    for tool_call in delta.tool_calls:
-                                        index = tool_call.index  # Tool call index, used for parallel calls
+                                    # Dynamically expand tool information storage list
+                                    while len(tool_info) <= index:
+                                        tool_info.append(
+                                            {
+                                                "id": "",
+                                                "type": "function",
+                                                "index": index,
+                                                "function": {"name": "", "arguments": ""},
+                                            },
+                                        )
 
-                                        # Dynamically expand tool information storage list
-                                        while len(tool_info) <= index:
-                                            tool_info.append(
-                                                {
-                                                    "id": "",
-                                                    "type": "function",
-                                                    "index": index,
-                                                    "function": {"name": "", "arguments": ""},
-                                                },
-                                            )
+                                    # Collect tool call ID (used for subsequent function calls)
+                                    if tool_call.id:
+                                        tool_info[index]["id"] += tool_call.id
 
-                                        # Collect tool call ID (used for subsequent function calls)
-                                        if tool_call.id:
-                                            tool_info[index]["id"] += tool_call.id
+                                    # Collect function name (used for subsequent routing to specific functions)
+                                    if tool_call.function and tool_call.function.name:
+                                        tool_info[index]["function"]["name"] += tool_call.function.name
 
-                                        # Collect function name (used for subsequent routing to specific functions)
-                                        if tool_call.function and tool_call.function.name:
-                                            tool_info[index]["function"]["name"] += tool_call.function.name
-
-                                        # Collect function parameters (in JSON string format, need subsequent parsing)
-                                        if tool_call.function and tool_call.function.arguments:
-                                            tool_info[index]["function"]["arguments"] += tool_call.function.arguments
+                                    # Collect function parameters (in JSON string format, need subsequent parsing)
+                                    if tool_call.function and tool_call.function.arguments:
+                                        tool_info[index]["function"]["arguments"] += tool_call.function.arguments
                     msg = {
                         "role": "assistant",
                         "content": answer_content,
@@ -398,12 +407,13 @@ class BFCLAgent:
                 args_str = ", ".join([f"{k}={repr(v)}" for k, v in args_dict.items()])
                 execution_list.append(f"{function_name}({args_str})")
 
-            except Exception as e:
+            except Exception:
                 execution_list.append(f"{function_name}()")
 
         return execution_list
 
     def get_reward(self, run_id, index) -> float:
+        """Get the reward."""
         try:
             if not self.history[run_id][index] or not self.original_test_entry[run_id][index]:
                 return 0.0
@@ -461,11 +471,14 @@ class BFCLAgent:
                         self.categories[index],
                     )
             print(f"model_result_data: {model_result_data}")
-            print(f"possible_answer: {possible_answer}") if possible_answer else None
+            if possible_answer:
+                print(f"possible_answer: {possible_answer}")
+            else:
+                print("possible_answer: None")
 
             return accuracy
 
-        except Exception as e:
+        except Exception:
             import traceback
 
             traceback.print_exc()
@@ -589,6 +602,7 @@ class BFCLAgent:
             return accuracy, total_count
 
     def execute(self):
+        """Execute the agent."""
         result = []
         counter = 0
         for task_index, task_id in enumerate(tqdm(self.task_ids, desc=f"ray_index={self.index}")):
@@ -608,10 +622,15 @@ class BFCLAgent:
 
                         env_output = self.env_step(run_id, task_index, self.history[run_id][task_index])
                         # Possible env_output returns after environment interaction:
-                        # 1. Triggers a query with available tools list: {"messages": [{"role": "user", "content": user_query}], "tools": tools}
-                        # 2. Returns tool invocation result: {"messages": [{"role": "tool", "content": {<execution_results>}, 'tool_call_id': 'chatcmpl-tool-xxx'}]}
-                        #    <execution_results>: when success, returns result dicts, e.g., {"travel_cost_list": [1140.0]}, when error, returns error message, e.g., {"error": "cd: temporary: No such directory. You cannot use path to change directory."}
-                        # 3. Conversation completion: {"messages": [{"role": "env", "content": "[CONVERSATION_COMPLETED]"}]}
+                        # 1. Triggers a query with available tools list:
+                        #    {"messages": [{"role": "user", "content": user_query}], "tools": tools}
+                        # 2. Returns tool invocation result: {"messages":
+                        #    [{"role": "tool", "content": {<exec_results>}, 'tool_call_id': 'chatcmpl-tool-xxx'}]}
+                        #    <exec_results>: when success, returns result dicts, e.g., {"travel_cost_list": [x]},
+                        #    when error, returns error message,
+                        #    e.g., {"error": "cd: temporary: No such directory. You cannot use path ..."}
+                        # 3. Conversation completion:
+                        #    {"messages": [{"role": "env", "content": "[CONVERSATION_COMPLETED]"}]}
                         # 4. Program error: {"messages": [{"role": "env", "content": f"[ERROR] {error_message}"}]}
 
                         # tool_list update
@@ -647,7 +666,9 @@ class BFCLAgent:
                     reward = self.get_reward(run_id, task_index)
                     if self.use_memory:
                         if self.use_memory_addition:
-                            new_traj_list = [self.get_traj_from_task_history(task_id, self.history[run_id][task_index], reward)]
+                            new_traj_list = [
+                                self.get_traj_from_task_history(task_id, self.history[run_id][task_index], reward),
+                            ]
                             previous_memories = self.summary_memory(new_traj_list)
                             if reward == 1:
                                 self.add_memory(previous_memories)
@@ -688,12 +709,13 @@ class BFCLAgent:
 
 
 def main():
+    """Main function to run the BFCLAgent."""
     with open(os.getenv("BFCL_DATA_PATH"), "r", encoding="utf-8") as f:
         task_ids = [json.loads(l)["id"] for l in f]
     dataset_name = "dev"
     agent = BFCLAgent(
         index=0,
-        task_id=task_ids[0],
+        task_ids=[task_ids[0]],
         experiment_name=f"qwen3_8b_{dataset_name}",
     )
     result = agent.execute()

@@ -1,3 +1,5 @@
+"""Procedural memory workflow."""
+
 from ...core import R
 
 from .dump_memory import DumpMemory

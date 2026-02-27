@@ -1,3 +1,5 @@
+# pylint: disable=W0621,W1514
+"""Init task memory pool"""
 import argparse
 import json
 from collections import defaultdict
@@ -19,7 +21,7 @@ def load_task_case(data_path: str, task_id: str | None) -> Dict[str, Any]:
         raise ValueError("task_id is required")
 
     with open(data_path, "r", encoding="utf-8") as f:
-        if str(task_id).isdigit():
+        if str(task_id).isdigit():  # pylint: disable=R1720
             idx = int(task_id)
             for line_no, line in enumerate(f):
                 if line_no == idx:
@@ -34,10 +36,18 @@ def load_task_case(data_path: str, task_id: str | None) -> Dict[str, Any]:
 
 
 def get_tool_prompt(tools):
-    tool_prompt = "\n\n# Tools\n\nYou may call one or more functions to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>"
+    """Construct prompt with provided tools"""
+    tool_prompt = (
+        "\n\n# Tools\n\nYou may call one or more functions to assist with the user query."
+        "\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>"
+    )
     for tool in tools:
         tool_prompt += "\n" + json.dumps(tool)
-    tool_prompt += '\n</tools>\n\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>'
+    tool_prompt += (
+        "\n</tools>\n\nFor each function call, return a json object with function name"
+        " and arguments within <tool_call></tool_call> XML tags:"
+        '\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>'
+    )
     return tool_prompt
 
 
@@ -65,7 +75,7 @@ def group_trajectories_by_task_id(jsonl_entries: List[Dict[str, Any]]) -> List[L
 
     # retain only the two with the highest and lowest rewards
     filtered_groups = []
-    for key, trajectories in grouped.items():
+    for _, trajectories in grouped.items():
         if len(trajectories) == 1:
             # when only one trajectory, retain it
             filtered_groups.append(trajectories)
@@ -83,6 +93,16 @@ def group_trajectories_by_task_id(jsonl_entries: List[Dict[str, Any]]) -> List[L
 
 
 def post_to_summarizer(trajectories: List[Any], service_url: str) -> Dict[str, Any]:
+    """
+    post trajectories to summarizer service
+
+    Args:
+        trajectories: trajectory list
+        service_url: summarizer service URL
+
+    Returns:
+        response json
+    """
     trajectory_dicts = [
         {
             "task_id": traj["task_id"],
@@ -124,8 +144,7 @@ def process_trajectories_with_threads(
 
     with ThreadPoolExecutor(max_workers=n_threads) as executor:
         future_to_group = {
-            executor.submit(post_to_summarizer, group, service_url): i
-            for i, group in enumerate(grouped_trajectories)
+            executor.submit(post_to_summarizer, group, service_url): i for i, group in enumerate(grouped_trajectories)
         }
 
         for future in as_completed(future_to_group):
@@ -135,9 +154,10 @@ def process_trajectories_with_threads(
                 result["group_index"] = group_index
                 result["group_size"] = len(grouped_trajectories[group_index])
                 results.append(result)
-                print(
-                    f'✅ Group {group_index} processed: {result["metadata"].get("memory_list", 0) if "memory_list" in result["metadata"] else "error"}',
-                )
+                if "memory_list" in result["metadata"]:
+                    print(f'✅ Group {group_index} processed: {result["metadata"].get("memory_list", 0)}')
+                else:
+                    print(f"❌ Group {group_index} processed: error")
             except Exception as e:
                 error_result = {
                     "group_index": group_index,
@@ -151,6 +171,7 @@ def process_trajectories_with_threads(
 
 
 def main():
+    """Main function to convert JSONL to memories using ReMe service."""
     parser = argparse.ArgumentParser(description="Convert JSONL to memories using ReMe service")
     parser.add_argument("--jsonl_file", type=str, required=True, help="Path to the JSONL file")
     parser.add_argument("--service_url", type=str, default="http://localhost:8001", help="ReMe service URL")
@@ -220,7 +241,6 @@ if __name__ == "__main__":
         results = process_trajectories_with_threads(
             grouped_trajectories,
             "http://localhost:8001",
-            "bfcl_v3",
             n_threads=4,
         )
         print(f"Processed {len(results)} groups")

@@ -1,9 +1,11 @@
-import ray
+"""Run evaluation on BFCL-V3-Multi-Turn-Base dataset."""
+
 import time
 import json
-import requests
-
 from pathlib import Path
+
+import ray
+import requests
 from loguru import logger
 from dotenv import load_dotenv
 from bfcl_agent import BFCLAgent
@@ -26,8 +28,9 @@ def run_agent(
     use_memory_deletion: bool = False,
     delete_freq: int = 10,
     freq_threshold: int = 5,
-    utility_threshold: float = 0.5
+    utility_threshold: float = 0.5,
 ):
+    """Run the agent"""
     experiment_name = dataset_name + "_" + experiment_suffix
     path: Path = Path(
         f"./exp_result/{model_name}/with_think" if enable_thinking else f"./exp_result/{model_name}/no_think",
@@ -35,12 +38,12 @@ def run_agent(
     path.mkdir(parents=True, exist_ok=True)
 
     with open(data_path, "r", encoding="utf-8") as f:
-        task_ids = [json.loads(l)["id"] for l in f]
+        task_ids = [json.loads(line)["id"] for line in f]
 
     result: list = []
 
     def dump_file():
-        with open(path / f"{experiment_name}.jsonl", "a") as f:
+        with open(path / f"{experiment_name}.jsonl", "a", encoding="utf-8") as f:
             for x in result:
                 f.write(json.dumps(x) + "\n")
 
@@ -61,7 +64,7 @@ def run_agent(
             delete_freq=delete_freq,
             freq_threshold=freq_threshold,
             utility_threshold=utility_threshold,
-            enable_thinking=enable_thinking
+            enable_thinking=enable_thinking,
         )
         future = actor.execute.remote()
         future_list.append(future)
@@ -78,6 +81,7 @@ def run_agent(
 
         logger.info(f"{i + 1}/{len(task_ids)} complete")
     dump_file()
+
 
 def handle_api_response(response: requests.Response):
     """Handle API response with proper error checking"""
@@ -105,10 +109,11 @@ def load_memory(path: str = "docs/library", api_url: str = "http://0.0.0.0:8002/
 
 
 def main():
+    """Main function"""
     max_workers = 4
     if max_workers > 1:
         ray.init(num_cpus=max_workers)
-    
+
     num_runs = 4
     num_trials = 1
     model_name = "qwen3-8b"
@@ -119,15 +124,15 @@ def main():
     memory_base_url = "http://0.0.0.0:8003/"
 
     if use_memory:
-        load_file_path = f"docs/library/paper_data/task/bfcl_qwen3_8b.jsonl"
+        load_file_path = "docs/library/paper_data/task/bfcl_qwen3_8b.jsonl"
         load_memory(load_file_path, memory_base_url)
-    
-    for run_id in range(num_runs):
+
+    for _ in range(num_runs):
         run_agent(
             max_workers=max_workers,
             model_name=model_name,
             dataset_name="bfcl-multi-turn-base",
-            experiment_suffix=f"w-fixed-memory",
+            experiment_suffix="w-fixed-memory",
             data_path="data/multiturn_data_base_val.jsonl",
             answer_path=Path("data/possible_answer"),
             enable_thinking=enable_thinking,
@@ -138,7 +143,7 @@ def main():
             use_memory_deletion=use_memory_deletion,
             delete_freq=5,
             freq_threshold=5,
-            utility_threshold=0.5
+            utility_threshold=0.5,
         )
 
 

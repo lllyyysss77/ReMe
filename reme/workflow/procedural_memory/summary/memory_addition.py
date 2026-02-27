@@ -25,9 +25,7 @@ class MemoryAddition(BaseOp):
         4. Inserts them into the vector store
         """
         raw_memory_list = self.context.memory_list
-        insert_memory_list: List[MemoryNode] = [
-            MemoryNode(**x) if isinstance(x, dict) else x for x in raw_memory_list
-        ]
+        insert_memory_list: List[MemoryNode] = [MemoryNode(**x) if isinstance(x, dict) else x for x in raw_memory_list]
         if insert_memory_list:
             insert_nodes: List[VectorNode] = [x.to_vector_node() for x in insert_memory_list]
             await self.vector_store.insert(nodes=insert_nodes)

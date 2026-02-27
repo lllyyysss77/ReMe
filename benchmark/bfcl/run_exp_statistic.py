@@ -1,3 +1,5 @@
+"""Run the experiment statistic."""
+
 import json
 from collections import defaultdict
 from pathlib import Path
@@ -31,6 +33,7 @@ def calculate_best_at_k(scores: list, k: int) -> float:
 
 
 def calculate_pass_at_k(scores: list, k: int) -> float:
+    """Calculate pass@k."""
     if len(scores) % k != 0:
         raise ValueError(f"Length of scores ({len(scores)}) must be divisible by k ({k})")
 
@@ -61,15 +64,16 @@ def get_possible_k_values(total_runs: int) -> list:
 
 
 def run_exp_statistic():
-    path: Path = Path(f"./exp_result/qwen3-8b/with_think")
+    """Run the experiment statistic."""
+    path: Path = Path("./exp_result/qwen3-8b/with_think")
 
     # Store results for all experiments
     all_results = {}
-    for file in [f for f in path.glob("*.jsonl")]:
+    for file in path.glob("*.jsonl"):
         # Group results by task_id
         task_results = defaultdict(list)
         print(file)
-        with open(file, "r") as f:
+        with open(file, "r", encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
                     continue
@@ -137,7 +141,7 @@ def run_exp_statistic():
 
         # Sort columns by the number in column name (best@8, best@4, best@2, best@1)
         # best_columns = [col for col in df.columns if col.startswith('best@')]
-        best_columns = [col for col in df.columns]
+        best_columns = df.columns
         best_columns.sort(key=lambda x: x, reverse=False)
         df = df[best_columns]
 

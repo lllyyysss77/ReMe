@@ -1,16 +1,19 @@
 # flake8: noqa: E402, E501
+# pylint: disable=E0611
+"""A minimal ReAct Agent for AppWorld tasks."""
 import os
 import re
-import ray
 import time
 import json
-import requests
 import datetime
+from typing import List, Any
 
+
+import ray
+import requests
 from tqdm import tqdm
 from loguru import logger
 from openai import OpenAI
-from typing import List, Any
 from jinja2 import Template
 from dotenv import load_dotenv
 
@@ -59,7 +62,6 @@ class AppworldReactAgent:
         self.delete_freq: int = delete_freq
         self.freq_threshold: int = freq_threshold
         self.utility_threshold: float = utility_threshold
-        
 
         self.llm_client = OpenAI()
         self.memory_base_url: str = memory_base_url
@@ -73,6 +75,7 @@ class AppworldReactAgent:
                 self.history[run_id].append([])
 
     def call_llm(self, messages: list) -> str:
+        """Call the LLM to generate a response to the messages."""
         for i in range(100):
             try:
                 response = self.llm_client.chat.completions.create(
@@ -92,11 +95,9 @@ class AppworldReactAgent:
         return "call llm error"
 
     def prompt_messages(self, run_id, task_index, previous_memories: None, world: AppWorld):
+        """Prompt the messages to the LLM."""
         app_descriptions = json.dumps(
-            [
-                {"name": k, "description": v}
-                for (k, v) in world.task.app_descriptions.items()
-            ],
+            [{"name": k, "description": v} for (k, v) in world.task.app_descriptions.items()],
             indent=1,
         )
         dictionary = {"supervisor": world.task.supervisor, "app_descriptions": app_descriptions}
@@ -107,9 +108,14 @@ class AppworldReactAgent:
                 response = self.get_memory(world.task.instruction)
                 if response and "memory_list" in response["metadata"]:
                     self.retrieved_memory_list[run_id][task_index] = response["metadata"]["memory_list"]
-                    task_memory = re.sub(r'\bMemory\s*(\d+)\s*[:]', r'Experience \1:', response["answer"])
+                    task_memory = re.sub(r"\bMemory\s*(\d+)\s*[:]", r"Experience \1:", response["answer"])
                     logger.info(f"loaded task_memory: {task_memory}")
-                    query = "Task:\n" + query + "\n\nSome Related Experience to help you to complete the task:\n" + task_memory
+                    query = (
+                        "Task:\n"
+                        + query
+                        + "\n\nSome Related Experience to help you to complete the task:\n"
+                        + task_memory
+                    )
             else:
                 formatted_memories = []
                 for i, memory in enumerate(previous_memories, 1):
@@ -117,24 +123,32 @@ class AppworldReactAgent:
                     memory_content = memory["content"]
                     memory_text = f"Experience {i}:\n When to use: {condition}\n Content: {memory_content}\n"
                     formatted_memories.append(memory_text)
-                query = "Task:\n" + query + "\n\nSome Related Experience to help you to complete the task:\n" + "\n".join(formatted_memories)
+                query = (
+                    "Task:\n"
+                    + query
+                    + "\n\nSome Related Experience to help you to complete the task:\n"
+                    + "\n".join(formatted_memories)
+                )
         messages = [
             {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": query}
+            {"role": "user", "content": query},
         ]
         self.history[run_id][task_index] = messages
 
-
     @staticmethod
     def get_reward(world) -> float:
+        """Get the reward for the Appworld world."""
         tracker = world.evaluate()
         num_passes = len(tracker.passes)
         num_failures = len(tracker.failures)
         return num_passes / (num_passes + num_failures)
 
     def extract_code_and_fix_content(
-        self, text: str, ignore_multiple_calls=True
+        self,
+        text: str,
+        ignore_multiple_calls=True,
     ) -> tuple[str, str]:
+        """Extract the code and fix the content."""
         full_code_regex = r"```python\n(.*?)```"
         partial_code_regex = r".*```python\n(.*)"
 
@@ -151,7 +165,9 @@ class AppworldReactAgent:
             match_end = re_match.end()
         # check for partial code match at end (no terminating ```)  following the last match
         partial_match = re.match(
-            partial_code_regex, original_text[match_end:], flags=re.DOTALL
+            partial_code_regex,
+            original_text[match_end:],
+            flags=re.DOTALL,
         )
         if partial_match:
             output_code += partial_match.group(1).strip()
@@ -165,6 +181,7 @@ class AppworldReactAgent:
             return output_code, text
 
     def execute(self):
+        """Execute the Appworld tasks."""
         result = []
         counter = 0
         for task_index, task_id in enumerate(tqdm(self.task_ids, desc=f"run_index={self.index}")):
@@ -177,16 +194,23 @@ class AppworldReactAgent:
                     before_score = self.get_reward(world)
                     for i in range(self.max_interactions):
                         if i == 0:
-                            self.prompt_messages(run_id=run_id, task_index=task_index, previous_memories=previous_memories, world=world)
+                            self.prompt_messages(
+                                run_id=run_id,
+                                task_index=task_index,
+                                previous_memories=previous_memories,
+                                world=world,
+                            )
                         code_msg = self.call_llm(self.history[run_id][task_index])
-                        code, text = self.extract_code_and_fix_content(code_msg)
+                        code, _ = self.extract_code_and_fix_content(code_msg)
                         self.history[run_id][task_index].append({"role": "assistant", "content": code})
 
                         output = world.execute(code)
                         # if len(output) > self.max_response_size:
                         #     # logger.warning(f"output exceed max size={len(output)}")
                         #     output = output[: self.max_response_size]
-                        self.history[run_id][task_index].append({"role": "user", "content": "Output:\n```\n" + output + "```\n\n"})
+                        self.history[run_id][task_index].append(
+                            {"role": "user", "content": "Output:\n```\n" + output + "```\n\n"},
+                        )
 
                         if world.task_completed():
                             break
@@ -196,7 +220,9 @@ class AppworldReactAgent:
 
                     if self.use_memory:
                         if self.use_memory_addition:
-                            new_traj_list = [self.get_traj_from_task_history(task_id, self.history[run_id][task_index], after_score)]
+                            new_traj_list = [
+                                self.get_traj_from_task_history(task_id, self.history[run_id][task_index], after_score),
+                            ]
                             previous_memories = self.summary_memory(new_traj_list)
                             if after_score == 1:
                                 self.add_memory(previous_memories)
@@ -206,7 +232,7 @@ class AppworldReactAgent:
                         self.update_memory_information(self.retrieved_memory_list[run_id][task_index], update_utility)
 
                     counter += 1
-                    if self.use_memory_deletion: # and counter % self.delete_freq == 0:
+                    if self.use_memory_deletion:  # and counter % self.delete_freq == 0:
                         self.delete_memory()
 
                     t_result = {
@@ -241,10 +267,10 @@ class AppworldReactAgent:
             url=f"{self.memory_base_url}retrieve_task_memory",
             json={
                 "query": query,
-                "enable_llm_rerank":False,
-                "enable_score_filter":False,
-                "top_k":5,
-                "enable_llm_rewrite":False,
+                "enable_llm_rerank": False,
+                "enable_score_filter": False,
+                "top_k": 5,
+                "enable_llm_rewrite": False,
             },
         )
 
@@ -256,12 +282,13 @@ class AppworldReactAgent:
         return result
 
     def get_traj_from_task_history(self, task_id: str, task_history: list, reward: float):
+        """Get the trajectory from the task history."""
         pattern = r"\n\nSome Related Experience to help you to complete the task:.*"
         task_history[1]["content"] = re.sub(pattern, "", task_history[1]["content"], flags=re.DOTALL)
         return {
             "task_id": task_id,
             "messages": task_history,
-            "score": reward
+            "score": reward,
         }
 
     def summary_memory(self, trajectories):
@@ -287,15 +314,17 @@ class AppworldReactAgent:
         return memory_list
 
     def add_memory(self, memory_list):
+        """Add the memory to the memory pool."""
         response = requests.post(
             url=f"{self.memory_base_url}add_task_memory",
             json={
-                "memory_list": memory_list
-            }
+                "memory_list": memory_list,
+            },
         )
         response.raise_for_status()
 
     def update_memory_information(self, memory_list, update_utility: bool = False):
+        """Update the memory information."""
         response = requests.post(
             url=f"{self.memory_base_url}record_task_memory",
             json={
@@ -307,6 +336,7 @@ class AppworldReactAgent:
         logger.info(response.json())
 
     def delete_memory(self):
+        """Delete the memory from the memory pool."""
         response = requests.post(
             url=f"{self.memory_base_url}delete_task_memory",
             json={
@@ -316,7 +346,9 @@ class AppworldReactAgent:
         )
         response.raise_for_status()
 
+
 def main():
+    """Main function to run the Appworld React Agent."""
     dataset_name = "train"
     task_ids = load_task_ids(dataset_name)
     agent = AppworldReactAgent(index=0, task_ids=task_ids[0:1], experiment_name=dataset_name, num_trials=1)

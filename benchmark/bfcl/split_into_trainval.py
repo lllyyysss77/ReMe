@@ -1,9 +1,12 @@
+"""Split the JSONL file into train and validation sets."""
+
 import argparse
 import json
 import random
 
 
 def split_jsonl(input_file, train_file, val_file, ratio=0.8):
+    """Split the JSONL file into train and validation sets."""
     with open(input_file, "r", encoding="utf-8") as f:
         data = [json.loads(line) for line in f]
     random.shuffle(data)

@@ -1,3 +1,5 @@
+"""Utils for evaluation on BFCL tasks"""
+
 import json
 from pathlib import Path
 from typing import Dict, List, Any
@@ -18,6 +20,9 @@ from bfcl_eval.model_handler.utils import (
 
 
 def load_test_case(data_path: str, test_id: str | None) -> Dict[str, Any]:
+    """
+    load test cases by id
+    """
     if not Path(data_path).exists():
         raise FileNotFoundError(f"BFCL data file '{data_path}' not found")
 
@@ -25,7 +30,7 @@ def load_test_case(data_path: str, test_id: str | None) -> Dict[str, Any]:
         raise ValueError("task_id is required")
 
     with open(data_path, "r", encoding="utf-8") as f:
-        if str(test_id).isdigit():
+        if str(test_id).isdigit():  # pylint: disable=R1720
             idx = int(test_id)
             for line_no, line in enumerate(f):
                 if line_no == idx:
@@ -82,7 +87,7 @@ def handle_user_turn(
         return create_error_response(f"Failed to process user message: {str(e)}")
 
 
-def handle_tool_calls(
+def handle_tool_calls(  # pylint: disable=W0613
     tool_calls: List[Dict[str, Any]],
     decoded_calls: list[str],
     test_entry: Dict[str, Any],
@@ -358,8 +363,6 @@ def capture_and_print_score_files(
                         or content.strip().startswith("[")
                     ):
                         try:
-                            import json
-
                             lines = content.strip().split("\n")
                             formatted_lines = []
                             for line in lines:
@@ -390,6 +393,7 @@ def capture_and_print_score_files(
 
 
 def extract_tool_schema(tools):
-    for i in range(len(tools)):
+    """Reformat tool schema"""
+    for i in range(len(tools)):  # pylint: disable=C0200
         tools[i]["function"].pop("response")
     return tools

@@ -45,7 +45,7 @@ class LoadMemory(BaseOp):
         if not file_path.exists():
             logger.error(f"File not found: {load_file_path}")
             return
-        
+
         try:
             # Attempt to retrieve the event loop associated with the current thread
             loop = asyncio.get_running_loop()
@@ -53,7 +53,7 @@ class LoadMemory(BaseOp):
         except RuntimeError:
             # Start a new event loop to run the coroutine to completion
             print("No running event loop found, starting a new one")
-        
+
         clear_existing: bool = self.context.get("clear_existing", False)
         if clear_existing:
             await self.vector_store.delete_all()

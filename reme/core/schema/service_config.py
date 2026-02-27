@@ -36,6 +36,15 @@ class CmdConfig(BaseModel):
     flow: str = Field(default="")
 
 
+class OpConfig(BaseModel):
+    """Configuration for op settings and parameters."""
+
+    model_config = ConfigDict(extra="allow")
+
+    prompt_dict: dict[str, str] = Field(default_factory=dict)
+    params: dict = Field(default_factory=dict)
+
+
 class FlowConfig(ToolCall):
     """Configuration for workflow execution, caching, and error handling."""
 
@@ -77,8 +86,8 @@ class VectorStoreConfig(BaseModel):
     embedding_model: str = Field(default="default")
 
 
-class MemoryStoreConfig(BaseModel):
-    """Configuration for memory database storage and associated embeddings."""
+class FileStoreConfig(BaseModel):
+    """Configuration for file store database storage and associated embeddings."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -102,7 +111,7 @@ class FileWatcherConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     backend: str = Field(default="")
-    memory_store: str = Field(default="")
+    file_store: str = Field(default="")
     watch_paths: list[str] = Field(default_factory=list)
 
 
@@ -126,11 +135,12 @@ class ServiceConfig(BaseModel):
     mcp: MCPConfig = Field(default_factory=MCPConfig)
     http: HttpConfig = Field(default_factory=HttpConfig)
     cmd: CmdConfig = Field(default_factory=CmdConfig)
+    ops: dict[str, OpConfig] = Field(default_factory=dict)
     flows: dict[str, FlowConfig] = Field(default_factory=dict)
     llms: dict[str, LLMConfig] = Field(default_factory=dict)
     embedding_models: dict[str, EmbeddingModelConfig] = Field(default_factory=dict)
     vector_stores: dict[str, VectorStoreConfig] = Field(default_factory=dict)
-    memory_stores: dict[str, MemoryStoreConfig] = Field(default_factory=dict)
+    file_stores: dict[str, FileStoreConfig] = Field(default_factory=dict)
     token_counters: dict[str, TokenCounterConfig] = Field(default_factory=dict)
     file_watchers: dict[str, FileWatcherConfig] = Field(default_factory=dict)
 

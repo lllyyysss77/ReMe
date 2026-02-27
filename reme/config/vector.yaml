@@ -42,4 +42,3 @@ token_counters:
     backend: hf
     model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct
     use_mirror: true
-

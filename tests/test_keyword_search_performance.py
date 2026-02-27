@@ -20,13 +20,48 @@ from reme.core.schema.memory_chunk import MemoryChunk
 def generate_random_text(length: int = 200) -> str:
     """Generate random text content."""
     words = [
-        "python", "function", "class", "memory", "search", "algorithm",
-        "database", "vector", "embedding", "chunk", "file", "store",
-        "query", "result", "performance", "test", "data", "index",
-        "keyword", "text", "content", "process", "system", "module",
-        "import", "return", "value", "parameter", "method", "object",
-        "instance", "variable", "constant", "string", "integer", "float",
-        "list", "dictionary", "tuple", "set", "array", "matrix",
+        "python",
+        "function",
+        "class",
+        "memory",
+        "search",
+        "algorithm",
+        "database",
+        "vector",
+        "embedding",
+        "chunk",
+        "file",
+        "store",
+        "query",
+        "result",
+        "performance",
+        "test",
+        "data",
+        "index",
+        "keyword",
+        "text",
+        "content",
+        "process",
+        "system",
+        "module",
+        "import",
+        "return",
+        "value",
+        "parameter",
+        "method",
+        "object",
+        "instance",
+        "variable",
+        "constant",
+        "string",
+        "integer",
+        "float",
+        "list",
+        "dictionary",
+        "tuple",
+        "set",
+        "array",
+        "matrix",
     ]
     text_words = []
     current_length = 0
@@ -59,6 +94,7 @@ def create_test_chunks(count: int = 1000, text_length: int = 10000) -> list[Memo
 
 async def run_performance_test():
     """Run keyword_search performance test."""
+    # pylint: disable=protected-access
     # Setup
     test_db_path = Path("./test_keyword_perf")
     test_db_path.mkdir(exist_ok=True)
@@ -96,7 +132,7 @@ async def run_performance_test():
 
     for _ in range(num_runs):
         start = time.perf_counter()
-        results = await store.keyword_search(query, limit=10)
+        _ = await store.keyword_search(query, limit=10)
         elapsed = time.perf_counter() - start
         times.append(elapsed)
 

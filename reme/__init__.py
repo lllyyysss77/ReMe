@@ -4,7 +4,6 @@ from . import config
 from . import core
 from . import extension
 from . import memory
-from . import workflow
 from .reme import ReMe
 from .reme_cli import ReMeCli
 from .reme_fb import ReMeFb
@@ -16,7 +15,6 @@ __all__ = [
     "core",
     "extension",
     "memory",
-    "workflow",
     "ReMe",
     "ReMeCli",
     "ReMeFb",

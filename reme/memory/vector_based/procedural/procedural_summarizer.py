@@ -5,6 +5,7 @@ from ....core.enumeration import Role, MemoryType
 from ....core.schema import Message
 from ....core.utils import format_messages
 
+
 class ProceduralSummarizer(BaseMemoryAgent):
     """Agent responsible for summarizing procedural memories."""
 
@@ -13,18 +14,18 @@ class ProceduralSummarizer(BaseMemoryAgent):
     async def build_messages(self) -> list[Message]:
         return [
             Message(
-                role=Role.SYSTEM, 
+                role=Role.SYSTEM,
                 content=self.prompt_format(
                     prompt_name="system_prompt",
                     context=self.description + "\n" + format_messages(self.get_messages()),
                     outcome="successful task completion" if self.success else "task failure",
                     memory_type=self.memory_type.value,
                     memory_target=self.memory_target,
-                )
+                ),
             ),
             Message(
-                role=Role.USER, 
-                content=self.get_prompt("user_message")
+                role=Role.USER,
+                content=self.get_prompt("user_message"),
             ),
         ]
 

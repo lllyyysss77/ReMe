@@ -12,7 +12,7 @@ from ....core.enumeration import MemoryType, Role
 from ....core.op import BaseOp
 from ....core.schema.memory_node import MemoryNode
 from ....core.schema.message import Message, Trajectory
-from ....core.utils.llm_utils import (
+from ..utils import (
     get_trajectory_context,
     merge_messages_content,
     parse_json_experience_response,

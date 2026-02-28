@@ -103,13 +103,13 @@ three memory types:
 <table border="0" cellspacing="0" cellpadding="0" style="border: none;">
   <tr style="border: none;">
     <td width="10%" style="border: none; vertical-align: middle; text-align: center;">
-      <strong>May<br>You<br>Prosper</strong>
+      <strong>马<br>上<br>有<br>钱</strong>
     </td>
     <td width="80%" style="border: none;">
       <video src="https://github.com/user-attachments/assets/d731ae5c-80eb-498b-a22c-8ab2b9169f87" autoplay muted loop controls></video>
     </td>
     <td width="10%" style="border: none; vertical-align: middle; text-align: center;">
-      <strong>Success<br>at<br>Hand</strong>
+      <strong>马<br>到<br>成<br>功</strong>
     </td>
   </tr>
 </table>

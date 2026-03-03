@@ -30,7 +30,7 @@ reme2 \
 
 For parameter meanings, you can refer to [docs/cookbook/appworld](https://github.com/zouyingcao/ReMe/blob/main/docs/cookbook/appworld/quickstart.md) .
 
-> [!NOTE]  
+> [!NOTE]
 > - Qwen3 thinking mode is activated for BFCL-V3 tasks and disabled for AppWorld tasks.
 > - In ReMe(fixed) setting, there is no need to restart the ReMe service at each run since the experience pool is fixed. However, in ReMe(dynamic) setting, we need run separately to ensure consistent initial state. That is to say, to calculate Pass@4, you need 4 independent runs with restarting ReMe service and setting `num_runs=1` in each run.
 
@@ -43,15 +43,15 @@ Taking Appworld as an example, you can refer to issues [#55](https://github.com/
 
 
 ### 4. reproduce baselines
-- For Qwen3-series No-Memory performance on AppWorld, you can refer to issue [#49](https://github.com/agentscope-ai/ReMe/issues/49). 
+- For Qwen3-series No-Memory performance on AppWorld, you can refer to issue [#49](https://github.com/agentscope-ai/ReMe/issues/49).
 - About A-mem and LangMem code, please see [#67](https://github.com/agentscope-ai/ReMe/issues/67).
 
 ## Environment Setup
 ### 1. BFCL-V3 code version
-We use the BFCL GitHub repository with commit_id=[ea13468](https://github.com/ShishirPatil/gorilla/commit/ea13468e4423454d0c213704fb87cf7cb3990433) in our experiments. 
+We use the BFCL GitHub repository with commit_id=[ea13468](https://github.com/ShishirPatil/gorilla/commit/ea13468e4423454d0c213704fb87cf7cb3990433) in our experiments.
 
 ### 2. preprocess BFCL-V3 multi_turn_base data
-Before running the experiments, you need to preprocess the BFCL-V3 data using this [script](https://github.com/agentscope-ai/ReMe/blob/main/benchmark/bfcl/preprocess.py) to get the suitable data format. Then, we randomly split the multi-turn-base data into train (50) and test (150) sets using [split_into_trainval.py](https://github.com/agentscope-ai/ReMe/blob/main/benchmark/bfcl/split_into_trainval.py) (our used split is [here](https://github.com/agentscope-ai/ReMe/issues/45#issuecomment-3890215360)). The training set is used to construct the initial experience pool and the remaining 150 testing tasks serve as the evaluation set. 
+Before running the experiments, you need to preprocess the BFCL-V3 data using this [script](https://github.com/agentscope-ai/ReMe/blob/main/benchmark/bfcl/preprocess.py) to get the suitable data format. Then, we randomly split the multi-turn-base data into train (50) and test (150) sets using [split_into_trainval.py](https://github.com/agentscope-ai/ReMe/blob/main/benchmark/bfcl/split_into_trainval.py) (our used split is [here](https://github.com/agentscope-ai/ReMe/issues/45#issuecomment-3890215360)). The training set is used to construct the initial experience pool and the remaining 150 testing tasks serve as the evaluation set.
 
 ### 3. pydantic version issue when running Appworld
 AppWorld depends on an older version of pydantic, which is why a separate environment is needed. If you encounter issues running the experiments, try `pip install appworld` to override the dependencies.

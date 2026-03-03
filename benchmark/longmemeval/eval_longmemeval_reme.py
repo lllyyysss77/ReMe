@@ -786,9 +786,8 @@ class LongMemEvalEvaluator:
         print(f"Questions to process: {total_questions} | Top-K: {self.config.top_k}")
         print(f"Max Concurrency: {self.config.max_concurrency}")
         print(
-            f"Summary Model: {self.config.reme_model_name} | "
-            f"Retrieve Model: {self.config.retrieve_model_name} | "
-            f"Eval Model: {self.config.eval_model_name}",
+            f"Summary Model: {self.config.reme_model_name} | Retrieve Model: {self.config.retrieve_model_name} "
+            f"| Eval Model: {self.config.eval_model_name}",
         )
         print(f"Algo Version: {self.config.algo_version}")
         print("=" * 80 + "\n")

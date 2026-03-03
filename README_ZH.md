@@ -291,7 +291,7 @@ async def main():
     result = await reme.summarize_memory(
         messages=messages,
         user_name="alice",  # 个人记忆
-        task_name="code_writing",  # 任务记忆
+        # task_name="code_writing",  # 任务记忆
     )
     print(f"总结结果: {result}")
 
@@ -299,7 +299,7 @@ async def main():
     memories = await reme.retrieve_memory(
         query="Python 编程",
         user_name="alice",
-        task_name="code_writing",
+        # task_name="code_writing",
     )
     print(f"检索结果: {memories}")
 
@@ -307,7 +307,6 @@ async def main():
     memory_node = await reme.add_memory(
         memory_content="用户喜欢简洁的代码风格",
         user_name="alice",
-        when_to_use="当为用户编写代码时",
     )
     print(f"添加的记忆: {memory_node}")
     memory_id = memory_node.memory_id
@@ -321,7 +320,6 @@ async def main():
         memory_id=memory_id,
         user_name="alice",
         memory_content="用户喜欢简洁且带注释的代码风格",
-        when_to_use="当为用户编写或审查代码时",
     )
     print(f"更新后的记忆: {updated_memory}")
 

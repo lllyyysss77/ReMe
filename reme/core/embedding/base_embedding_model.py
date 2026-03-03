@@ -30,7 +30,7 @@ class BaseEmbeddingModel(ABC):
         base_url: str | None = None,
         model_name: str = "",
         dimensions: int | None = 1024,
-        use_dimensions: bool = True,
+        use_dimensions: bool = False,
         max_batch_size: int = 10,
         max_retries: int = 3,
         raise_exception: bool = True,

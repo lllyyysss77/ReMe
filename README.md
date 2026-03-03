@@ -300,15 +300,14 @@ async def main():
     result = await reme.summarize_memory(
         messages=messages,
         user_name="alice",  # Personal memory
-        task_name="code_writing",  # Task memory
+        # task_name="code_writing",  # Task memory
     )
     print(f"Summarize result: {result}")
 
     # 2. Retrieve relevant memory
     memories = await reme.retrieve_memory(
         query="Python programming",
-        user_name="alice",
-        task_name="code_writing",
+        # user_name="alice",
     )
     print(f"Retrieve result: {memories}")
 
@@ -316,7 +315,6 @@ async def main():
     memory_node = await reme.add_memory(
         memory_content="User prefers concise code style",
         user_name="alice",
-        when_to_use="When writing code for the user",
     )
     print(f"Added memory: {memory_node}")
     memory_id = memory_node.memory_id
@@ -330,7 +328,6 @@ async def main():
         memory_id=memory_id,
         user_name="alice",
         memory_content="User prefers concise, well-commented code style",
-        when_to_use="When writing or reviewing code for the user",
     )
     print(f"Updated memory: {updated_memory}")
 

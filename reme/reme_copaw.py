@@ -415,7 +415,7 @@ class ReMeCopaw(Application):
             compactor.context["messages"] = messages
 
             # Execute compaction and get processed messages
-            result = await compactor.execute()
+            result = await compactor.call(service_context=self.service_context)
 
             # Clean up any expired tool result files during compaction
             compactor.cleanup_expired_files()
@@ -459,7 +459,9 @@ class ReMeCopaw(Application):
             )
 
             # Execute compaction with optional previous summary context
-            return await compactor.call(messages=messages, previous_summary=previous_summary)
+            return await compactor.call(
+                messages=messages, previous_summary=previous_summary, service_context=self.service_context
+            )
 
         except Exception as e:
             # Log error and return empty string to indicate failure
@@ -500,7 +502,7 @@ class ReMeCopaw(Application):
             )
 
             # Execute summarization on the provided messages
-            return await compactor.call(messages=messages)
+            return await compactor.call(messages=messages, service_context=self.service_context)
 
         except Exception as e:
             # Log error and return empty string to indicate failure

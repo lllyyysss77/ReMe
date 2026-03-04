@@ -1,6 +1,7 @@
 """Utility functions for working with text."""
 
 import logging
+from pathlib import Path
 
 from agentscope.token import HuggingFaceTokenCounter
 
@@ -229,3 +230,42 @@ def _get_block_tokens(  # pylint: disable=too-many-return-statements
         return 0, ""
 
     return 0, ""
+
+
+_token_counter = None
+
+
+def get_token_counter():
+    """Get or initialize the global token counter instance.
+
+    Returns:
+        TokenCounterBase: The token counter instance for Qwen models.
+
+    Raises:
+        RuntimeError: If token counter initialization fails.
+    """
+    global _token_counter
+    if _token_counter is None:
+        # Use Qwen tokenizer for DashScope models
+        # Qwen3 series uses the same tokenizer as Qwen2.5
+
+        # Try local tokenizer first, fall back to online if not found
+        local_tokenizer_path = Path(__file__).parent.parent.parent / "tokenizer"
+
+        if local_tokenizer_path.exists() and (local_tokenizer_path / "tokenizer.json").exists():
+            tokenizer_path = str(local_tokenizer_path)
+            logger.info(f"Using local Qwen tokenizer from {tokenizer_path}")
+        else:
+            tokenizer_path = "Qwen/Qwen2.5-7B-Instruct"
+            logger.info(
+                "Local tokenizer not found, downloading from HuggingFace",
+            )
+
+        _token_counter = HuggingFaceTokenCounter(
+            pretrained_model_name_or_path=tokenizer_path,
+            use_mirror=True,  # Use HF mirror for users in China
+            use_fast=True,
+            trust_remote_code=True,
+        )
+        logger.debug("Token counter initialized with Qwen tokenizer")
+    return _token_counter

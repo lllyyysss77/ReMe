@@ -77,11 +77,11 @@ dev = [
 ]
 
 full = [
-    "reme_ai[dev,ray]",
+    "reme_ai[dev,ray,light]",
 ]
 
-as = [
-    "agentscope",
+light = [
+    "agentscope==1.0.16.dev0",
 ]
 
 [tool.setuptools.packages.find]

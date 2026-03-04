@@ -64,7 +64,7 @@ def get_formatter():
     """Get formatter instance."""
     from agentscope.formatter import OpenAIChatFormatter
     from agentscope.token import HuggingFaceTokenCounter
-    from reme.memory.file_based_copaw.utils import _extract_text_from_messages
+    from reme.memory.file_based.utils import _extract_text_from_messages
 
     class ReMeChatFormatter(OpenAIChatFormatter):
         """ReMe chat formatter class."""

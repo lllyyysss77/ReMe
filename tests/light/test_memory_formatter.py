@@ -7,7 +7,7 @@ import logging
 from agentscope.message import Msg
 
 from test_utils import get_token_counter
-from reme.memory.file_based_copaw import MemoryFormatter
+from reme.memory.file_based import MemoryFormatter
 
 # 配置日志输出到控制台
 logging.basicConfig(

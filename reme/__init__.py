@@ -5,9 +5,8 @@ from . import core
 from . import extension
 from . import memory
 from .reme import ReMe
-from .reme_cli import ReMeCli
 
-__version__ = "0.3.0.5"
+__version__ = "0.3.0.6b1"
 
 __all__ = [
     "config",
@@ -15,7 +14,6 @@ __all__ = [
     "extension",
     "memory",
     "ReMe",
-    "ReMeCli",
 ]
 
 """

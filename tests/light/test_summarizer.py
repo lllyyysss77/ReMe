@@ -13,7 +13,7 @@ from test_utils import (
     get_formatter,
     get_token_counter,
 )
-from reme.memory.file_based_copaw import Summarizer
+from reme.memory.file_based import Summarizer
 
 # 配置日志输出到控制台
 logging.basicConfig(

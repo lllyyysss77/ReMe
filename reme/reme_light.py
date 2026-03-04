@@ -1,7 +1,7 @@
 """
-ReMe Copaw Application Module
+ReMe Light Application Module
 
-This module provides the ReMeCopaw class, a specialized application built on top of
+This module provides the ReMeLight class, a specialized application built on top of
 ReMe's core Application framework. It integrates memory management capabilities
 including memory compaction, summarization, tool result management, and semantic
 memory search functionality.
@@ -22,22 +22,23 @@ from pathlib import Path
 
 from agentscope.formatter import FormatterBase
 from agentscope.message import Msg, TextBlock
-from agentscope.model import ChatModelBase
+from agentscope.model import ChatModelBase, OpenAIChatModel
 from agentscope.token import HuggingFaceTokenCounter
 from agentscope.tool import Toolkit, ToolResponse
 
 from .config import ReMeConfigParser
 from .core import Application
-from .memory.file_based_copaw import Compactor, Summarizer, ToolResultCompactor, CoPawInMemoryMemory
+from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory, ReMeChatFormatter
+from .memory.file_based.utils import get_token_counter
 from .memory.tools import MemorySearch
+from .core.utils import load_env
 
-# Module-level logger for tracking application events and errors
 logger = logging.getLogger(__name__)
 
 
-class ReMeCopaw(Application):
+class ReMeLight(Application):
     """
-    ReMe Copaw Application Class
+    ReMe Light Application Class
 
     A specialized application class that extends ReMe's core Application framework
     with advanced memory management capabilities. This class is designed to handle
@@ -64,13 +65,17 @@ class ReMeCopaw(Application):
 
     def __init__(
         self,
-        working_dir: str,
-        chat_model: ChatModelBase,
-        formatter: FormatterBase,
-        token_counter: HuggingFaceTokenCounter,
-        toolkit: Toolkit,
-        max_input_length: int,
-        memory_compact_ratio: float,
+        working_dir: str = ".reme",
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+        chat_model: ChatModelBase | None = None,
+        formatter: FormatterBase | None = None,
+        token_counter: HuggingFaceTokenCounter | None = None,
+        toolkit: Toolkit | None = None,
+        max_input_length: int = 128000,
+        memory_compact_ratio: float = 0.7,
         language: str = "zh",
         vector_weight: float = 0.7,
         candidate_multiplier: float = 3.0,
@@ -90,22 +95,10 @@ class ReMeCopaw(Application):
         self.tool_result_path = self.working_path / "tool_result"
         self.tool_result_path.mkdir(parents=True, exist_ok=True)
 
-        # Store references to core components
-        self.chat_model: ChatModelBase = chat_model
-        self.formatter: FormatterBase = formatter
-        self.token_counter: HuggingFaceTokenCounter = token_counter
-        self.toolkit: Toolkit = toolkit
-
         # Initialize runtime parameters (will be updated via update_params)
         self.max_input_length: int = 0
         self.memory_compact_threshold: int = 0
         self.language: str = ""
-
-        # Store configuration parameters
-        self.vector_weight: float = vector_weight
-        self.candidate_multiplier: float = candidate_multiplier
-        self.tool_result_threshold: int = tool_result_threshold
-        self.retention_days: int = retention_days
 
         # Apply initial parameter configuration
         self.update_params(
@@ -114,18 +107,21 @@ class ReMeCopaw(Application):
             language=language,
         )
 
-        # Retrieve embedding configuration from environment variables
-        # These settings control the vector search capabilities
-        (
-            embedding_api_key,
-            embedding_base_url,
-            embedding_model_name,
-            embedding_dimensions,
-            embedding_cache_enabled,
-            embedding_max_cache_size,
-            embedding_max_input_length,
-            embedding_max_batch_size,
-        ) = self.get_emb_envs()
+        # Store configuration parameters
+        self.vector_weight: float = vector_weight
+        self.candidate_multiplier: float = candidate_multiplier
+        self.tool_result_threshold: int = tool_result_threshold
+        self.retention_days: int = retention_days
+
+        load_env()
+
+        llm_model_name = self._safe_str("LLM_MODEL_NAME", "")
+        embedding_model_name = self._safe_str("EMBEDDING_MODEL_NAME", "")
+        embedding_dimensions = self._safe_int("EMBEDDING_DIMENSIONS", 1024)
+        embedding_cache_enabled = self._safe_str("EMBEDDING_CACHE_ENABLED", "true").lower() == "true"
+        embedding_max_cache_size = self._safe_int("EMBEDDING_MAX_CACHE_SIZE", 2000)
+        embedding_max_input_length = self._safe_int("EMBEDDING_MAX_INPUT_LENGTH", 8192)
+        embedding_max_batch_size = self._safe_int("EMBEDDING_MAX_BATCH_SIZE", 10)
 
         # Determine if vector search should be enabled based on configuration
         # Vector search requires either an API key or a local model name
@@ -149,13 +145,14 @@ class ReMeCopaw(Application):
         else:
             memory_backend = memory_store_backend
 
-        # Initialize the parent Application class with configuration
         # Initialize the parent Application class with comprehensive configuration
         super().__init__(
+            llm_api_key=llm_api_key,
+            llm_base_url=llm_base_url,
             embedding_api_key=embedding_api_key,
             embedding_base_url=embedding_base_url,
             working_dir=str(self.working_path),
-            config_path="copaw",
+            config_path="light",
             enable_logo=False,
             log_to_console=False,
             parser=ReMeConfigParser,
@@ -182,6 +179,27 @@ class ReMeCopaw(Application):
                 ],
             },
         )
+
+        if chat_model is not None:
+            self.chat_model: ChatModelBase = chat_model
+        else:
+            # add more params later
+            self.chat_model = OpenAIChatModel(
+                api_key=os.environ["LLM_API_KEY"],
+                client_kwargs={"base_url": os.environ["LLM_BASE_URL"]},
+                model_name=llm_model_name,
+            )
+
+        if token_counter is not None:
+            self.token_counter: HuggingFaceTokenCounter = token_counter
+        else:
+            self.token_counter = get_token_counter()
+
+        if formatter is not None:
+            self.formatter: FormatterBase = formatter
+        else:
+            self.formatter = ReMeChatFormatter(token_counter=self.token_counter)
+        self.toolkit: Toolkit | None = toolkit
 
         # Initialize list to track background summarization tasks
         self.summary_tasks: list[asyncio.Task] = []
@@ -263,55 +281,6 @@ class ReMeCopaw(Application):
         except ValueError:
             logger.warning(f"Invalid int value '{value}' for key '{key}', using default {default}")
             return default
-
-    def get_emb_envs(self):
-        """
-        Retrieve all embedding-related configuration from environment variables.
-
-        This method collects all settings needed for the embedding service,
-        including API credentials, model configuration, and caching parameters.
-
-        Environment Variables:
-            EMBEDDING_API_KEY: API key for the embedding service
-            EMBEDDING_BASE_URL: Base URL for the embedding API (default: dashscope)
-            EMBEDDING_MODEL_NAME: Name of the embedding model to use
-            EMBEDDING_DIMENSIONS: Vector dimensions (default: 1024)
-            EMBEDDING_CACHE_ENABLED: Whether to enable caching (default: true)
-            EMBEDDING_MAX_CACHE_SIZE: Maximum cache entries (default: 2000)
-            EMBEDDING_MAX_INPUT_LENGTH: Max input text length (default: 8192)
-            EMBEDDING_MAX_BATCH_SIZE: Max batch size for requests (default: 10)
-
-        Returns:
-            tuple: A tuple containing all embedding configuration values in order:
-                (api_key, base_url, model_name, dimensions, cache_enabled,
-                 max_cache_size, max_input_length, max_batch_size)
-        """
-        # API authentication and endpoint configuration
-        embedding_api_key = self._safe_str("EMBEDDING_API_KEY", "")
-        embedding_base_url = self._safe_str("EMBEDDING_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-        embedding_model_name = self._safe_str("EMBEDDING_MODEL_NAME", "")
-
-        # Model and vector configuration
-        embedding_dimensions = self._safe_int("EMBEDDING_DIMENSIONS", 1024)
-
-        # Caching configuration for performance optimization
-        embedding_cache_enabled = self._safe_str("EMBEDDING_CACHE_ENABLED", "true").lower() == "true"
-        embedding_max_cache_size = self._safe_int("EMBEDDING_MAX_CACHE_SIZE", 2000)
-
-        # Input processing limits
-        embedding_max_input_length = self._safe_int("EMBEDDING_MAX_INPUT_LENGTH", 8192)
-        embedding_max_batch_size = self._safe_int("EMBEDDING_MAX_BATCH_SIZE", 10)
-
-        return (
-            embedding_api_key,
-            embedding_base_url,
-            embedding_model_name,
-            embedding_dimensions,
-            embedding_cache_enabled,
-            embedding_max_cache_size,
-            embedding_max_input_length,
-            embedding_max_batch_size,
-        )
 
     def _cleanup_tool_results(self) -> int:
         """
@@ -681,13 +650,13 @@ class ReMeCopaw(Application):
         """
         Create and return an in-memory memory instance.
 
-        This method instantiates a CoPawInMemoryMemory object configured with
+        This method instantiates a ReMeInMemoryMemory object configured with
         the current application's token counter, formatter, and input length limits.
         The in-memory memory provides fast, temporary storage for conversation
         context without persistence.
 
         Returns:
-            CoPawInMemoryMemory: A configured in-memory memory instance ready
+            ReMeInMemoryMemory: A configured in-memory memory instance ready
                 for storing and retrieving conversation messages
 
         Note:
@@ -695,7 +664,7 @@ class ReMeCopaw(Application):
             - Useful for managing conversation context within a single session
             - Shares the same token counter and formatter as the main application
         """
-        return CoPawInMemoryMemory(
+        return ReMeInMemoryMemory(
             token_counter=self.token_counter,
             formatter=self.formatter,
             max_input_length=self.max_input_length,

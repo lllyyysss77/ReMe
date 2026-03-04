@@ -7,8 +7,8 @@ from pathlib import Path
 
 from agentscope.message import Msg
 
-from reme.memory.file_based_copaw.tool_result_compactor import ToolResultCompactor
-from reme.memory.file_based_copaw.utils import TRUNCATION_MARKER_START
+from reme.memory.file_based.tool_result_compactor import ToolResultCompactor
+from reme.memory.file_based.utils import TRUNCATION_MARKER_START
 
 
 def create_tool_result_msg(output: str | list, tool_name: str = "test_tool") -> Msg:

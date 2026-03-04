@@ -13,7 +13,7 @@ from .utils import safe_count_message_tokens, safe_count_str_tokens, _get_block_
 logger = logging.getLogger(__name__)
 
 
-class CoPawInMemoryMemory(InMemoryMemory):
+class ReMeInMemoryMemory(InMemoryMemory):
     """Extended InMemoryMemory with bugfixes and summary support."""
 
     def __init__(

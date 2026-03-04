@@ -1,11 +1,11 @@
 """memory"""
 
-from . import cli
+from . import file_based
 from . import tools
 from . import vector_based
 
 __all__ = [
-    "cli",
+    "file_based",
     "tools",
     "vector_based",
 ]

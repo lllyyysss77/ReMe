@@ -411,11 +411,9 @@ class ReMeCopaw(Application):
                 tool_result_threshold=self.tool_result_threshold,
                 retention_days=self.retention_days,
             )
-            # Set the messages context for the compactor to process
-            compactor.context["messages"] = messages
 
             # Execute compaction and get processed messages
-            result = await compactor.call(service_context=self.service_context)
+            result = await compactor.call(messages=messages, service_context=self.service_context)
 
             # Clean up any expired tool result files during compaction
             compactor.cleanup_expired_files()

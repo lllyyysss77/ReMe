@@ -458,7 +458,9 @@ class ReMeCopaw(Application):
 
             # Execute compaction with optional previous summary context
             return await compactor.call(
-                messages=messages, previous_summary=previous_summary, service_context=self.service_context
+                messages=messages,
+                previous_summary=previous_summary,
+                service_context=self.service_context,
             )
 
         except Exception as e:

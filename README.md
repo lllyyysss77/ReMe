@@ -33,7 +33,7 @@ ReMe gives agents **real memory** — old conversations are automatically conden
 
 ---
 
-## 📁 File-Based Memory System
+## 📁 File-Based Memory System (ReMeLight)
 
 > Memory as files, files as memory
 

@@ -4,13 +4,15 @@ import asyncio
 
 from agentscope.message import Msg
 
-from reme.core.utils import get_std_logger
-from reme.memory.file_based import Compactor
 from test_utils import (
     get_dash_chat_model,
     get_formatter,
     get_token_counter,
 )
+
+from reme.core.utils import get_std_logger
+from reme.memory.file_based import Compactor
+
 
 logger = get_std_logger()
 

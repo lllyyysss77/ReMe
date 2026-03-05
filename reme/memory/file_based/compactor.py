@@ -8,7 +8,7 @@ from agentscope.message import Msg
 from agentscope.model import ChatModelBase
 from agentscope.token import HuggingFaceTokenCounter
 
-from .memory_formatter import MemoryFormatter
+from .as_msg_handler import AsMsgHandler
 from ...core.op import BaseOp
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class Compactor(BaseOp):
 
         self.chat_model: ChatModelBase = chat_model
         self.formatter: FormatterBase = formatter
-        self.as_token_counter: HuggingFaceTokenCounter = token_counter
+        self.msg_handler = AsMsgHandler(token_counter=token_counter)
 
     async def execute(self):
         messages: list[Msg] = self.context.get("messages", [])
@@ -39,11 +39,10 @@ class Compactor(BaseOp):
         if not messages:
             return ""
 
-        formatter = MemoryFormatter(
-            token_counter=self.as_token_counter,
+        history_formatted_str: str = self.msg_handler.format_msgs_to_str(
+            messages=messages,
             memory_compact_threshold=self.memory_compact_threshold,
         )
-        history_formatted_str: str = formatter.format(messages)
 
         if not history_formatted_str:
             logger.warning(f"No history to compact. messages={messages}")
@@ -66,9 +65,8 @@ class Compactor(BaseOp):
                 f"{suffix}"
             )
         else:
-            user_message: str = f"<conversation>\n{history_formatted_str}\n</conversation>\n\n" + self.get_prompt(
-                "initial_user_message",
-            )
+            user_message: str = f"<conversation>\n{history_formatted_str}\n</conversation>\n\n" \
+                + self.get_prompt("initial_user_message")
         logger.info(f"Compactor sys_prompt={agent.sys_prompt} user_message={user_message}")
 
         compact_msg: Msg = await agent.reply(

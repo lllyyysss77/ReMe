@@ -28,7 +28,7 @@ from agentscope.tool import Toolkit, ToolResponse
 
 from .config import ReMeConfigParser
 from .core import Application
-from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory, ReMeChatFormatter
+from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory, ReMeOpenAIChatFormatter, FileIO
 from .memory.file_based.utils import get_token_counter
 from .memory.tools import MemorySearch
 from .core.utils import load_env
@@ -94,11 +94,6 @@ class ReMeLight(Application):
         # Create tool result directory for storing large tool outputs
         self.tool_result_path = self.working_path / "tool_result"
         self.tool_result_path.mkdir(parents=True, exist_ok=True)
-
-        # Initialize runtime parameters (will be updated via update_params)
-        self.max_input_length: int = 0
-        self.memory_compact_threshold: int = 0
-        self.language: str = ""
 
         # Apply initial parameter configuration
         self.update_params(
@@ -198,7 +193,7 @@ class ReMeLight(Application):
         if formatter is not None:
             self.formatter: FormatterBase = formatter
         else:
-            self.formatter = ReMeChatFormatter(token_counter=self.token_counter)
+            self.formatter = ReMeOpenAIChatFormatter(token_counter=self.token_counter)
         self.toolkit: Toolkit | None = toolkit
 
         # Initialize list to track background summarization tasks
@@ -458,6 +453,16 @@ class ReMeLight(Application):
             - If summarization fails, an empty string is returned
         """
         try:
+            # Create toolkit if not provided
+            if self.toolkit is not None:
+                toolkit = self.toolkit
+            else:
+                toolkit = Toolkit()
+                file_io = FileIO(working_dir=str(self.working_path))
+                toolkit.register_tool_function(file_io.read)
+                toolkit.register_tool_function(file_io.write)
+                toolkit.register_tool_function(file_io.edit)
+
             # Initialize summarizer with working directories and configuration
             summarizer = Summarizer(
                 working_dir=str(self.working_path),
@@ -466,7 +471,7 @@ class ReMeLight(Application):
                 chat_model=self.chat_model,
                 formatter=self.formatter,
                 token_counter=self.token_counter,
-                toolkit=self.toolkit,
+                toolkit=toolkit,
                 language=self.language,
             )
 
@@ -662,10 +667,8 @@ class ReMeLight(Application):
         Note:
             - In-memory memory is volatile and cleared when the instance is destroyed
             - Useful for managing conversation context within a single session
-            - Shares the same token counter and formatter as the main application
+            - Shares the same token counter as the main application
         """
         return ReMeInMemoryMemory(
             token_counter=self.token_counter,
-            formatter=self.formatter,
-            max_input_length=self.max_input_length,
         )

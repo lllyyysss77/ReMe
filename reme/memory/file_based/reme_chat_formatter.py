@@ -8,7 +8,7 @@ from agentscope.token import HuggingFaceTokenCounter
 from .utils import _extract_text_from_messages
 
 
-class ReMeChatFormatter(OpenAIChatFormatter):
+class ReMeOpenAIChatFormatter(OpenAIChatFormatter):
     """ReMe chat formatter class."""
 
     async def _count(self, msgs: list[dict[str, Any]]) -> int | None:

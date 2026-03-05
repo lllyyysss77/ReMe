@@ -1,35 +1,28 @@
 """Compactor module for memory compaction operations."""
 
-import logging
-
 from agentscope.agent import ReActAgent
-from agentscope.formatter import FormatterBase
 from agentscope.message import Msg
-from agentscope.model import ChatModelBase
 from agentscope.token import HuggingFaceTokenCounter
 
-from .as_msg_handler import AsMsgHandler
-from ...core.op import BaseOp
+from ..as_msg_handler import AsMsgHandler
+from ....core.op import BaseOp
+from ....core.utils import get_std_logger
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class Compactor(BaseOp):
     """Compactor class for compacting memory messages."""
 
     def __init__(
-        self,
-        memory_compact_threshold: int,
-        chat_model: ChatModelBase,
-        formatter: FormatterBase,
-        token_counter: HuggingFaceTokenCounter,
-        **kwargs,
+            self,
+            memory_compact_threshold: int,
+            token_counter: HuggingFaceTokenCounter,
+            **kwargs,
     ):
         super().__init__(**kwargs)
         self.memory_compact_threshold: int = memory_compact_threshold
 
-        self.chat_model: ChatModelBase = chat_model
-        self.formatter: FormatterBase = formatter
         self.msg_handler = AsMsgHandler(token_counter=token_counter)
 
     async def execute(self):
@@ -50,9 +43,9 @@ class Compactor(BaseOp):
 
         agent = ReActAgent(
             name="reme_compactor",
-            model=self.chat_model,
+            model=self.as_llm,
             sys_prompt=self.get_prompt("system_prompt"),
-            formatter=self.formatter,
+            formatter=self.as_llm_formatter,
         )
 
         if previous_summary:
@@ -66,7 +59,7 @@ class Compactor(BaseOp):
             )
         else:
             user_message: str = f"<conversation>\n{history_formatted_str}\n</conversation>\n\n" \
-                + self.get_prompt("initial_user_message")
+                                + self.get_prompt("initial_user_message")
         logger.info(f"Compactor sys_prompt={agent.sys_prompt} user_message={user_message}")
 
         compact_msg: Msg = await agent.reply(

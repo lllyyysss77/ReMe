@@ -1,34 +1,30 @@
 """Custom memory implementation with bugfixes and extensions."""
 
-import logging
-
-from agentscope.agent._react_agent import _MemoryMark
+from agentscope.agent._react_agent import _MemoryMark  # noqa
 from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
 from agentscope.token import HuggingFaceTokenCounter
 
 from .as_msg_handler import AsMsgHandler
+from ...core.utils import get_std_logger
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class ReMeInMemoryMemory(InMemoryMemory):
     """Extended InMemoryMemory with bugfixes and summary support."""
 
-    def __init__(
-        self,
-        token_counter: HuggingFaceTokenCounter,
-    ):
+    def __init__(self, token_counter: HuggingFaceTokenCounter):
         super().__init__()
         self._token_counter: HuggingFaceTokenCounter = token_counter
         self._msg_handler: AsMsgHandler = AsMsgHandler(token_counter)
 
     async def get_memory(
-        self,
-        mark: str | None = None,
-        exclude_mark: str | None = _MemoryMark.COMPRESSED,
-        prepend_summary: bool = True,
-        **_kwargs,
+            self,
+            mark: str | None = None,
+            exclude_mark: str | None = _MemoryMark.COMPRESSED,
+            prepend_summary: bool = True,
+            **_kwargs,
     ) -> list[Msg]:
         """Get the messages from the memory by mark (if provided).
 
@@ -192,10 +188,10 @@ Use it as context to maintain continuity.
             )
 
         return (
-            f"**Conversation History**\n\n"
-            f"- Total messages: {stats['total_messages']}\n"
-            f"- Estimated tokens: {stats['estimated_tokens']}\n"
-            f"- Max input length: {stats['max_input_length']}\n"
-            f"- Context usage: {stats['context_usage_ratio']:.1f}%\n"
-            f"- Compressed summary tokens: {stats['compressed_summary_tokens']}\n\n" + "\n\n".join(lines)
+                f"**Conversation History**\n\n"
+                f"- Total messages: {stats['total_messages']}\n"
+                f"- Estimated tokens: {stats['estimated_tokens']}\n"
+                f"- Max input length: {stats['max_input_length']}\n"
+                f"- Context usage: {stats['context_usage_ratio']:.1f}%\n"
+                f"- Compressed summary tokens: {stats['compressed_summary_tokens']}\n\n" + "\n\n".join(lines)
         )

@@ -16,129 +16,55 @@ Key Features:
 
 import asyncio
 import logging
-import os
-import platform
 from pathlib import Path
 
 from agentscope.formatter import FormatterBase
 from agentscope.message import Msg, TextBlock
-from agentscope.model import ChatModelBase, OpenAIChatModel
+from agentscope.model import ChatModelBase
 from agentscope.token import HuggingFaceTokenCounter
 from agentscope.tool import Toolkit, ToolResponse
 
 from .config import ReMeConfigParser
 from .core import Application
-from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory, ReMeOpenAIChatFormatter, FileIO
+from .core.utils import get_hf_token_counter
+from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory, ReMeOpenAIChatFormatter, \
+    FileIO
 from .memory.file_based.utils import get_token_counter
 from .memory.tools import MemorySearch
-from .core.utils import load_env
 
 logger = logging.getLogger(__name__)
 
 
 class ReMeLight(Application):
-    """
-    ReMe Light Application Class
-
-    A specialized application class that extends ReMe's core Application framework
-    with advanced memory management capabilities. This class is designed to handle
-    long-running conversations by providing intelligent memory compaction,
-    summarization, and semantic search features.
-
-    Attributes:
-        working_path (Path): Absolute path to the working directory for storing data
-        memory_path (Path): Path to the memory storage directory
-        tool_result_path (Path): Path to store large tool result files
-        chat_model (ChatModelBase): Language model for generating summaries and processing
-        formatter (FormatterBase): Formatter for structuring model inputs/outputs
-        token_counter (HuggingFaceTokenCounter): Token counting utility for length management
-        toolkit (Toolkit): Collection of tools available to the application
-        max_input_length (int): Maximum allowed input length in tokens
-        memory_compact_threshold (int): Threshold at which memory compaction triggers
-        language (str): Language code for localization ("zh" for Chinese, empty for English)
-        vector_weight (float): Weight for vector search in hybrid search (0.0-1.0)
-        candidate_multiplier (float): Multiplier for candidate retrieval in search
-        tool_result_threshold (int): Size threshold for tool result compaction
-        retention_days (int): Number of days to retain tool result files
-        summary_tasks (list[asyncio.Task]): List of background summarization tasks
-    """
+    """ReMe Light Application Class"""
 
     def __init__(
-        self,
-        working_dir: str = ".reme",
-        llm_api_key: str | None = None,
-        llm_base_url: str | None = None,
-        embedding_api_key: str | None = None,
-        embedding_base_url: str | None = None,
-        chat_model: ChatModelBase | None = None,
-        formatter: FormatterBase | None = None,
-        token_counter: HuggingFaceTokenCounter | None = None,
-        toolkit: Toolkit | None = None,
-        max_input_length: int = 128000,
-        memory_compact_ratio: float = 0.7,
-        language: str = "zh",
-        vector_weight: float = 0.7,
-        candidate_multiplier: float = 3.0,
-        tool_result_threshold: int = 1000,
-        retention_days: int = 7,
+            self,
+            working_dir: str = ".reme",
+            llm_api_key: str | None = None,
+            llm_base_url: str | None = None,
+            embedding_api_key: str | None = None,
+            embedding_base_url: str | None = None,
+            default_as_llm_config: dict | None = None,
+            default_embedding_model_config: dict | None = None,
+            default_file_store_config: dict | None = None,
+            vector_weight: float = 0.7,
+            candidate_multiplier: float = 3.0,
+            tool_result_threshold: int = 1000,
+            retention_days: int = 7,
     ):
         # Initialize working directory structure
-        # All application data will be stored under this path
         self.working_path = Path(working_dir).absolute()
         self.working_path.mkdir(parents=True, exist_ok=True)
-
-        # Create memory storage directory for persistent memory files
         self.memory_path = self.working_path / "memory"
         self.memory_path.mkdir(parents=True, exist_ok=True)
-
-        # Create tool result directory for storing large tool outputs
         self.tool_result_path = self.working_path / "tool_result"
         self.tool_result_path.mkdir(parents=True, exist_ok=True)
 
-        # Apply initial parameter configuration
-        self.update_params(
-            max_input_length=max_input_length,
-            memory_compact_ratio=memory_compact_ratio,
-            language=language,
-        )
-
-        # Store configuration parameters
         self.vector_weight: float = vector_weight
         self.candidate_multiplier: float = candidate_multiplier
         self.tool_result_threshold: int = tool_result_threshold
         self.retention_days: int = retention_days
-
-        load_env()
-
-        llm_model_name = self._safe_str("LLM_MODEL_NAME", "")
-        embedding_model_name = self._safe_str("EMBEDDING_MODEL_NAME", "")
-        embedding_dimensions = self._safe_int("EMBEDDING_DIMENSIONS", 1024)
-        embedding_cache_enabled = self._safe_str("EMBEDDING_CACHE_ENABLED", "true").lower() == "true"
-        embedding_max_cache_size = self._safe_int("EMBEDDING_MAX_CACHE_SIZE", 2000)
-        embedding_max_input_length = self._safe_int("EMBEDDING_MAX_INPUT_LENGTH", 8192)
-        embedding_max_batch_size = self._safe_int("EMBEDDING_MAX_BATCH_SIZE", 10)
-
-        # Determine if vector search should be enabled based on configuration
-        # Vector search requires either an API key or a local model name
-        vector_enabled = bool(embedding_api_key) or bool(embedding_model_name)
-        if vector_enabled:
-            logger.info("Vector search enabled.")
-        else:
-            logger.warning(
-                "Vector search disabled. Memory search functionality will be restricted. "
-                "To enable, configure: EMBEDDING_API_KEY, EMBEDDING_BASE_URL, EMBEDDING_MODEL_NAME.",
-            )
-
-        # Check if full-text search (FTS) is enabled via environment variable
-        fts_enabled = os.environ.get("FTS_ENABLED", "true").lower() == "true"
-
-        # Determine the memory store backend to use
-        # "auto" selects based on platform (local for Windows, chroma otherwise)
-        memory_store_backend = os.environ.get("MEMORY_STORE_BACKEND", "auto")
-        if memory_store_backend == "auto":
-            memory_backend = "local" if platform.system() == "Windows" else "chroma"
-        else:
-            memory_backend = memory_store_backend
 
         # Initialize the parent Application class with comprehensive configuration
         super().__init__(
@@ -151,21 +77,9 @@ class ReMeLight(Application):
             enable_logo=False,
             log_to_console=False,
             parser=ReMeConfigParser,
-            default_embedding_model_config={
-                "model_name": embedding_model_name,
-                "dimensions": embedding_dimensions,
-                "enable_cache": embedding_cache_enabled,
-                "use_dimensions": False,
-                "max_cache_size": embedding_max_cache_size,
-                "max_input_length": embedding_max_input_length,
-                "max_batch_size": embedding_max_batch_size,
-            },
-            default_file_store_config={
-                "backend": memory_backend,
-                "store_name": "copaw",
-                "vector_enabled": vector_enabled,
-                "fts_enabled": fts_enabled,
-            },
+            default_as_llm_config=default_as_llm_config,
+            default_embedding_model_config=default_embedding_model_config,
+            default_file_store_config=default_file_store_config,
             default_file_watcher_config={
                 "watch_paths": [
                     str(self.working_path / "MEMORY.md"),
@@ -175,107 +89,12 @@ class ReMeLight(Application):
             },
         )
 
-        if chat_model is not None:
-            self.chat_model: ChatModelBase = chat_model
-        else:
-            # add more params later
-            self.chat_model = OpenAIChatModel(
-                api_key=os.environ["LLM_API_KEY"],
-                client_kwargs={"base_url": os.environ["LLM_BASE_URL"]},
-                model_name=llm_model_name,
-            )
-
-        if token_counter is not None:
-            self.token_counter: HuggingFaceTokenCounter = token_counter
-        else:
-            self.token_counter = get_token_counter()
-
-        if formatter is not None:
-            self.formatter: FormatterBase = formatter
-        else:
-            self.formatter = ReMeOpenAIChatFormatter(token_counter=self.token_counter)
-        self.toolkit: Toolkit | None = toolkit
-
         # Initialize list to track background summarization tasks
         self.summary_tasks: list[asyncio.Task] = []
 
-    def update_params(
-        self,
-        max_input_length: int,
-        memory_compact_ratio: float,
-        language: str,
-    ):
-        """
-        Update runtime parameters for memory management.
-
-        This method allows dynamic adjustment of memory-related parameters during
-        runtime. It recalculates the memory compaction threshold based on the
-        new input length and compaction ratio.
-
-        Args:
-            max_input_length (int): New maximum input length in tokens
-            memory_compact_ratio (float): Ratio at which to trigger compaction (0.0-1.0)
-            language (str): Language code for localization ("zh" or other)
-
-        Note:
-            The memory_compact_threshold is calculated as:
-            max_input_length * memory_compact_ratio * 0.9
-            The 0.9 factor provides a safety margin before reaching the absolute limit
-        """
-        # Update the maximum allowed input length
-        self.max_input_length = max_input_length
-
-        # Calculate compaction threshold with safety margin
-        # This ensures compaction happens before hitting the hard limit
-        self.memory_compact_threshold = int(max_input_length * memory_compact_ratio * 0.9)
-
-        # Set language for localization
-        if language == "zh":
-            self.language = "zh"
-        else:
-            self.language = ""
-
     @staticmethod
-    def _safe_str(key: str, default: str) -> str:
-        """
-        Safely retrieve a string value from an environment variable.
-
-        Args:
-            key (str): The name of the environment variable to retrieve
-            default (str): The default value to return if the variable is not set
-
-        Returns:
-            str: The value of the environment variable, or the default if not set
-        """
-        return os.environ.get(key, default)
-
-    @staticmethod
-    def _safe_int(key: str, default: int) -> int:
-        """
-        Safely retrieve an integer value from an environment variable.
-
-        This method handles cases where the environment variable is not set
-        or contains a non-integer value by returning the specified default.
-
-        Args:
-            key (str): The name of the environment variable to retrieve
-            default (int): The default value to return on failure or if not set
-
-        Returns:
-            int: The integer value of the environment variable, or the default
-
-        Note:
-            Logs a warning if the value exists but cannot be parsed as an integer
-        """
-        value = os.environ.get(key)
-        if value is None:
-            return default
-
-        try:
-            return int(value)
-        except ValueError:
-            logger.warning(f"Invalid int value '{value}' for key '{key}', using default {default}")
-            return default
+    def calculate_memory_compact_threshold(max_input_length: float, compact_ratio: float) -> int:
+        return int(max_input_length * compact_ratio * 0.9)
 
     def _cleanup_tool_results(self) -> int:
         """
@@ -287,10 +106,6 @@ class ReMeLight(Application):
 
         Returns:
             int: The number of files that were successfully deleted
-
-        Note:
-            Exceptions during cleanup are logged but do not raise errors,
-            ensuring the application continues to function even if cleanup fails
         """
         try:
             # Create a compactor instance with current configuration
@@ -307,67 +122,18 @@ class ReMeLight(Application):
             return 0
 
     async def start(self):
-        """
-        Start the application lifecycle.
-
-        This method initializes the application by calling the parent class's
-        start method and performs initial cleanup of expired tool result files.
-
-        Returns:
-            The result from the parent class's start method
-
-        Note:
-            Tool result cleanup runs after successful startup to ensure
-            the application is fully initialized before performing maintenance
-        """
-        # Initialize parent application components
+        """Start the application lifecycle."""
         result = await super().start()
-        # Perform initial cleanup of old tool result files
         self._cleanup_tool_results()
         return result
 
     async def close(self) -> bool:
-        """
-        Close the application and perform cleanup.
-
-        This method performs final cleanup of expired tool result files before
-        shutting down the application through the parent class's close method.
-
-        Returns:
-            bool: True if shutdown was successful, False otherwise
-
-        Note:
-            Cleanup is performed before calling parent close to ensure
-            all resources are available during the cleanup process
-        """
-        # Clean up tool results before shutting down
+        """Close the application and perform cleanup."""
         self._cleanup_tool_results()
-        # Shutdown parent application components
         return await super().close()
 
-    async def compact_tool_result(
-        self,
-        messages: list[Msg],
-    ) -> list[Msg]:
-        """
-        Compact tool results by truncating large outputs and saving full content to files.
-
-        This method processes a list of messages and identifies tool results that exceed
-        the configured size threshold. Large tool outputs are truncated in the message
-        list while their full content is saved to files for later retrieval.
-
-        Args:
-            messages (list[Msg]): List of messages to process for tool result compaction
-
-        Returns:
-            list[Msg]: The processed message list with large tool results compacted
-
-        Note:
-            - Tool results below the threshold remain unchanged in the messages
-            - Large results are replaced with truncated versions and file references
-            - Expired files are cleaned up as part of the compaction process
-            - If compaction fails, the original messages are returned unchanged
-        """
+    async def compact_tool_result(self, messages: list[Msg]) -> list[Msg]:
+        """Compact tool results by truncating large outputs and saving full content to files."""
         try:
             # Create compactor with instance configuration
             compactor = ToolResultCompactor(
@@ -389,38 +155,30 @@ class ReMeLight(Application):
             logger.exception(f"Error compacting tool results: {e}")
             return messages
 
-    async def compact_memory(self, messages: list[Msg], previous_summary: str = "") -> str:
-        """
-        Compact a list of messages into a condensed summary.
-
-        This method uses the Compactor to reduce the length of message history
-        while preserving essential information. It's useful when conversation
-        history approaches the maximum input length limit.
-
-        Args:
-            messages (list[Msg]): The list of messages to compact
-            previous_summary (str): Optional previous summary to incorporate
-                into the compaction process for continuity
-
-        Returns:
-            str: A compacted summary of the messages, or empty string on failure
-
-        Note:
-            - Compaction uses the configured language model to generate summaries
-            - The compaction threshold determines when compaction is triggered
-            - If compaction fails, an empty string is returned
-        """
+    async def compact_memory(
+            self,
+            messages: list[Msg],
+            as_llm: str | ChatModelBase = "default",
+            as_llm_formatter: str | FormatterBase = "default",
+            token_counter: HuggingFaceTokenCounter | None = None,
+            language: str = "zh",
+            max_input_length: float = 128 * 1024,
+            compact_ratio: float = 0.7,
+            previous_summary: str = "",
+    ) -> str:
+        """Compact a list of messages into a condensed summary."""
         try:
-            # Initialize compactor with current configuration
+            if token_counter is None:
+                token_counter = get_hf_token_counter()
+
             compactor = Compactor(
-                memory_compact_threshold=self.memory_compact_threshold,
-                chat_model=self.chat_model,
-                formatter=self.formatter,
-                token_counter=self.token_counter,
-                language=self.language,
+                memory_compact_threshold=self.calculate_memory_compact_threshold(max_input_length, compact_ratio),
+                as_llm=as_llm,
+                as_llm_formatter=as_llm_formatter,
+                token_counter=token_counter,
+                language=language if language == "zh" else "",
             )
 
-            # Execute compaction with optional previous summary context
             return await compactor.call(
                 messages=messages,
                 previous_summary=previous_summary,
@@ -433,25 +191,7 @@ class ReMeLight(Application):
             return ""
 
     async def summary_memory(self, messages: list[Msg]) -> str:
-        """
-        Generate a comprehensive summary of the given messages.
-
-        This method uses the Summarizer to create a detailed summary of the
-        conversation history, which can be stored as persistent memory. Unlike
-        compaction, summarization aims to capture key information in a format
-        suitable for long-term storage and retrieval.
-
-        Args:
-            messages (list[Msg]): The list of messages to summarize
-
-        Returns:
-            str: A generated summary of the messages, or empty string on failure
-
-        Note:
-            - Summarization may use tools from the toolkit to enhance the summary
-            - The summary is typically stored in the memory directory
-            - If summarization fails, an empty string is returned
-        """
+        """Generate a comprehensive summary of the given messages."""
         try:
             # Create toolkit if not provided
             if self.toolkit is not None:
@@ -651,24 +391,10 @@ class ReMeLight(Application):
             ],
         )
 
-    def get_in_memory_memory(self):
-        """
-        Create and return an in-memory memory instance.
+    @staticmethod
+    def get_in_memory_memory(token_counter: HuggingFaceTokenCounter | None = None):
+        """Create and return an in-memory memory instance."""
+        if token_counter is None:
+            token_counter = get_hf_token_counter()
 
-        This method instantiates a ReMeInMemoryMemory object configured with
-        the current application's token counter, formatter, and input length limits.
-        The in-memory memory provides fast, temporary storage for conversation
-        context without persistence.
-
-        Returns:
-            ReMeInMemoryMemory: A configured in-memory memory instance ready
-                for storing and retrieving conversation messages
-
-        Note:
-            - In-memory memory is volatile and cleared when the instance is destroyed
-            - Useful for managing conversation context within a single session
-            - Shares the same token counter as the main application
-        """
-        return ReMeInMemoryMemory(
-            token_counter=self.token_counter,
-        )
+        return ReMeInMemoryMemory(token_counter=token_counter)

@@ -1,42 +1,36 @@
 """Summarizer module for memory summarization operations."""
 
 import datetime
-import logging
 
 from agentscope.agent import ReActAgent
-from agentscope.formatter import FormatterBase
 from agentscope.message import Msg
-from agentscope.model import ChatModelBase
 from agentscope.token import HuggingFaceTokenCounter
 from agentscope.tool import Toolkit
 
-from .as_msg_handler import AsMsgHandler
-from ...core.op import BaseOp
+from ..as_msg_handler import AsMsgHandler
+from ....core.op import BaseOp
+from ....core.utils import get_std_logger
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class Summarizer(BaseOp):
     """Summarizer class for summarizing memory messages."""
 
     def __init__(
-        self,
-        working_dir: str,
-        memory_dir: str,
-        memory_compact_threshold: int,
-        chat_model: ChatModelBase,
-        formatter: FormatterBase,
-        token_counter: HuggingFaceTokenCounter,
-        toolkit: Toolkit,
-        **kwargs,
+            self,
+            working_dir: str,
+            memory_dir: str,
+            memory_compact_threshold: int,
+            token_counter: HuggingFaceTokenCounter,
+            toolkit: Toolkit,
+            **kwargs,
     ):
         super().__init__(**kwargs)
         self.working_dir: str = working_dir
         self.memory_dir: str = memory_dir
         self.memory_compact_threshold: int = memory_compact_threshold
 
-        self.chat_model: ChatModelBase = chat_model
-        self.formatter: FormatterBase = formatter
         self.msg_handler = AsMsgHandler(token_counter=token_counter)
         self.toolkit: Toolkit = toolkit
 
@@ -57,9 +51,9 @@ class Summarizer(BaseOp):
 
         agent = ReActAgent(
             name="reme_summarizer",
-            model=self.chat_model,
+            model=self.as_llm,
             sys_prompt="You are a helpful assistant.",
-            formatter=self.formatter,
+            formatter=self.as_llm_formatter,
             toolkit=self.toolkit,
         )
 

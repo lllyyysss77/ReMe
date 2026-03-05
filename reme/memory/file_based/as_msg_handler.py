@@ -1,12 +1,12 @@
 import json
-import logging
 
 from agentscope.message import Msg
 from agentscope.token import HuggingFaceTokenCounter
 
-from ...core.schema.as_msg_stat import AsMsgStat, AsBlockStat
+from ...core.schema import AsMsgStat, AsBlockStat
+from ...core.utils import get_std_logger
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class AsMsgHandler:
@@ -179,10 +179,10 @@ class AsMsgHandler:
         )
 
     def format_msgs_to_str(
-        self,
-        messages: list[Msg],
-        memory_compact_threshold: int,
-        include_thinking: bool = False,
+            self,
+            messages: list[Msg],
+            memory_compact_threshold: int,
+            include_thinking: bool = False,
     ) -> str:
         """Format list of messages to a single formatted string.
 

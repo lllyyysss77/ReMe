@@ -24,11 +24,15 @@
 
 ---
 
-🧠 ReMe is a **memory management framework** built for **AI agents**, offering both **file-based** and **vector-based** memory systems.
+🧠 ReMe is a **memory management framework** built for **AI agents**, offering both **file-based** and **vector-based**
+memory systems.
 
-It addresses two core problems of agent memory: **limited context windows** (early information gets truncated or lost during long conversations) and **stateless sessions** (new conversations cannot inherit history and always start from scratch).
+It addresses two core problems of agent memory: **limited context windows** (early information gets truncated or lost
+during long conversations) and **stateless sessions** (new conversations cannot inherit history and always start from
+scratch).
 
-ReMe gives agents **real memory** — old conversations are automatically condensed, important information is persisted, and the next conversation can recall it automatically.
+ReMe gives agents **real memory** — old conversations are automatically condensed, important information is persisted,
+and the next conversation can recall it automatically.
 
 
 ---
@@ -38,7 +42,8 @@ ReMe gives agents **real memory** — old conversations are automatically conden
 > Memory as files, files as memory
 
 Treat **memory as files** — readable, editable, and portable.
-[CoPaw](https://github.com/agentscope-ai/CoPaw) implements long-term memory and context management by inheriting `ReMeLight`.
+[CoPaw](https://github.com/agentscope-ai/CoPaw) implements long-term memory and context management by inheriting
+`ReMeLight`.
 
 | Traditional Memory Systems | File-Based ReMe    |
 |----------------------------|--------------------|
@@ -58,17 +63,18 @@ working_dir/
 
 ### Core Capabilities
 
-[ReMeLight](reme/reme_light.py) is the core class of this memory system, providing complete memory management capabilities for AI Agents:
+[ReMeLight](reme/reme_light.py) is the core class of this memory system, providing complete memory management
+capabilities for AI Agents:
 
-| Method                   | Function                           | Key Components                                                                                                                       |
-|--------------------------|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `start`                  | 🚀 Start memory system             | Initialize file store, file watcher, Embedding cache; clean up expired tool result files                                            |
-| `close`                  | 📕 Close and clean up              | Clean tool result files, stop file watcher, save Embedding cache                                                                    |
-| `compact_memory`         | 📦 Compact history to summary      | [Compactor](reme/memory/file_based/compactor.py) — ReActAgent generates structured context checkpoint                               |
-| `summary_memory`         | 📝 Write important memory to files | [Summarizer](reme/memory/file_based/summarizer.py) — ReActAgent + file tools (read / write / edit)                                  |
-| `compact_tool_result`    | ✂️ Compact oversized tool output   | [ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) — Truncate and save to `tool_result/`, keep file reference in message |
-| `memory_search`          | 🔍 Semantic memory search          | [MemorySearch](reme/memory/tools/chunk/memory_search.py) — Vector + BM25 hybrid retrieval                                           |
-| `get_in_memory_memory`   | 🗂️ Create in-memory instance      | [ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) — Token-aware memory management, supports compression summary and state serialization |
+| Method                 | Function                           | Key Components                                                                                                                                              |
+|------------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `start`                | 🚀 Start memory system             | Initialize file store, file watcher, Embedding cache; clean up expired tool result files                                                                    |
+| `close`                | 📕 Close and clean up              | Clean tool result files, stop file watcher, save Embedding cache                                                                                            |
+| `compact_memory`       | 📦 Compact history to summary      | [Compactor](reme/memory/file_based/compactor.py) — ReActAgent generates structured context checkpoint                                                       |
+| `summary_memory`       | 📝 Write important memory to files | [Summarizer](reme/memory/file_based/summarizer.py) — ReActAgent + file tools (read / write / edit)                                                          |
+| `compact_tool_result`  | ✂️ Compact oversized tool output   | [ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) — Truncate and save to `tool_result/`, keep file reference in message                |
+| `memory_search`        | 🔍 Semantic memory search          | [MemorySearch](reme/memory/tools/chunk/memory_search.py) — Vector + BM25 hybrid retrieval                                                                   |
+| `get_in_memory_memory` | 🗂️ Create in-memory instance      | [ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) — Token-aware memory management, supports compression summary and state serialization |
 
 ---
 
@@ -77,20 +83,20 @@ working_dir/
 #### Installation
 
 ```bash
-pip install -U reme-ai[light]
+pip install -e ".[light]"
 ```
 
 #### Environment Variables
 
 `ReMeLight` environment variables configure Embedding and storage backend
 
-| Variable             | Description        | Example                                             |
-|----------------------|--------------------|-----------------------------------------------------|
-| `LLM_API_KEY`        | LLM API key        | `sk-xxx`                                            |
-| `LLM_BASE_URL`       | LLM base URL       | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `EMBEDDING_API_KEY`  | Embedding API key  | `sk-xxx`                                            |
-| `EMBEDDING_BASE_URL` | Embedding base URL | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `LLM_MODEL_NAME`     | LLM model name     | `qwen3.5-plus`                                      |
+| Variable             | Description                    | Example                                             |
+|----------------------|--------------------------------|-----------------------------------------------------|
+| `LLM_API_KEY`        | LLM API key                    | `sk-xxx`                                            |
+| `LLM_BASE_URL`       | LLM base URL                   | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `EMBEDDING_API_KEY`  | Embedding API key (Optional)   | `sk-xxx`                                            |
+| `EMBEDDING_BASE_URL` | Embedding base URL  (Optional) | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `LLM_MODEL_NAME`     | LLM model name                 | `qwen3.5-plus`                                      |
 
 #### Python Usage
 
@@ -146,7 +152,8 @@ if __name__ == "__main__":
 
 ### File-Based ReMeLight Memory System Architecture
 
-[CoPaw MemoryManager](https://github.com/agentscope-ai/CoPaw/blob/main/src/copaw/agents/memory/memory_manager.py) inherits `ReMeLight` and integrates memory capabilities into the Agent reasoning flow:
+[CoPaw MemoryManager](https://github.com/agentscope-ai/CoPaw/blob/main/src/copaw/agents/memory/memory_manager.py)
+inherits `ReMeLight` and integrates memory capabilities into the Agent reasoning flow:
 
 ```mermaid
 graph TB
@@ -173,22 +180,25 @@ graph TB
 
 #### Context Compaction
 
-[Compactor](reme/memory/file_based/compactor.py) uses ReActAgent to compact history into structured **context checkpoints**:
+[Compactor](reme/memory/file_based/compactor.py) uses ReActAgent to compact history into structured **context
+checkpoints**:
 
-| Field                 | Description                                        |
-|-----------------------|----------------------------------------------------|
-| `## Goal`             | 🎯 User's objectives (can be multiple)             |
-| `## Constraints`      | ⚙️ Constraints and preferences mentioned by user   |
-| `## Progress`         | 📈 Completed / in progress / blocked tasks         |
-| `## Key Decisions`    | 🔑 Decisions made with brief reasons               |
-| `## Next Steps`       | 🗺️ Next action plan (ordered list)                |
+| Field                 | Description                                         |
+|-----------------------|-----------------------------------------------------|
+| `## Goal`             | 🎯 User's objectives (can be multiple)              |
+| `## Constraints`      | ⚙️ Constraints and preferences mentioned by user    |
+| `## Progress`         | 📈 Completed / in progress / blocked tasks          |
+| `## Key Decisions`    | 🔑 Decisions made with brief reasons                |
+| `## Next Steps`       | 🗺️ Next action plan (ordered list)                 |
 | `## Critical Context` | 📌 File paths, function names, error messages, etc. |
 
-Supports **incremental updates**: when `previous_summary` is passed, automatically merges new conversation with old summary, preserving historical progress.
+Supports **incremental updates**: when `previous_summary` is passed, automatically merges new conversation with old
+summary, preserving historical progress.
 
 #### Tool Result Compaction
 
-[ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) solves context overflow caused by oversized tool outputs (e.g., browser use):
+[ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) solves context overflow caused by oversized tool
+outputs (e.g., browser use):
 
 ```mermaid
 graph LR
@@ -199,11 +209,13 @@ graph LR
     E --> F[Append file reference path to message]
 ```
 
-Expired files (exceeding `retention_days`) are automatically cleaned up during `start` / `close` / `compact_tool_result`.
+Expired files (exceeding `retention_days`) are automatically cleaned up during `start` / `close` /
+`compact_tool_result`.
 
 ### Memory Summary: ReAct + File Tools
 
-[Summarizer](reme/memory/file_based/summarizer.py) uses the **ReAct + file tools** pattern, letting AI autonomously decide what to write and where:
+[Summarizer](reme/memory/file_based/summarizer.py) uses the **ReAct + file tools** pattern, letting AI autonomously
+decide what to write and where:
 
 ```mermaid
 graph LR
@@ -246,7 +258,8 @@ graph LR
 | **Vector semantic** | Captures similar meaning with different wording | Weaker on exact token match            |
 | **BM25 full-text**  | Strong exact token match                        | No synonym or paraphrase understanding |
 
-**Fusion**: Both retrieval paths are weighted and summed (vector 0.7 + BM25 0.3), so both natural-language queries and exact lookups get reliable results.
+**Fusion**: Both retrieval paths are weighted and summed (vector 0.7 + BM25 0.3), so both natural-language queries and
+exact lookups get reliable results.
 
 ```mermaid
 graph LR
@@ -261,7 +274,8 @@ M --> R[Top-N results]
 
 ## 🗃️ Vector-Based Memory System
 
-[ReMe Vector Based](reme/reme.py) is the core class for the vector-based memory system, supporting unified management of three memory types:
+[ReMe Vector Based](reme/reme.py) is the core class for the vector-based memory system, supporting unified management of
+three memory types:
 
 | Memory Type                  | Purpose                                             | Usage Context |
 |------------------------------|-----------------------------------------------------|---------------|
@@ -299,6 +313,7 @@ API keys are set via environment variables; you can put them in a `.env` file in
 | `EMBEDDING_BASE_URL` | Embedding Base URL | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
 
 ### Python Usage
+
 ```python
 import asyncio
 
@@ -389,6 +404,7 @@ if __name__ == "__main__":
 ```
 
 ### Technical Architecture
+
 ```mermaid
 graph TB
     User[User / Agent] --> ReMe[Vector Based ReMe]
@@ -411,11 +427,15 @@ graph TB
 
 ## ⭐ Community & Support
 
-- **Star & Watch**: Star helps more agent developers discover ReMe; Watch keeps you updated on new releases and features.
-- **Share your work**: In Issues or Discussions, share what ReMe unlocks for your agents — we're happy to highlight great community examples.
+- **Star & Watch**: Star helps more agent developers discover ReMe; Watch keeps you updated on new releases and
+  features.
+- **Share your work**: In Issues or Discussions, share what ReMe unlocks for your agents — we're happy to highlight
+  great community examples.
 - **Need a new feature?** Open a Feature Request; we'll iterate with the community.
-- **Code contributions**: All forms of code contribution are welcome. See the [Contribution Guide](docs/contribution.md).
-- **Acknowledgments**: Thanks to OpenClaw, Mem0, MemU, CoPaw, and other open-source projects for inspiration and support.
+- **Code contributions**: All forms of code contribution are welcome. See
+  the [Contribution Guide](docs/contribution.md).
+- **Acknowledgments**: Thanks to OpenClaw, Mem0, MemU, CoPaw, and other open-source projects for inspiration and
+  support.
 
 ---
 

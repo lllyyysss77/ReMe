@@ -2,7 +2,6 @@
 
 import asyncio
 import datetime
-import logging
 import tempfile
 from pathlib import Path
 
@@ -13,14 +12,10 @@ from test_utils import (
     get_formatter,
     get_token_counter,
 )
+from reme.core.utils import get_std_logger
 from reme.memory.file_based import Summarizer
 
-# 配置日志输出到控制台
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 # ANSI 颜色码

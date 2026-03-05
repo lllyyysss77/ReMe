@@ -3,6 +3,7 @@
 import asyncio
 
 from agentscope.message import Msg
+
 from reme.reme_light import ReMeLight
 
 
@@ -127,9 +128,6 @@ async def main():
     # 初始化 ReMeLight
     reme = ReMeLight(
         working_dir=".reme",  # 记忆文件存储目录
-        max_input_length=128000,  # 模型上下文窗口（tokens）
-        memory_compact_ratio=0.7,  # 达到 max_input_length * 0.7 时触发压缩
-        language="zh",  # 摘要语言（zh / ""）
         tool_result_threshold=1000,  # 超过此字符数的工具输出自动转存
         retention_days=7,  # tool_result/ 文件保留天数
     )
@@ -176,7 +174,7 @@ async def main():
     # 将消息添加到内存中以便估算
     for msg in messages:
         await memory.add(msg)
-    token_stats = await memory.estimate_tokens()
+    token_stats = await memory.estimate_tokens(max_input_length=128000)
     print(f"当前上下文使用率: {token_stats['context_usage_ratio']:.1f}%")
     print(f"消息 Token 数: {token_stats['messages_tokens']}")
     print(f"预估总 Token 数: {token_stats['estimated_tokens']}")

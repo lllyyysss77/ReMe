@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from agentscope.message import Msg
-
 from reme.memory.file_based.tool_result_compactor import ToolResultCompactor
 from reme.memory.file_based.utils import TRUNCATION_MARKER_START
 

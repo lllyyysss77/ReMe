@@ -6,10 +6,10 @@ _token_counter = None
 
 
 def get_hf_token_counter(
-        pretrained_model_name_or_path="Qwen/Qwen2.5-7B-Instruct",
-        use_mirror=True,
-        use_fast=True,
-        trust_remote_code=True,
+    pretrained_model_name_or_path="Qwen/Qwen2.5-7B-Instruct",
+    use_mirror=True,
+    use_fast=True,
+    trust_remote_code=True,
 ):
     """Get or initialize the global token counter instance."""
     global _token_counter

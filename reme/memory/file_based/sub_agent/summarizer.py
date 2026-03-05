@@ -18,13 +18,13 @@ class Summarizer(BaseOp):
     """Summarizer class for summarizing memory messages."""
 
     def __init__(
-            self,
-            working_dir: str,
-            memory_dir: str,
-            memory_compact_threshold: int,
-            token_counter: HuggingFaceTokenCounter,
-            toolkit: Toolkit,
-            **kwargs,
+        self,
+        working_dir: str,
+        memory_dir: str,
+        memory_compact_threshold: int,
+        token_counter: HuggingFaceTokenCounter,
+        toolkit: Toolkit,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.working_dir: str = working_dir

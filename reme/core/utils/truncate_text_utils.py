@@ -1,3 +1,5 @@
+"""Utility functions for truncating long text strings."""
+
 from .std_logger import get_logger
 
 logger = get_logger()

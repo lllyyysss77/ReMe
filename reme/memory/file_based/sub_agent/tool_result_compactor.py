@@ -17,11 +17,11 @@ class ToolResultCompactor(BaseOp):
     """Truncate large tool_result outputs and save full content to files."""
 
     def __init__(
-            self,
-            tool_result_dir: str | Path,
-            tool_result_threshold: int,
-            retention_days: int = 7,
-            **kwargs,
+        self,
+        tool_result_dir: str | Path,
+        tool_result_threshold: int,
+        retention_days: int = 7,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.tool_result_dir = Path(tool_result_dir)

@@ -20,11 +20,11 @@ class ReMeInMemoryMemory(InMemoryMemory):
         self._msg_handler: AsMsgHandler = AsMsgHandler(token_counter)
 
     async def get_memory(
-            self,
-            mark: str | None = None,
-            exclude_mark: str | None = _MemoryMark.COMPRESSED,
-            prepend_summary: bool = True,
-            **_kwargs,
+        self,
+        mark: str | None = None,
+        exclude_mark: str | None = _MemoryMark.COMPRESSED,
+        prepend_summary: bool = True,
+        **_kwargs,
     ) -> list[Msg]:
         """Get the messages from the memory by mark (if provided).
 
@@ -188,10 +188,10 @@ Use it as context to maintain continuity.
             )
 
         return (
-                f"**Conversation History**\n\n"
-                f"- Total messages: {stats['total_messages']}\n"
-                f"- Estimated tokens: {stats['estimated_tokens']}\n"
-                f"- Max input length: {stats['max_input_length']}\n"
-                f"- Context usage: {stats['context_usage_ratio']:.1f}%\n"
-                f"- Compressed summary tokens: {stats['compressed_summary_tokens']}\n\n" + "\n\n".join(lines)
+            f"**Conversation History**\n\n"
+            f"- Total messages: {stats['total_messages']}\n"
+            f"- Estimated tokens: {stats['estimated_tokens']}\n"
+            f"- Max input length: {stats['max_input_length']}\n"
+            f"- Context usage: {stats['context_usage_ratio']:.1f}%\n"
+            f"- Compressed summary tokens: {stats['compressed_summary_tokens']}\n\n" + "\n\n".join(lines)
         )

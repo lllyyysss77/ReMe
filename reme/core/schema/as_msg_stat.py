@@ -1,3 +1,5 @@
+"""Schema definitions for AgentScope message statistics."""
+
 from pydantic import BaseModel, Field
 
 _DEFAULT_MAX_BLOCK_TEXT_PREVIEW_LENGTH = 100
@@ -5,6 +7,8 @@ _DEFAULT_MAX_FORMATTER_TEXT_LENGTH = 2000
 
 
 class AsBlockStat(BaseModel):
+    """Statistics and metadata for a single content block in an AgentScope message."""
+
     block_type: str = Field(default=...)
     text: str = Field(default="", description="Text content of the block")
     token_count: int = Field(default=0, description="Token count of the block, including base64 data")
@@ -19,10 +23,20 @@ class AsBlockStat(BaseModel):
 
     @property
     def preview(self) -> str:
+        """Return a short preview of the block content."""
         return self.format(_DEFAULT_MAX_BLOCK_TEXT_PREVIEW_LENGTH)
 
+    # pylint: disable=too-many-return-statements
     def format(self, max_length: int = _DEFAULT_MAX_FORMATTER_TEXT_LENGTH, include_thinking: bool = True) -> str:
-        """Format block content to string representation."""
+        """Format block content to string representation.
+
+        Args:
+            max_length: Maximum length of text content in the output.
+            include_thinking: Whether to include thinking block content.
+
+        Returns:
+            Formatted string representation of the block.
+        """
         from ..utils import truncate_text
 
         if self.block_type == "text":
@@ -33,15 +47,17 @@ class AsBlockStat(BaseModel):
             return ""
         if self.block_type in ("image", "audio", "video"):
             return f"[{self.block_type}] {self.media_url}" if self.media_url else f"[{self.block_type}]"
-        if self.block_type == "tool_use":
-            return f" - tool_call={self.tool_name} params={truncate_text(self.tool_input, max_length)}"
-        if self.block_type == "tool_result":
+        if self.block_type in ("tool_use", "tool_result"):
+            if self.block_type == "tool_use":
+                return f" - tool_call={self.tool_name} params={truncate_text(self.tool_input, max_length)}"
             output = truncate_text(self.tool_output, max_length)
             return f" - tool_result={self.tool_name} output={output}" if output else ""
         return ""
 
 
 class AsMsgStat(BaseModel):
+    """Statistics and metadata for a complete AgentScope message."""
+
     name: str = Field(default=...)
     role: str = Field(default="")
     content: list[AsBlockStat] = Field(default_factory=list)
@@ -50,10 +66,12 @@ class AsMsgStat(BaseModel):
 
     @property
     def total_tokens(self) -> int:
+        """Return the total token count across all content blocks."""
         return sum(block.token_count for block in self.content)
 
     @property
     def preview(self) -> str:
+        """Return a short preview of the message content."""
         return self.format(_DEFAULT_MAX_BLOCK_TEXT_PREVIEW_LENGTH)
 
     def format(self, max_length: int = _DEFAULT_MAX_FORMATTER_TEXT_LENGTH, include_thinking: bool = True) -> str:

@@ -1,18 +1,12 @@
 """Tests for AsMsgHandler.context_check method."""
 
-import logging
-
 from agentscope.message import Msg
 
 from test_utils import get_token_counter
+from reme.core.utils import get_std_logger
 from reme.memory.file_based.as_msg_handler import AsMsgHandler
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 # ANSI color codes
@@ -101,8 +95,7 @@ def verify_context_check_invariants(
     # 2. Reserve requirement check
     kept_tokens = sum(handler.stat_message(m).total_tokens for m in to_keep)
     assert kept_tokens <= memory_compact_reserve or len(to_keep) == 0, (
-        f"[{test_name}] Reserve violation: kept_tokens ({kept_tokens}) > "
-        f"reserve ({memory_compact_reserve})"
+        f"[{test_name}] Reserve violation: kept_tokens ({kept_tokens}) > " f"reserve ({memory_compact_reserve})"
     )
 
     # 3. Order requirement check - both lists should preserve original order
@@ -143,9 +136,7 @@ def verify_context_check_invariants(
 
     all_returned = set(id(m) for m in to_compact) | set(id(m) for m in to_keep)
     all_original = set(id(m) for m in messages)
-    assert all_returned == all_original, (
-        f"[{test_name}] Message set mismatch: returned messages differ from original"
-    )
+    assert all_returned == all_original, f"[{test_name}] Message set mismatch: returned messages differ from original"
 
 
 def create_user_msg(content: str) -> Msg:
@@ -234,7 +225,7 @@ def test_empty_messages():
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
     )
-    assert to_compact == [], f"Expected empty compact list, got: {to_compact}"
+    assert not to_compact, f"Expected empty compact list, got: {to_compact}"
     assert to_keep == [], f"Expected empty keep list, got: {to_keep}"
     verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_empty_messages")
     print_pass("test_empty_messages")
@@ -254,10 +245,18 @@ def test_below_threshold_returns_all():
         memory_compact_threshold=threshold,  # Very high threshold
         memory_compact_reserve=reserve,
     )
-    assert to_compact == [], f"Expected empty compact list, got: {len(to_compact)}"
+    assert not to_compact, f"Expected empty compact list, got: {len(to_compact)}"
     assert len(to_keep) == 3, f"Expected 3 messages to keep, got: {len(to_keep)}"
     assert to_keep == messages, "Messages to keep should be the original messages"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_below_threshold_returns_all")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_below_threshold_returns_all",
+    )
     print_pass("test_below_threshold_returns_all")
 
 
@@ -280,7 +279,15 @@ def test_above_threshold_triggers_compaction():
     # Should have some messages compacted and some kept
     assert len(to_compact) + len(to_keep) == len(messages), "Total messages should match"
     assert len(to_compact) > 0, "Expected some messages to be compacted"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_above_threshold_triggers_compaction")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_above_threshold_triggers_compaction",
+    )
     print_pass("test_above_threshold_triggers_compaction")
 
 
@@ -304,7 +311,15 @@ def test_message_order_preserved():
     all_messages = to_compact + to_keep
     for i, msg in enumerate(all_messages):
         assert msg in messages, f"Message {i} not found in original messages"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_message_order_preserved")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_message_order_preserved",
+    )
     print_pass("test_message_order_preserved")
 
 
@@ -323,9 +338,17 @@ def test_single_message_below_threshold():
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
     )
-    assert to_compact == [], "Should not compact single message below threshold"
+    assert not to_compact, "Should not compact single message below threshold"
     assert len(to_keep) == 1, "Should keep the single message"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_single_message_below_threshold")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_single_message_below_threshold",
+    )
     print_pass("test_single_message_below_threshold")
 
 
@@ -343,7 +366,15 @@ def test_single_message_above_threshold():
     # Message exceeds both threshold and reserve, so it's compacted
     assert len(to_compact) == 1, "Single large message should be compacted"
     assert len(to_keep) == 0, "Nothing can fit in reserve"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_single_message_above_threshold")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_single_message_above_threshold",
+    )
     print_pass("test_single_message_above_threshold")
 
 
@@ -388,12 +419,12 @@ def test_exact_threshold_boundary():
     """Test messages exactly at threshold boundary."""
     handler = create_handler()
     messages = [create_user_msg("Test message")]
-    
+
     # Get exact token count
     stat = handler.stat_message(messages[0])
     exact_tokens = stat.total_tokens
     threshold, reserve = exact_tokens, exact_tokens
-    
+
     # Test at exact boundary
     to_compact, to_keep = handler.context_check(
         messages=messages,
@@ -401,9 +432,17 @@ def test_exact_threshold_boundary():
         memory_compact_reserve=reserve,
     )
     # At exact boundary (<=), should not trigger compaction
-    assert to_compact == [], "Should not compact at exact boundary"
+    assert not to_compact, "Should not compact at exact boundary"
     assert len(to_keep) == 1, "Should keep message at exact boundary"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_exact_threshold_boundary")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_exact_threshold_boundary",
+    )
     print_pass("test_exact_threshold_boundary")
 
 
@@ -423,7 +462,15 @@ def test_reserve_larger_than_threshold():
     # Compaction triggered but reserve can hold everything
     # Total messages should be preserved
     assert len(to_compact) + len(to_keep) == 2
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_reserve_larger_than_threshold")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_reserve_larger_than_threshold",
+    )
     print_pass("test_reserve_larger_than_threshold")
 
 
@@ -447,20 +494,22 @@ def test_tool_use_result_paired():
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Enough for tool pair
     )
-    
+
     # If tool_result is kept, tool_use should also be kept
-    tool_result_in_keep = any(
-        any(b.get("type") == "tool_result" for b in m.get_content_blocks())
-        for m in to_keep
-    )
-    tool_use_in_keep = any(
-        any(b.get("type") == "tool_use" for b in m.get_content_blocks())
-        for m in to_keep
-    )
-    
+    tool_result_in_keep = any(any(b.get("type") == "tool_result" for b in m.get_content_blocks()) for m in to_keep)
+    tool_use_in_keep = any(any(b.get("type") == "tool_use" for b in m.get_content_blocks()) for m in to_keep)
+
     if tool_result_in_keep:
         assert tool_use_in_keep, "tool_use should be kept when tool_result is kept"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_tool_use_result_paired")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_tool_use_result_paired",
+    )
     print_pass("test_tool_use_result_paired")
 
 
@@ -480,7 +529,15 @@ def test_tool_use_without_result():
     )
     # Should not crash, just process normally
     assert len(to_compact) + len(to_keep) == 3
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_tool_use_without_result")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_tool_use_without_result",
+    )
     print_pass("test_tool_use_without_result")
 
 
@@ -500,7 +557,15 @@ def test_tool_result_without_use():
     )
     # Should not crash even with orphan tool_result
     assert len(to_compact) + len(to_keep) == 3
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_tool_result_without_use")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_tool_result_without_use",
+    )
     print_pass("test_tool_result_without_use")
 
 
@@ -523,7 +588,7 @@ def test_multiple_tool_pairs():
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
     )
-    
+
     # Verify tool pairs integrity - for each kept tool_result, its tool_use should be kept
     for msg in to_keep:
         for block in msg.get_content_blocks("tool_result"):
@@ -537,7 +602,15 @@ def test_multiple_tool_pairs():
                             tool_use_found = True
                             break
                 assert tool_use_found, f"tool_use for {tool_id} should be kept with tool_result"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_multiple_tool_pairs")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_multiple_tool_pairs",
+    )
     print_pass("test_multiple_tool_pairs")
 
 
@@ -552,7 +625,7 @@ def test_tool_dependency_causes_extra_inclusion():
     messages = [
         create_user_msg("Start " * 100),  # Large message
         create_tool_use_msg("call_dep", "dep_tool", large_tool_input),  # Medium
-        create_user_msg("Middle " * 100),  # Large message  
+        create_user_msg("Middle " * 100),  # Large message
         create_tool_result_msg("call_dep", "dep_tool", "Result"),  # Small
         create_assistant_msg("End"),  # Small
     ]
@@ -562,22 +635,27 @@ def test_tool_dependency_causes_extra_inclusion():
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Medium reserve
     )
-    
+
     # Check pair integrity
     result_kept = any(
-        any(b.get("id") == "call_dep" and b.get("type") == "tool_result" 
-            for b in m.get_content_blocks())
+        any(b.get("id") == "call_dep" and b.get("type") == "tool_result" for b in m.get_content_blocks())
         for m in to_keep
     )
     use_kept = any(
-        any(b.get("id") == "call_dep" and b.get("type") == "tool_use"
-            for b in m.get_content_blocks())
-        for m in to_keep
+        any(b.get("id") == "call_dep" and b.get("type") == "tool_use" for b in m.get_content_blocks()) for m in to_keep
     )
-    
+
     if result_kept:
         assert use_kept, "Dependent tool_use should be included with tool_result"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_tool_dependency_causes_extra_inclusion")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_tool_dependency_causes_extra_inclusion",
+    )
     print_pass("test_tool_dependency_causes_extra_inclusion")
 
 
@@ -598,24 +676,30 @@ def test_tool_dependency_exceeds_reserve():
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Small reserve - can't fit the pair
     )
-    
+
     # The tool pair is too large, so it should be excluded or partially handled
     # Either both are compacted (pair excluded) or neither is kept
     result_kept = any(
-        any(b.get("id") == "call_big" and b.get("type") == "tool_result"
-            for b in m.get_content_blocks())
+        any(b.get("id") == "call_big" and b.get("type") == "tool_result" for b in m.get_content_blocks())
         for m in to_keep
     )
-    
+
     if result_kept:
         # If result is kept, use must also be kept (pair integrity)
         use_kept = any(
-            any(b.get("id") == "call_big" and b.get("type") == "tool_use"
-                for b in m.get_content_blocks())
+            any(b.get("id") == "call_big" and b.get("type") == "tool_use" for b in m.get_content_blocks())
             for m in to_keep
         )
         assert use_kept, "Pair integrity violated"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_tool_dependency_exceeds_reserve")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_tool_dependency_exceeds_reserve",
+    )
     print_pass("test_tool_dependency_exceeds_reserve")
 
 
@@ -636,19 +720,26 @@ def test_interleaved_tool_pairs():
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
     )
-    
+
     # Verify pair integrity for interleaved pairs
     for msg in to_keep:
         for block in msg.get_content_blocks("tool_result"):
             tool_id = block.get("id", "")
             if tool_id:
                 use_found = any(
-                    any(ub.get("id") == tool_id and ub.get("type") == "tool_use"
-                        for ub in km.get_content_blocks())
+                    any(ub.get("id") == tool_id and ub.get("type") == "tool_use" for ub in km.get_content_blocks())
                     for km in to_keep
                 )
                 assert use_found, f"Interleaved tool_use {tool_id} should be kept"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_interleaved_tool_pairs")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_interleaved_tool_pairs",
+    )
     print_pass("test_interleaved_tool_pairs")
 
 
@@ -671,7 +762,15 @@ def test_message_with_empty_content():
         memory_compact_reserve=reserve,
     )
     assert len(to_compact) + len(to_keep) == 2
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_message_with_empty_content")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_message_with_empty_content",
+    )
     print_pass("test_message_with_empty_content")
 
 
@@ -689,7 +788,15 @@ def test_message_with_whitespace_only():
         memory_compact_reserve=reserve,
     )
     assert len(to_compact) + len(to_keep) == 2
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_message_with_whitespace_only")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_message_with_whitespace_only",
+    )
     print_pass("test_message_with_whitespace_only")
 
 
@@ -706,7 +813,15 @@ def test_very_long_single_message():
     )
     # Single huge message - either kept alone or compacted
     assert len(to_compact) + len(to_keep) == 1
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_very_long_single_message")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_very_long_single_message",
+    )
     print_pass("test_very_long_single_message")
 
 
@@ -723,7 +838,15 @@ def test_many_small_messages():
     # Should compact older messages and keep recent ones
     assert len(to_compact) + len(to_keep) == 100
     assert len(to_keep) > 0, "Should keep some messages"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_many_small_messages")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_many_small_messages",
+    )
     print_pass("test_many_small_messages")
 
 
@@ -760,7 +883,15 @@ def test_special_characters_content():
         memory_compact_reserve=reserve,
     )
     assert len(to_compact) + len(to_keep) == 2
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_special_characters_content")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_special_characters_content",
+    )
     print_pass("test_special_characters_content")
 
 
@@ -776,11 +907,11 @@ def test_all_messages_fit_exactly_in_reserve():
         create_user_msg("Message 1"),
         create_assistant_msg("Message 2"),
     ]
-    
+
     # Calculate total tokens
     total = sum(handler.stat_message(m).total_tokens for m in messages)
     threshold, reserve = total - 1, total
-    
+
     to_compact, to_keep = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Just below total to trigger
@@ -788,7 +919,15 @@ def test_all_messages_fit_exactly_in_reserve():
     )
     # All should be kept since reserve can hold everything
     assert len(to_keep) == 2, f"All messages should fit in reserve, got {len(to_keep)}"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_all_messages_fit_exactly_in_reserve")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_all_messages_fit_exactly_in_reserve",
+    )
     print_pass("test_all_messages_fit_exactly_in_reserve")
 
 
@@ -800,20 +939,28 @@ def test_first_message_only_compacted():
         create_assistant_msg("Small"),  # Small
         create_user_msg("Tiny"),  # Tiny
     ]
-    
+
     # Calculate tokens to set appropriate reserve
     small_msg_tokens = handler.stat_message(messages[1]).total_tokens
     tiny_msg_tokens = handler.stat_message(messages[2]).total_tokens
     threshold, reserve = 50, small_msg_tokens + tiny_msg_tokens + 10
-    
+
     to_compact, to_keep = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Low to trigger
         memory_compact_reserve=reserve,  # Fits last 2
     )
-    
+
     assert len(to_compact) >= 1, "At least first message should be compacted"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_first_message_only_compacted")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_first_message_only_compacted",
+    )
     print_pass("test_first_message_only_compacted")
 
 
@@ -825,20 +972,28 @@ def test_last_message_only_kept():
         create_assistant_msg("Large " * 200),
         create_user_msg("Tiny"),  # Only this fits
     ]
-    
+
     tiny_tokens = handler.stat_message(messages[2]).total_tokens
     threshold, reserve = 10, tiny_tokens + 5
-    
+
     to_compact, to_keep = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,  # Only fits last message
     )
-    
+
     if len(to_keep) == 1:
         # Last message should be the one kept
         assert to_keep[0] == messages[2], "Only last message should be kept"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_last_message_only_kept")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_last_message_only_kept",
+    )
     print_pass("test_last_message_only_kept")
 
 
@@ -857,7 +1012,15 @@ def test_all_messages_compacted():
     )
     assert len(to_compact) == 2, "All messages should be compacted"
     assert len(to_keep) == 0, "No messages should be kept"
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_all_messages_compacted")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_all_messages_compacted",
+    )
     print_pass("test_all_messages_compacted")
 
 
@@ -929,7 +1092,15 @@ def test_tool_use_with_empty_id():
     )
     # Should handle gracefully
     assert len(to_compact) + len(to_keep) == 3
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_tool_use_with_empty_id")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_tool_use_with_empty_id",
+    )
     print_pass("test_tool_use_with_empty_id")
 
 
@@ -949,7 +1120,15 @@ def test_tool_result_with_empty_id():
     )
     # Should handle gracefully
     assert len(to_compact) + len(to_keep) == 3
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_tool_result_with_empty_id")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_tool_result_with_empty_id",
+    )
     print_pass("test_tool_result_with_empty_id")
 
 
@@ -970,7 +1149,15 @@ def test_duplicate_tool_ids():
     )
     # Should not crash with duplicate IDs
     assert len(to_compact) + len(to_keep) == 4
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_duplicate_tool_ids")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_duplicate_tool_ids",
+    )
     print_pass("test_duplicate_tool_ids")
 
 
@@ -1000,7 +1187,15 @@ def test_message_with_multiple_tool_blocks():
         memory_compact_reserve=reserve,
     )
     assert len(to_compact) + len(to_keep) == 5
-    verify_context_check_invariants(handler, messages, to_compact, to_keep, threshold, reserve, "test_message_with_multiple_tool_blocks")
+    verify_context_check_invariants(
+        handler,
+        messages,
+        to_compact,
+        to_keep,
+        threshold,
+        reserve,
+        "test_message_with_multiple_tool_blocks",
+    )
     print_pass("test_message_with_multiple_tool_blocks")
 
 

@@ -2,19 +2,15 @@
 
 # pylint: disable=W0212
 
-import logging
+import sys
 
 from agentscope.message import Msg
 
 from test_utils import get_token_counter
+from reme.core.utils import get_std_logger
 from reme.memory.file_based.as_msg_handler import AsMsgHandler
 
-# 配置日志输出到控制台
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 # ANSI 颜色码
@@ -72,7 +68,7 @@ def verify_result_within_threshold(
     Note: The format_msgs_to_str method uses message token statistics (not formatted
     string tokens) for threshold checking. The formatted result may have more tokens
     than the threshold due to added metadata (timestamps, role prefixes, etc.).
-    
+
     This verification checks that included messages' original token sum <= threshold.
 
     Args:
@@ -93,7 +89,7 @@ def verify_result_within_threshold(
     for msg in msgs:
         stat = handler.stat_message(msg)
         # Check if this message's content appears in the result
-        formatted = stat.format(include_thinking=True)  # Use True to check all content
+        _ = stat.format(include_thinking=True)  # Use True to check all content
         # Simple heuristic: if the message content is in result, count its tokens
         content_blocks = msg.get_content_blocks()
         msg_included = False
@@ -102,21 +98,21 @@ def verify_result_within_threshold(
             if block_type == "text" and block.get("text", "") in result:
                 msg_included = True
                 break
-            elif block_type == "tool_use" and f"tool_call={block.get('name', '')}" in result:
+            if block_type == "tool_use" and f"tool_call={block.get('name', '')}" in result:
                 msg_included = True
                 break
-            elif block_type == "tool_result" and f"tool_result={block.get('name', '')}" in result:
+            if block_type == "tool_result" and f"tool_result={block.get('name', '')}" in result:
                 msg_included = True
                 break
-        
+
         if msg_included:
             included_tokens += stat.total_tokens
 
     # Verify included messages' token sum doesn't exceed threshold
     # Allow small tolerance for edge cases
-    assert included_tokens <= threshold + 1, (
-        f"{test_name}: Included messages token count ({included_tokens}) exceeds threshold ({threshold})."
-    )
+    assert (
+        included_tokens <= threshold + 1
+    ), f"{test_name}: Included messages token count ({included_tokens}) exceeds threshold ({threshold})."
 
 
 def create_user_msg(content: str) -> Msg:
@@ -199,12 +195,14 @@ def create_mixed_content_msg(
     if text:
         content.append({"type": "text", "text": text})
     if tool_name:
-        content.append({
-            "type": "tool_use",
-            "id": "call_mixed",
-            "name": tool_name,
-            "input": tool_input or {},
-        })
+        content.append(
+            {
+                "type": "tool_use",
+                "id": "call_mixed",
+                "name": tool_name,
+                "input": tool_input or {},
+            },
+        )
     if image_url:
         content.append({"type": "image", "source": {"url": image_url}})
     return Msg(name="assistant", role="assistant", content=content)
@@ -274,8 +272,7 @@ def test_format_msgs_to_str_message_order():
     third_pos = result.find("Third message")
 
     assert first_pos < second_pos < third_pos, (
-        f"Messages not in correct order. Positions: first={first_pos}, "
-        f"second={second_pos}, third={third_pos}"
+        f"Messages not in correct order. Positions: first={first_pos}, " f"second={second_pos}, third={third_pos}"
     )
     verify_result_within_threshold(handler, result, threshold, "message_order", msgs)
     print_pass("test_format_msgs_to_str_message_order")
@@ -347,9 +344,7 @@ def test_format_msgs_to_str_thinking_excluded_by_default():
     msgs = [create_thinking_msg("Let me think about this...", "Here is my response")]
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold, include_thinking=False)
 
-    assert "Let me think about this" not in result, (
-        f"Thinking content should be excluded, got: {result}"
-    )
+    assert "Let me think about this" not in result, f"Thinking content should be excluded, got: {result}"
     assert "Here is my response" in result, f"Text content should be included, got: {result}"
     verify_result_within_threshold(handler, result, threshold, "thinking_excluded_by_default", msgs)
     print_pass("test_format_msgs_to_str_thinking_excluded_by_default")
@@ -362,9 +357,7 @@ def test_format_msgs_to_str_thinking_included():
     msgs = [create_thinking_msg("Let me think about this...", "Here is my response")]
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold, include_thinking=True)
 
-    assert "Let me think about this" in result, (
-        f"Thinking content should be included, got: {result}"
-    )
+    assert "Let me think about this" in result, f"Thinking content should be included, got: {result}"
     assert "<thinking>" in result, f"Expected thinking tag in result, got: {result}"
     verify_result_within_threshold(handler, result, threshold, "thinking_included", msgs)
     print_pass("test_format_msgs_to_str_thinking_included")
@@ -375,14 +368,18 @@ def test_format_msgs_to_str_thinking_only_message():
     handler = create_handler()
     threshold = 4000
     msgs = [create_thinking_msg("Deep thoughts here")]
-    
+
     # With include_thinking=False
     result_no_thinking = handler.format_msgs_to_str(
-        msgs, memory_compact_threshold=threshold, include_thinking=False
+        msgs,
+        memory_compact_threshold=threshold,
+        include_thinking=False,
     )
     # With include_thinking=True
     result_with_thinking = handler.format_msgs_to_str(
-        msgs, memory_compact_threshold=threshold, include_thinking=True
+        msgs,
+        memory_compact_threshold=threshold,
+        include_thinking=True,
     )
 
     assert "Deep thoughts here" not in result_no_thinking
@@ -425,9 +422,9 @@ def test_format_msgs_to_str_exceeds_threshold_truncate_older():
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold)
 
     # The newest messages should be present
-    assert "Answer 19" in result or "Question 19" in result, (
-        f"Expected recent message in result, got: {result[:500]}..."
-    )
+    assert (
+        "Answer 19" in result or "Question 19" in result
+    ), f"Expected recent message in result, got: {result[:500]}..."
     # Older messages should be truncated
     assert "Question 0" not in result, "Older messages should be truncated"
     verify_result_within_threshold(handler, result, threshold, "exceeds_threshold_truncate_older", msgs)
@@ -517,10 +514,7 @@ def test_format_msgs_to_str_large_threshold():
     """Test with very large threshold - all messages should be included."""
     handler = create_handler()
     threshold = 1000000
-    msgs = [
-        create_user_msg("Message " + str(i) + " " + "x" * 100)
-        for i in range(50)
-    ]
+    msgs = [create_user_msg("Message " + str(i) + " " + "x" * 100) for i in range(50)]
 
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold)
 
@@ -604,19 +598,25 @@ def test_format_msgs_to_str_mixed_content_blocks():
     """Test message with mixed content blocks."""
     handler = create_handler()
     threshold = 4000
-    msgs = [create_mixed_content_msg(
-        text="Text content",
-        thinking="Thinking content",
-        tool_name="test_tool",
-        tool_input={"key": "value"},
-        image_url="https://example.com/img.png",
-    )]
+    msgs = [
+        create_mixed_content_msg(
+            text="Text content",
+            thinking="Thinking content",
+            tool_name="test_tool",
+            tool_input={"key": "value"},
+            image_url="https://example.com/img.png",
+        ),
+    ]
 
     result_no_thinking = handler.format_msgs_to_str(
-        msgs, memory_compact_threshold=threshold, include_thinking=False
+        msgs,
+        memory_compact_threshold=threshold,
+        include_thinking=False,
     )
     result_with_thinking = handler.format_msgs_to_str(
-        msgs, memory_compact_threshold=threshold, include_thinking=True
+        msgs,
+        memory_compact_threshold=threshold,
+        include_thinking=True,
     )
 
     assert "Text content" in result_no_thinking
@@ -682,7 +682,7 @@ def test_format_msgs_to_str_different_roles():
 def test_format_msgs_to_str_incremental_threshold_check():
     """Test incremental addition of messages until threshold is exceeded."""
     handler = create_handler()
-    
+
     # Create messages with known approximate sizes
     msgs = []
     for i in range(10):
@@ -690,16 +690,14 @@ def test_format_msgs_to_str_incremental_threshold_check():
 
     # Calculate total tokens
     total_tokens = sum(handler.stat_message(msg).total_tokens for msg in msgs)
-    
+
     # Use threshold that allows about half the messages
     half_threshold = total_tokens // 2
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=half_threshold)
 
     # Should have some but not all messages
     included_count = sum(1 for i in range(10) if f"Message {i}" in result)
-    assert 0 < included_count < 10, (
-        f"Expected partial messages, got {included_count} messages included"
-    )
+    assert 0 < included_count < 10, f"Expected partial messages, got {included_count} messages included"
     # Newer messages should be included (messages are processed from end)
     assert "Message 9" in result, "Newest message should be included"
     verify_result_within_threshold(handler, result, half_threshold, "incremental_threshold_check", msgs)
@@ -743,17 +741,21 @@ def test_format_msgs_to_str_base64_image():
     """Test with base64 encoded image."""
     handler = create_handler()
     threshold = 10000
-    msgs = [Msg(
-        name="assistant",
-        role="assistant",
-        content=[{
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "data": "SGVsbG8gV29ybGQ=" * 100,  # Simulated base64 data
-            },
-        }],
-    )]
+    msgs = [
+        Msg(
+            name="assistant",
+            role="assistant",
+            content=[
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "data": "SGVsbG8gV29ybGQ=" * 100,  # Simulated base64 data
+                    },
+                },
+            ],
+        ),
+    ]
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold)
 
     assert "[image]" in result
@@ -765,14 +767,16 @@ def test_format_msgs_to_str_audio_video_blocks():
     """Test with audio and video content blocks."""
     handler = create_handler()
     threshold = 4000
-    msgs = [Msg(
-        name="assistant",
-        role="assistant",
-        content=[
-            {"type": "audio", "source": {"url": "https://example.com/audio.mp3"}},
-            {"type": "video", "source": {"url": "https://example.com/video.mp4"}},
-        ],
-    )]
+    msgs = [
+        Msg(
+            name="assistant",
+            role="assistant",
+            content=[
+                {"type": "audio", "source": {"url": "https://example.com/audio.mp3"}},
+                {"type": "video", "source": {"url": "https://example.com/video.mp4"}},
+            ],
+        ),
+    ]
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold)
 
     assert "[audio]" in result
@@ -785,14 +789,16 @@ def test_format_msgs_to_str_unknown_block_type():
     """Test that unknown block types are skipped gracefully."""
     handler = create_handler()
     threshold = 4000
-    msgs = [Msg(
-        name="assistant",
-        role="assistant",
-        content=[
-            {"type": "unknown_type", "data": "some data"},
-            {"type": "text", "text": "Valid text"},
-        ],
-    )]
+    msgs = [
+        Msg(
+            name="assistant",
+            role="assistant",
+            content=[
+                {"type": "unknown_type", "data": "some data"},
+                {"type": "text", "text": "Valid text"},
+            ],
+        ),
+    ]
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold)
 
     # Should still include valid content
@@ -880,4 +886,4 @@ def run_all_tests():
 
 if __name__ == "__main__":
     success = run_all_tests()
-    exit(0 if success else 1)
+    sys.exit(0 if success else 1)

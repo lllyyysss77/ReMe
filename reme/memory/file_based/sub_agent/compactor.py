@@ -15,10 +15,10 @@ class Compactor(BaseOp):
     """Compactor class for compacting memory messages."""
 
     def __init__(
-            self,
-            memory_compact_threshold: int,
-            token_counter: HuggingFaceTokenCounter,
-            **kwargs,
+        self,
+        memory_compact_threshold: int,
+        token_counter: HuggingFaceTokenCounter,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.memory_compact_threshold: int = memory_compact_threshold
@@ -58,8 +58,9 @@ class Compactor(BaseOp):
                 f"{suffix}"
             )
         else:
-            user_message: str = f"<conversation>\n{history_formatted_str}\n</conversation>\n\n" \
-                                + self.get_prompt("initial_user_message")
+            user_message: str = f"<conversation>\n{history_formatted_str}\n</conversation>\n\n" + self.get_prompt(
+                "initial_user_message",
+            )
         logger.info(f"Compactor sys_prompt={agent.sys_prompt} user_message={user_message}")
 
         compact_msg: Msg = await agent.reply(

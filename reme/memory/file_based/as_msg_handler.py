@@ -1,3 +1,5 @@
+"""Handler for AgentScope message processing, token counting, and context management."""
+
 import json
 
 from agentscope.message import Msg
@@ -10,6 +12,7 @@ logger = get_std_logger()
 
 
 class AsMsgHandler:
+    """Handles token counting, formatting, and context compaction for AgentScope messages."""
 
     def __init__(self, token_counter: HuggingFaceTokenCounter):
         self._token_counter = token_counter
@@ -33,7 +36,7 @@ class AsMsgHandler:
 
         except Exception as e:
             estimated_tokens = len(text.encode("utf-8")) // 4
-            logger.warning(f"Failed to count string tokens: {text}, using estimated_tokens={estimated_tokens}")
+            logger.warning(f"Failed to count string tokens: {text}, e={e}")
             return estimated_tokens
 
     @staticmethod
@@ -107,20 +110,24 @@ class AsMsgHandler:
             if block_type == "text":
                 text = block.get("text", "")
                 token_count = self.count_str_token(text)
-                blocks.append(AsBlockStat(
-                    block_type=block_type,
-                    text=text,
-                    token_count=token_count,
-                ))
+                blocks.append(
+                    AsBlockStat(
+                        block_type=block_type,
+                        text=text,
+                        token_count=token_count,
+                    ),
+                )
 
             elif block_type == "thinking":
                 thinking = block.get("thinking", "")
                 token_count = self.count_str_token(thinking)
-                blocks.append(AsBlockStat(
-                    block_type=block_type,
-                    text=thinking,
-                    token_count=token_count,
-                ))
+                blocks.append(
+                    AsBlockStat(
+                        block_type=block_type,
+                        text=thinking,
+                        token_count=token_count,
+                    ),
+                )
 
             elif block_type in ("image", "audio", "video"):
                 source = block.get("source", {})
@@ -131,12 +138,14 @@ class AsMsgHandler:
                     token_count = len(data) // 4 if data else 10
                 else:
                     token_count = self.count_str_token(url) if url else 10
-                blocks.append(AsBlockStat(
-                    block_type=block_type,
-                    text="",
-                    token_count=token_count,
-                    media_url=url,
-                ))
+                blocks.append(
+                    AsBlockStat(
+                        block_type=block_type,
+                        text="",
+                        token_count=token_count,
+                        media_url=url,
+                    ),
+                )
 
             elif block_type == "tool_use":
                 tool_name = block.get("name", "")
@@ -146,26 +155,30 @@ class AsMsgHandler:
                 except (TypeError, ValueError):
                     input_str = str(tool_input)
                 token_count = self.count_str_token(tool_name + input_str)
-                blocks.append(AsBlockStat(
-                    block_type=block_type,
-                    text="",
-                    token_count=token_count,
-                    tool_name=tool_name,
-                    tool_input=input_str,
-                ))
+                blocks.append(
+                    AsBlockStat(
+                        block_type=block_type,
+                        text="",
+                        token_count=token_count,
+                        tool_name=tool_name,
+                        tool_input=input_str,
+                    ),
+                )
 
             elif block_type == "tool_result":
                 tool_name = block.get("name", "")
                 output = block.get("output", "")
                 formatted_output = self._format_tool_result_output(output)
                 token_count = self.count_str_token(formatted_output)
-                blocks.append(AsBlockStat(
-                    block_type=block_type,
-                    text="",
-                    token_count=token_count,
-                    tool_name=tool_name,
-                    tool_output=formatted_output,
-                ))
+                blocks.append(
+                    AsBlockStat(
+                        block_type=block_type,
+                        text="",
+                        token_count=token_count,
+                        tool_name=tool_name,
+                        tool_output=formatted_output,
+                    ),
+                )
 
             else:
                 logger.warning("Unsupported block type %s, skipped.", block_type)
@@ -179,10 +192,10 @@ class AsMsgHandler:
         )
 
     def format_msgs_to_str(
-            self,
-            messages: list[Msg],
-            memory_compact_threshold: int,
-            include_thinking: bool = False,
+        self,
+        messages: list[Msg],
+        memory_compact_threshold: int,
+        include_thinking: bool = False,
     ) -> str:
         """Format list of messages to a single formatted string.
 
@@ -219,10 +232,10 @@ class AsMsgHandler:
         return "\n\n".join(formatted_parts)
 
     def context_check(
-            self,
-            messages: list[Msg],
-            memory_compact_threshold: int,
-            memory_compact_reserve: int,
+        self,
+        messages: list[Msg],
+        memory_compact_threshold: int,
+        memory_compact_reserve: int,
     ) -> tuple[list[Msg], list[Msg]]:
         """Check if context exceeds threshold and split messages accordingly.
 
@@ -294,9 +307,7 @@ class AsMsgHandler:
             # Check tool_result dependencies - if this message has tool_result,
             # we need to ensure the corresponding tool_use is also included
             tool_result_ids = [
-                block.get("id", "")
-                for block in msg.get_content_blocks("tool_result")
-                if block.get("id", "")
+                block.get("id", "") for block in msg.get_content_blocks("tool_result") if block.get("id", "")
             ]
 
             # Calculate extra tokens needed for dependent tool_use messages

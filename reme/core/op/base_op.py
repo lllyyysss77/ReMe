@@ -7,6 +7,8 @@ from abc import ABCMeta
 from pathlib import Path
 from typing import Callable, Optional, Any
 
+from agentscope.formatter import FormatterBase
+from agentscope.model import ChatModelBase
 from loguru import logger
 from tqdm import tqdm
 
@@ -21,8 +23,7 @@ from ..service_context import ServiceContext
 from ..token_counter import BaseTokenCounter
 from ..utils import camel_to_snake, CacheHandler, timer
 from ..vector_store import BaseVectorStore
-from agentscope.model import ChatModelBase
-from agentscope.formatter import FormatterBase
+
 
 class BaseOp(metaclass=ABCMeta):
     """Base operator class for LLM workflow execution and composition."""

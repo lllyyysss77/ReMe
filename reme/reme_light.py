@@ -15,7 +15,6 @@ Key Features:
 """
 
 import asyncio
-import logging
 from pathlib import Path
 
 from agentscope.formatter import FormatterBase
@@ -26,32 +25,31 @@ from agentscope.tool import Toolkit, ToolResponse
 
 from .config import ReMeConfigParser
 from .core import Application
-from .core.utils import get_hf_token_counter
-from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory, ReMeOpenAIChatFormatter, \
-    FileIO
-from .memory.file_based.utils import get_token_counter
+from .core.utils import get_hf_token_counter, get_std_logger
+from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory
 from .memory.tools import MemorySearch
+from .memory.tools.file import FileIO
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class ReMeLight(Application):
     """ReMe Light Application Class"""
 
     def __init__(
-            self,
-            working_dir: str = ".reme",
-            llm_api_key: str | None = None,
-            llm_base_url: str | None = None,
-            embedding_api_key: str | None = None,
-            embedding_base_url: str | None = None,
-            default_as_llm_config: dict | None = None,
-            default_embedding_model_config: dict | None = None,
-            default_file_store_config: dict | None = None,
-            vector_weight: float = 0.7,
-            candidate_multiplier: float = 3.0,
-            tool_result_threshold: int = 1000,
-            retention_days: int = 7,
+        self,
+        working_dir: str = ".reme",
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        embedding_api_key: str | None = None,
+        embedding_base_url: str | None = None,
+        default_as_llm_config: dict | None = None,
+        default_embedding_model_config: dict | None = None,
+        default_file_store_config: dict | None = None,
+        vector_weight: float = 0.7,
+        candidate_multiplier: float = 3.0,
+        tool_result_threshold: int = 1000,
+        retention_days: int = 7,
     ):
         # Initialize working directory structure
         self.working_path = Path(working_dir).absolute()
@@ -94,6 +92,15 @@ class ReMeLight(Application):
 
     @staticmethod
     def calculate_memory_compact_threshold(max_input_length: float, compact_ratio: float) -> int:
+        """Calculate the memory compaction threshold based on input length and ratio.
+
+        Args:
+            max_input_length: Maximum input length in tokens.
+            compact_ratio: Ratio of the input length to use as the threshold.
+
+        Returns:
+            Computed compaction threshold as an integer.
+        """
         return int(max_input_length * compact_ratio * 0.9)
 
     def _cleanup_tool_results(self) -> int:
@@ -156,15 +163,15 @@ class ReMeLight(Application):
             return messages
 
     async def compact_memory(
-            self,
-            messages: list[Msg],
-            as_llm: str | ChatModelBase = "default",
-            as_llm_formatter: str | FormatterBase = "default",
-            token_counter: HuggingFaceTokenCounter | None = None,
-            language: str = "zh",
-            max_input_length: float = 128 * 1024,
-            compact_ratio: float = 0.7,
-            previous_summary: str = "",
+        self,
+        messages: list[Msg],
+        as_llm: str | ChatModelBase = "default",
+        as_llm_formatter: str | FormatterBase = "default",
+        token_counter: HuggingFaceTokenCounter | None = None,
+        language: str = "zh",
+        max_input_length: float = 128 * 1024,
+        compact_ratio: float = 0.7,
+        previous_summary: str = "",
     ) -> str:
         """Compact a list of messages into a condensed summary."""
         try:
@@ -173,9 +180,9 @@ class ReMeLight(Application):
 
             compactor = Compactor(
                 memory_compact_threshold=self.calculate_memory_compact_threshold(max_input_length, compact_ratio),
+                token_counter=token_counter,
                 as_llm=as_llm,
                 as_llm_formatter=as_llm_formatter,
-                token_counter=token_counter,
                 language=language if language == "zh" else "",
             )
 
@@ -190,58 +197,69 @@ class ReMeLight(Application):
             logger.exception(f"Error compacting memory: {e}")
             return ""
 
-    async def summary_memory(self, messages: list[Msg]) -> str:
+    async def summary_memory(
+        self,
+        messages: list[Msg],
+        as_llm: str | ChatModelBase = "default",
+        as_llm_formatter: str | FormatterBase = "default",
+        token_counter: HuggingFaceTokenCounter | None = None,
+        toolkit: Toolkit | None = None,
+        language: str = "zh",
+        max_input_length: float = 128 * 1024,
+        compact_ratio: float = 0.7,
+    ) -> str:
         """Generate a comprehensive summary of the given messages."""
         try:
-            # Create toolkit if not provided
-            if self.toolkit is not None:
-                toolkit = self.toolkit
-            else:
+            if token_counter is None:
+                token_counter = get_hf_token_counter()
+
+            if toolkit is None:
                 toolkit = Toolkit()
                 file_io = FileIO(working_dir=str(self.working_path))
                 toolkit.register_tool_function(file_io.read)
                 toolkit.register_tool_function(file_io.write)
                 toolkit.register_tool_function(file_io.edit)
 
-            # Initialize summarizer with working directories and configuration
             summarizer = Summarizer(
                 working_dir=str(self.working_path),
                 memory_dir=str(self.memory_path),
-                memory_compact_threshold=self.memory_compact_threshold,
-                chat_model=self.chat_model,
-                formatter=self.formatter,
-                token_counter=self.token_counter,
+                memory_compact_threshold=self.calculate_memory_compact_threshold(max_input_length, compact_ratio),
+                token_counter=token_counter,
                 toolkit=toolkit,
-                language=self.language,
+                as_llm=as_llm,
+                as_llm_formatter=as_llm_formatter,
+                language=language if language == "zh" else "",
             )
 
-            # Execute summarization on the provided messages
             return await summarizer.call(messages=messages, service_context=self.service_context)
 
         except Exception as e:
-            # Log error and return empty string to indicate failure
             logger.exception(f"Error summarizing memory: {e}")
             return ""
 
+    def add_async_summary_task(self, messages: list[Msg], **kwargs):
+        """Add an asynchronous summary task for the given messages."""
+        remaining_tasks = []
+        for task in self.summary_tasks:
+            if task.done():
+                if task.cancelled():
+                    logger.warning("Summary task was cancelled.")
+                    continue
+                exc = task.exception()
+                if exc is not None:
+                    logger.error(f"Summary task failed: {exc}")
+                else:
+                    result = task.result()
+                    logger.info(f"Summary task completed: {result}")
+            else:
+                remaining_tasks.append(task)
+        self.summary_tasks = remaining_tasks
+
+        task = asyncio.create_task(self.summary_memory(messages=messages, **kwargs))
+        self.summary_tasks.append(task)
+
     async def await_summary_tasks(self) -> str:
-        """
-        Wait for all background summary tasks to complete and collect results.
-
-        This method iterates through all pending summary tasks, waits for their
-        completion, and collects their results or error information. It's used
-        to synchronize with background summarization operations before shutdown
-        or when results are needed.
-
-        Returns:
-            str: A concatenated string containing the status and results of
-                all summary tasks, with each task on a new line
-
-        Note:
-            - Completed tasks are processed immediately without waiting
-            - Incomplete tasks are awaited with a timeout
-            - Cancelled tasks and exceptions are logged and included in results
-            - The task list is cleared after processing all tasks
-        """
+        """Wait for all background summary tasks to complete and collect results."""
         result = ""
         for task in self.summary_tasks:
             if task.done():
@@ -278,48 +296,6 @@ class ReMeLight(Application):
         # Clear the task list after processing all tasks
         self.summary_tasks.clear()
         return result
-
-    def add_async_summary_task(self, messages: list[Msg]):
-        """
-        Add an asynchronous summary task for the given messages.
-
-        This method creates a background task to summarize the provided messages
-        without blocking the main execution flow. Before adding a new task, it
-        cleans up any completed tasks from the task list to prevent memory leaks.
-
-        Args:
-            messages (list[Msg]): The list of messages to be summarized in the
-                background task
-
-        Note:
-            - Completed tasks are removed from the tracking list before adding
-            - Task status (success, failure, cancellation) is logged for monitoring
-            - The new task is created using asyncio.create_task for true async execution
-            - Failed or cancelled tasks are logged but do not prevent new tasks
-        """
-        # Clean up completed summary tasks before adding a new one
-        remaining_tasks = []
-        for task in self.summary_tasks:
-            if task.done():
-                # Process completed task status
-                if task.cancelled():
-                    logger.warning("Summary task was cancelled.")
-                    continue
-                exc = task.exception()
-                if exc is not None:
-                    logger.error(f"Summary task failed: {exc}")
-                else:
-                    # Log successful completion with result summary
-                    result = task.result()
-                    logger.info(f"Summary task completed: {result}")
-            else:
-                # Keep incomplete tasks in the tracking list
-                remaining_tasks.append(task)
-        self.summary_tasks = remaining_tasks
-
-        # Create and track the new background summarization task
-        task = asyncio.create_task(self.summary_memory(messages=messages))
-        self.summary_tasks.append(task)
 
     async def memory_search(self, query: str, max_results: int = 5, min_score: float = 0.1) -> ToolResponse:
         """

@@ -97,7 +97,6 @@ pip install -e ".[light]"
 | `LLM_BASE_URL`       | LLM base URL                   | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
 | `EMBEDDING_API_KEY`  | Embedding API key (Optional)   | `sk-xxx`                                            |
 | `EMBEDDING_BASE_URL` | Embedding base URL  (Optional) | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `LLM_MODEL_NAME`     | LLM model name                 | `qwen3.5-plus`                                      |
 
 #### Python Usage
 
@@ -110,7 +109,11 @@ from reme.reme_light import ReMeLight
 
 async def main():
     # Initialize ReMeLight
-    reme = ReMeLight()
+    reme = ReMeLight(
+        default_as_llm_config={"model_name": "qwen3.5-35b-a3b"},
+        # default_embedding_model_config={"model_name": "text-embedding-v4"},
+        default_file_store_config={"fts_enabled": True, "vector_enabled": False},
+    )
     await reme.start()
 
     messages = [...]  # Conversation message list

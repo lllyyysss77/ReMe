@@ -31,9 +31,9 @@ async def main():
 
     # 初始化 ReMeLight
     reme = ReMeLight(
-        working_dir=".reme",  # 记忆文件存储目录
-        tool_result_threshold=1000,  # 超过此字符数的工具输出自动转存
-        retention_days=7,  # tool_result/ 文件保留天数
+        default_as_llm_config={"model_name": "qwen3.5-35b-a3b"},
+        # default_embedding_model_config={"model_name": "text-embedding-v4"},
+        default_file_store_config={"fts_enabled": True, "vector_enabled": False},
     )
     logging.getLogger("reme").setLevel(logging.WARNING)
     await reme.start()

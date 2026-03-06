@@ -23,7 +23,6 @@ file_stores:
     embedding_model: default
     store_name: "reme"
 
-
 file_watchers:
   default:
     backend: full

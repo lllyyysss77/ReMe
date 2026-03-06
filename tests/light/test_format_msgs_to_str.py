@@ -481,10 +481,11 @@ def test_format_msgs_to_str_threshold_zero():
 def test_format_msgs_to_str_threshold_exact_fit():
     """Test when messages exactly fit the threshold."""
     handler = create_handler()
-    # Create a message and measure its tokens
+    # Create a message and measure its formatted string tokens
     msg = create_user_msg("Test")
     stat = handler.stat_message(msg)
-    exact_threshold = stat.total_tokens
+    formatted_content = stat.format(include_thinking=False)
+    exact_threshold = handler.count_str_token(formatted_content)
 
     msgs = [msg]
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=exact_threshold)
@@ -499,7 +500,8 @@ def test_format_msgs_to_str_threshold_one_less():
     handler = create_handler()
     msg = create_user_msg("Test message")
     stat = handler.stat_message(msg)
-    threshold_minus_one = stat.total_tokens - 1
+    formatted_content = stat.format(include_thinking=False)
+    threshold_minus_one = handler.count_str_token(formatted_content) - 1
 
     msgs = [msg]
     result = handler.format_msgs_to_str(msgs, memory_compact_threshold=threshold_minus_one)

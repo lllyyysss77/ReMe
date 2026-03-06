@@ -220,7 +220,7 @@ def test_empty_messages():
     handler = create_handler()
     messages = []
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -240,7 +240,7 @@ def test_below_threshold_returns_all():
         create_user_msg("How are you?"),
     ]
     threshold, reserve = 10000, 5000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Very high threshold
         memory_compact_reserve=reserve,
@@ -271,7 +271,7 @@ def test_above_threshold_triggers_compaction():
         create_assistant_msg("Fourth message " * 100),
     ]
     threshold, reserve = 100, 200
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Low threshold to trigger compaction
         memory_compact_reserve=reserve,
@@ -302,7 +302,7 @@ def test_message_order_preserved():
         create_user_msg("Fifth " * 10),
     ]
     threshold, reserve = 100, 150
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Low threshold
         memory_compact_reserve=reserve,
@@ -333,7 +333,7 @@ def test_single_message_below_threshold():
     handler = create_handler()
     messages = [create_user_msg("Short message")]
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -358,7 +358,7 @@ def test_single_message_above_threshold():
     long_content = "Very long message " * 1000
     messages = [create_user_msg(long_content)]
     threshold, reserve = 10, 5
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Very low threshold
         memory_compact_reserve=reserve,  # Even lower reserve
@@ -386,7 +386,7 @@ def test_reserve_zero():
         create_assistant_msg("Hi there!"),
     ]
     threshold, reserve = 1, 0
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Zero reserve
@@ -403,7 +403,7 @@ def test_threshold_zero():
     handler = create_handler()
     messages = [create_user_msg("A")]  # Minimal message
     threshold, reserve = 0, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Zero threshold - always triggers
         memory_compact_reserve=reserve,
@@ -426,7 +426,7 @@ def test_exact_threshold_boundary():
     threshold, reserve = exact_tokens, exact_tokens
 
     # Test at exact boundary
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Exactly at boundary
         memory_compact_reserve=reserve,
@@ -454,7 +454,7 @@ def test_reserve_larger_than_threshold():
         create_assistant_msg("Message two " * 20),
     ]
     threshold, reserve = 50, 10000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Low threshold
         memory_compact_reserve=reserve,  # High reserve
@@ -489,7 +489,7 @@ def test_tool_use_result_paired():
         create_assistant_msg("The tool returned results"),
     ]
     threshold, reserve = 50, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Enough for tool pair
@@ -522,7 +522,7 @@ def test_tool_use_without_result():
         create_assistant_msg("Something happened"),
     ]
     threshold, reserve = 10, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -550,7 +550,7 @@ def test_tool_result_without_use():
         create_assistant_msg("Got it"),
     ]
     threshold, reserve = 10, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -583,7 +583,7 @@ def test_multiple_tool_pairs():
         create_assistant_msg("All done"),
     ]
     threshold, reserve = 50, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -630,7 +630,7 @@ def test_tool_dependency_causes_extra_inclusion():
         create_assistant_msg("End"),  # Small
     ]
     threshold, reserve = 100, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Medium reserve
@@ -671,7 +671,7 @@ def test_tool_dependency_exceeds_reserve():
         create_assistant_msg("Last message"),
     ]
     threshold, reserve = 10, 100
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Small reserve - can't fit the pair
@@ -715,7 +715,7 @@ def test_interleaved_tool_pairs():
         create_assistant_msg("Both done"),
     ]
     threshold, reserve = 50, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -756,7 +756,7 @@ def test_message_with_empty_content():
         create_assistant_msg("Response"),
     ]
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -782,7 +782,7 @@ def test_message_with_whitespace_only():
         create_assistant_msg("Response"),
     ]
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -806,7 +806,7 @@ def test_very_long_single_message():
     huge_content = "x" * 100000  # Very long
     messages = [create_user_msg(huge_content)]
     threshold, reserve = 100, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -830,7 +830,7 @@ def test_many_small_messages():
     handler = create_handler()
     messages = [create_user_msg(f"Msg {i}") for i in range(100)]
     threshold, reserve = 100, 200
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Low threshold
         memory_compact_reserve=reserve,
@@ -859,7 +859,7 @@ def test_unicode_content():
         create_user_msg("日本語テスト 🇯🇵"),
     ]
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -877,7 +877,7 @@ def test_special_characters_content():
         create_assistant_msg("More: \n\r\t\0 nulls and newlines"),
     ]
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -912,7 +912,7 @@ def test_all_messages_fit_exactly_in_reserve():
     total = sum(handler.stat_message(m).total_tokens for m in messages)
     threshold, reserve = total - 1, total
 
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Just below total to trigger
         memory_compact_reserve=reserve,  # Exactly fits all
@@ -945,7 +945,7 @@ def test_first_message_only_compacted():
     tiny_msg_tokens = handler.stat_message(messages[2]).total_tokens
     threshold, reserve = 50, small_msg_tokens + tiny_msg_tokens + 10
 
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Low to trigger
         memory_compact_reserve=reserve,  # Fits last 2
@@ -976,7 +976,7 @@ def test_last_message_only_kept():
     tiny_tokens = handler.stat_message(messages[2]).total_tokens
     threshold, reserve = 10, tiny_tokens + 5
 
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,  # Only fits last message
@@ -1005,7 +1005,7 @@ def test_all_messages_compacted():
         create_assistant_msg("Large message " * 100),
     ]
     threshold, reserve = 10, 1
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,  # Trigger compaction
         memory_compact_reserve=reserve,  # Too small for anything
@@ -1039,7 +1039,7 @@ def test_system_message():
         create_assistant_msg("Hi there!"),
     ]
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -1061,7 +1061,7 @@ def test_mixed_roles():
         Msg(name="helper", role="assistant", content="Another assistant message"),
     ]
     threshold, reserve = 1000, 500
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -1085,7 +1085,7 @@ def test_tool_use_with_empty_id():
         create_assistant_msg("Done"),
     ]
     threshold, reserve = 10, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -1113,7 +1113,7 @@ def test_tool_result_with_empty_id():
         create_assistant_msg("Noted"),
     ]
     threshold, reserve = 10, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -1142,7 +1142,7 @@ def test_duplicate_tool_ids():
         create_tool_result_msg("call_dup", "tool_b", "Result B"),
     ]
     threshold, reserve = 10, 1000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,
@@ -1181,7 +1181,7 @@ def test_message_with_multiple_tool_blocks():
         create_tool_result_msg("call_3", "tool3", "Result 3"),
     ]
     threshold, reserve = 10, 2000
-    to_compact, to_keep = handler.context_check(
+    to_compact, to_keep, _ = handler.context_check(
         messages=messages,
         memory_compact_threshold=threshold,
         memory_compact_reserve=reserve,

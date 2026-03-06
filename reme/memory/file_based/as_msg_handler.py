@@ -39,21 +39,13 @@ class AsMsgHandler:
             logger.warning(f"Failed to count string tokens: {text}, e={e}")
             return estimated_tokens
 
-    @staticmethod
-    def _format_tool_result_output(output: str | list[dict]) -> str:
-        """Convert tool result output to string.
-
-        Args:
-            output: Tool result output, either string or list of content blocks.
-
-        Returns:
-            Formatted string representation of the tool result.
-        """
+    def _format_tool_result_output(self, output: str | list[dict]) -> tuple[str, int]:
+        """Convert tool result output to string."""
         if isinstance(output, str):
-            return output
+            return output, self.count_str_token(output)
 
         textual_parts = []
-
+        total_token_count = 0
         for block in output:
             try:
                 if not isinstance(block, dict) or "type" not in block:
@@ -67,19 +59,23 @@ class AsMsgHandler:
 
                 if block_type == "text":
                     textual_parts.append(block.get("text", ""))
+                    total_token_count += self.count_str_token(textual_parts[-1])
 
                 elif block_type in ["image", "audio", "video"]:
                     source = block.get("source", {})
-                    url = source.get("url", "")
-                    if url:
-                        textual_parts.append(f"[{block_type}] {url}")
+                    if source.get("type") == "base64":
+                        data = source.get("data", "")
+                        total_token_count += len(data) // 4 if data else 10
                     else:
-                        textual_parts.append(f"[{block_type}]")
+                        url = source.get("url", "")
+                        total_token_count += self.count_str_token(url) if url else 10
+                        textual_parts.append(f"[{block_type}] {url}")
 
                 elif block_type == "file":
                     file_path = block.get("path", "") or block.get("url", "")
                     file_name = block.get("name", file_path)
                     textual_parts.append(f"[file] {file_name}: {file_path}")
+                    total_token_count += self.count_str_token(file_path)
 
                 else:
                     logger.warning(
@@ -94,17 +90,28 @@ class AsMsgHandler:
                     e,
                 )
 
-        if not textual_parts:
-            return ""
-        if len(textual_parts) == 1:
-            return textual_parts[0]
-        return "\n".join(f"- {part}" for part in textual_parts)
+        return "\n".join(textual_parts), total_token_count
 
     def stat_message(self, message: Msg) -> AsMsgStat:
         """Analyze a message and generate block statistics."""
         blocks = []
+        if isinstance(message.content, str):
+            blocks.append(
+                AsBlockStat(
+                    block_type="text",
+                    text=message.content,
+                    token_count=self.count_str_token(message.content),
+                ),
+            )
+            return AsMsgStat(
+                name=message.name or message.role,
+                role=message.role,
+                content=blocks,
+                timestamp=message.timestamp or "",
+                metadata=message.metadata or {},
+            )
 
-        for block in message.get_content_blocks():
+        for block in message.content:
             block_type = block.get("type", "unknown")
 
             if block_type == "text":
@@ -132,7 +139,6 @@ class AsMsgHandler:
             elif block_type in ("image", "audio", "video"):
                 source = block.get("source", {})
                 url = source.get("url", "")
-                # For media, estimate fixed token cost or count URL
                 if source.get("type") == "base64":
                     data = source.get("data", "")
                     token_count = len(data) // 4 if data else 10
@@ -149,7 +155,7 @@ class AsMsgHandler:
 
             elif block_type == "tool_use":
                 tool_name = block.get("name", "")
-                tool_input = block.get("input", {})
+                tool_input = block.get("raw_input", "")
                 try:
                     input_str = json.dumps(tool_input, ensure_ascii=False)
                 except (TypeError, ValueError):
@@ -168,8 +174,7 @@ class AsMsgHandler:
             elif block_type == "tool_result":
                 tool_name = block.get("name", "")
                 output = block.get("output", "")
-                formatted_output = self._format_tool_result_output(output)
-                token_count = self.count_str_token(formatted_output)
+                formatted_output, token_count = self._format_tool_result_output(output)
                 blocks.append(
                     AsBlockStat(
                         block_type=block_type,
@@ -190,6 +195,10 @@ class AsMsgHandler:
             timestamp=message.timestamp or "",
             metadata=message.metadata or {},
         )
+
+    def count_msgs_token(self, messages: list[Msg]) -> int:
+        """Count total token count of a list of messages."""
+        return sum(self.stat_message(msg).total_tokens for msg in messages)
 
     def format_msgs_to_str(
         self,
@@ -215,47 +224,71 @@ class AsMsgHandler:
 
         for i in range(len(messages) - 1, -1, -1):
             stat = self.stat_message(messages[i])
+            formatted_content = stat.format(include_thinking=include_thinking)
+            content_token_count = self.count_str_token(formatted_content)
 
-            if total_token_count + stat.total_tokens > memory_compact_threshold:
+            if total_token_count + content_token_count > memory_compact_threshold:
                 logger.info(
                     "Skipping older messages: adding %d tokens would exceed threshold %d (current: %d)",
-                    stat.total_tokens,
+                    content_token_count,
                     memory_compact_threshold,
                     total_token_count,
                 )
                 break
 
-            formatted_parts.append(stat.format(include_thinking=include_thinking))
-            total_token_count += stat.total_tokens
+            formatted_parts.append(formatted_content)
+            total_token_count += content_token_count
 
         formatted_parts.reverse()
         return "\n\n".join(formatted_parts)
+
+    @staticmethod
+    def validate_tool_ids_alignment(messages: list[Msg]) -> bool:
+        """Check if tool_use_ids and tool_result_ids are properly aligned.
+
+        Args:
+            messages: List of Msg objects to validate.
+
+        Returns:
+            True if all tool_use ids have corresponding tool_result ids and vice versa.
+        """
+        tool_use_ids: set[str] = set()
+        tool_result_ids: set[str] = set()
+
+        for msg in messages:
+            for block in msg.get_content_blocks("tool_use"):
+                if tool_id := block.get("id"):
+                    tool_use_ids.add(tool_id)
+            for block in msg.get_content_blocks("tool_result"):
+                if tool_id := block.get("id"):
+                    tool_result_ids.add(tool_id)
+
+        return tool_use_ids == tool_result_ids
 
     def context_check(
         self,
         messages: list[Msg],
         memory_compact_threshold: int,
         memory_compact_reserve: int,
-    ) -> tuple[list[Msg], list[Msg]]:
+    ) -> tuple[list[Msg], list[Msg], bool]:
         """Check if context exceeds threshold and split messages accordingly.
 
-        This method checks if the total token count of messages exceeds the
-        memory_compact_threshold. If not, returns empty list and original messages.
-        If exceeded, uses memory_compact_reserve as the limit to keep messages
-        from the end, ensuring tool_use and tool_result blocks are properly paired.
+        Only when total tokens exceed memory_compact_threshold, messages are split into
+        messages_to_keep (within reserve limit) and messages_to_compact (older messages).
 
         Args:
             messages: List of Msg objects to check.
             memory_compact_threshold: Maximum token count threshold to trigger compaction.
-            memory_compact_reserve: Token limit for messages to keep after compaction.
+            memory_compact_reserve: Token limit for messages to keep.
 
         Returns:
-            A tuple of (messages_to_compact, messages_to_keep):
-            - messages_to_compact: Older messages that need to be compacted
+            A tuple of (messages_to_compact, messages_to_keep, tools_aligned):
+            - messages_to_compact: Older messages that exceed reserve limit
             - messages_to_keep: Recent messages within the reserve limit
+            - tools_aligned: Whether tool_use and tool_result ids are aligned in messages_to_keep
         """
         if not messages:
-            return [], []
+            return [], [], True
 
         # Calculate total tokens and stats for all messages
         msg_stats: list[tuple[Msg, AsMsgStat]] = []
@@ -265,9 +298,9 @@ class AsMsgHandler:
             msg_stats.append((msg, stat))
             total_tokens += stat.total_tokens
 
-        # If total tokens don't exceed threshold, no compaction needed
-        if total_tokens <= memory_compact_threshold:
-            return [], messages
+        # If total tokens don't exceed threshold, no split needed
+        if total_tokens < memory_compact_threshold:
+            return [], messages, True
 
         # Collect all tool_use ids and their message indices
         # tool_use_id -> message index
@@ -348,15 +381,20 @@ class AsMsgHandler:
             else:
                 messages_to_compact.append(msg)
 
+        # Validate tool ids alignment for messages_to_keep
+        tools_aligned = self.validate_tool_ids_alignment(messages_to_keep)
+
         logger.info(
             "Context check result: %d messages to compact, %d messages to keep, "
-            "total tokens: %d, threshold: %d, reserve: %d, kept tokens: %d",
+            "total tokens: %d, threshold: %d, reserve: %d, kept tokens: %d, "
+            "tools_aligned: %s",
             len(messages_to_compact),
             len(messages_to_keep),
             total_tokens,
             memory_compact_threshold,
             memory_compact_reserve,
             accumulated_tokens,
+            tools_aligned,
         )
 
-        return messages_to_compact, messages_to_keep
+        return messages_to_compact, messages_to_keep, tools_aligned

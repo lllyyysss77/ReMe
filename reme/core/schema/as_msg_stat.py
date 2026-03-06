@@ -50,8 +50,9 @@ class AsBlockStat(BaseModel):
         if self.block_type in ("tool_use", "tool_result"):
             if self.block_type == "tool_use":
                 return f" - tool_call={self.tool_name} params={truncate_text(self.tool_input, max_length)}"
-            output = truncate_text(self.tool_output, max_length)
-            return f" - tool_result={self.tool_name} output={output}" if output else ""
+            else:
+                output = truncate_text(self.tool_output, max_length)
+                return f" - tool_result={self.tool_name} output={output}" if output else ""
         return ""
 
 

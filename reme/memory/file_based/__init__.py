@@ -13,9 +13,9 @@ Components:
 
 from .as_msg_handler import AsMsgHandler
 from .reme_in_memory_memory import ReMeInMemoryMemory
-from .sub_agent.compactor import Compactor
-from .sub_agent.summarizer import Summarizer
-from .sub_agent.tool_result_compactor import ToolResultCompactor
+from .component.compactor import Compactor
+from .component.summarizer import Summarizer
+from .component.tool_result_compactor import ToolResultCompactor
 
 __all__ = [
     "AsMsgHandler",

@@ -26,7 +26,7 @@ from agentscope.tool import Toolkit, ToolResponse
 from .config import ReMeConfigParser
 from .core import Application
 from .core.utils import get_hf_token_counter, get_std_logger
-from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory
+from .memory.file_based import Compactor, Summarizer, ToolResultCompactor, ReMeInMemoryMemory, AsMsgHandler
 from .memory.tools import MemorySearch
 from .memory.tools.file import FileIO
 
@@ -258,6 +258,75 @@ class ReMeLight(Application):
         task = asyncio.create_task(self.summary_memory(messages=messages, **kwargs))
         self.summary_tasks.append(task)
 
+    async def pre_reasoning_hook(
+        self,
+        messages: list[Msg],
+        system_prompt: str = "",
+        compressed_summary: str = "",
+        as_llm: str | ChatModelBase = "default",
+        as_llm_formatter: str | FormatterBase = "default",
+        token_counter: HuggingFaceTokenCounter | None = None,
+        toolkit: Toolkit | None = None,
+        language: str = "zh",
+        max_input_length: float = 128 * 1024,
+        compact_ratio: float = 0.7,
+        memory_compact_reserve: int = 10000,
+        enable_tool_result_compact: bool = True,
+        tool_result_compact_keep_n: int = 3,
+    ) -> tuple[list[Msg], str]:
+        """Hook called before reasoning."""
+        if token_counter is None:
+            token_counter = get_hf_token_counter()
+
+        msg_handler = AsMsgHandler(token_counter=token_counter)
+
+        system_token_count = msg_handler.count_str_token(system_prompt)
+        compressed_token_count = msg_handler.count_str_token(compressed_summary)
+        memory_compact_threshold = self.calculate_memory_compact_threshold(max_input_length, compact_ratio)
+        left_compact_threshold = memory_compact_threshold - (system_token_count + compressed_token_count)
+        logger.info(f"Left compact threshold: {left_compact_threshold}")
+
+        if enable_tool_result_compact and tool_result_compact_keep_n > 0:
+            compact_msgs = messages[:-tool_result_compact_keep_n]
+            await self.compact_tool_result(compact_msgs)
+
+        messages_to_compact, messages_to_keep, is_valid = msg_handler.context_check(
+            messages=messages,
+            memory_compact_threshold=left_compact_threshold,
+            memory_compact_reserve=memory_compact_reserve,
+        )
+
+        if not messages_to_compact:
+            return messages, compressed_summary
+
+        if not is_valid:
+            logger.warning("Invalid messages to compact, skipping.")
+            return messages, compressed_summary
+
+        self.add_async_summary_task(
+            messages=messages_to_compact,
+            as_llm=as_llm,
+            as_llm_formatter=as_llm_formatter,
+            token_counter=token_counter,
+            toolkit=toolkit,
+            language=language,
+            max_input_length=max_input_length,
+            compact_ratio=compact_ratio,
+        )
+
+        compressed_summary = await self.compact_memory(
+            messages=messages_to_compact,
+            as_llm=as_llm,
+            as_llm_formatter=as_llm_formatter,
+            token_counter=token_counter,
+            language=language,
+            max_input_length=max_input_length,
+            compact_ratio=compact_ratio,
+            previous_summary=compressed_summary,
+        )
+
+        return messages_to_keep, compressed_summary
+
     async def await_summary_tasks(self) -> str:
         """Wait for all background summary tasks to complete and collect results."""
         result = ""
@@ -289,6 +358,7 @@ class ReMeLight(Application):
                 except asyncio.CancelledError:
                     logger.warning("Summary task was cancelled while waiting.")
                     result += "Summary task was cancelled.\n"
+
                 except Exception as e:
                     logger.exception(f"Summary task failed: {e}")
                     result += f"Summary task failed: {e}\n"
@@ -334,12 +404,25 @@ class ReMeLight(Application):
         # Validate and clamp max_results to valid range [1, 100]
         if isinstance(max_results, int):
             max_results = min(max(max_results, 1), 100)
+
+        elif isinstance(max_results, str):
+            try:
+                max_results = min(max(int(max_results), 1), 100)
+            except ValueError:
+                max_results = 5
         else:
             max_results = 5
 
         # Validate and clamp min_score to valid range [0.001, 0.999]
         if isinstance(min_score, (int, float)):
-            min_score = min(max(min_score, 0.001), 0.999)
+            min_score = float(min(max(min_score, 0.001), 0.999))
+
+        elif isinstance(min_score, str):
+            try:
+                min_score = float(min(max(float(min_score), 0.001), 0.999))
+            except ValueError:
+                min_score = 0.1
+
         else:
             min_score = 0.1
 

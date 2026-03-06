@@ -1,31 +1,23 @@
 """Custom memory implementation with bugfixes and extensions."""
 
-import logging
-
-from agentscope.agent._react_agent import _MemoryMark
-from agentscope.formatter import FormatterBase
+from agentscope.agent._react_agent import _MemoryMark  # noqa
 from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
 from agentscope.token import HuggingFaceTokenCounter
 
-from .utils import safe_count_message_tokens, safe_count_str_tokens, _get_block_tokens
+from .as_msg_handler import AsMsgHandler
+from ...core.utils import get_std_logger
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class ReMeInMemoryMemory(InMemoryMemory):
     """Extended InMemoryMemory with bugfixes and summary support."""
 
-    def __init__(
-        self,
-        token_counter: HuggingFaceTokenCounter,
-        formatter: FormatterBase,
-        max_input_length: int = 0,
-    ):
+    def __init__(self, token_counter: HuggingFaceTokenCounter):
         super().__init__()
         self._token_counter: HuggingFaceTokenCounter = token_counter
-        self._formatter: FormatterBase = formatter
-        self._max_input_length: int = max_input_length
+        self._msg_handler: AsMsgHandler = AsMsgHandler(token_counter)
 
     async def get_memory(
         self,
@@ -127,8 +119,11 @@ Use it as context to maintain continuity.
         """Clear the content."""
         self.content.clear()
 
-    async def estimate_tokens(self) -> dict:
+    async def estimate_tokens(self, max_input_length: int) -> dict:
         """Estimate token usage for current memory.
+
+        Args:
+            max_input_length: Max input length for context usage calculation.
 
         Returns:
             Dict containing detailed token statistics:
@@ -138,7 +133,7 @@ Use it as context to maintain continuity.
             - estimated_tokens: Total estimated tokens
             - max_input_length: Max input length from config
             - context_usage_ratio: Usage percentage
-            - messages_detail: List of per-message token details
+            - messages_detail: List of per-message AsMsgStat objects
         """
         messages = await self.get_memory(
             exclude_mark=_MemoryMark.COMPRESSED,
@@ -146,61 +141,17 @@ Use it as context to maintain continuity.
         )
 
         compressed_summary = self.get_compressed_summary()
-        compressed_summary_tokens = safe_count_str_tokens(self._token_counter, compressed_summary)
+        compressed_summary_tokens = self._msg_handler.count_str_token(compressed_summary)
 
-        # Calculate total token count using formatter
-        prompt = await self._formatter.format(msgs=messages)
-        messages_tokens = safe_count_message_tokens(self._token_counter, prompt)
+        # Build per-message token details using AsMsgHandler
+        messages_detail = [self._msg_handler.stat_message(msg) for msg in messages]
+
+        # Calculate total message tokens from stats
+        messages_tokens = sum(stat.total_tokens for stat in messages_detail)
         estimated_tokens = messages_tokens + compressed_summary_tokens
 
         # Calculate context usage ratio
-        max_input_length = self._max_input_length
         context_usage_ratio = (estimated_tokens / max_input_length * 100) if max_input_length > 0 else 0
-
-        # Build per-message token details
-        messages_detail = []
-        for i, msg in enumerate(messages, 1):
-            msg_detail = {
-                "index": i,
-                "role": msg.role,
-                "text_tokens": 0,
-                "blocks": [],
-                "preview": "",
-            }
-            try:
-                content = msg.content
-                if isinstance(content, str):
-                    text_tokens = safe_count_str_tokens(self._token_counter, content)
-                    msg_detail["text_tokens"] = text_tokens
-                    msg_detail["preview"] = f"{content[:100]}..." if len(content) > 100 else content
-                else:
-                    total_tokens = 0
-                    text_parts = []
-                    for block in content:
-                        if not isinstance(block, dict):
-                            continue
-                        block_type = block.get("type", "unknown")
-                        block_tokens, block_str = _get_block_tokens(
-                            block,
-                            block_type,
-                            self._token_counter,
-                        )
-                        total_tokens += block_tokens
-                        text_parts.append(block_str)
-                        msg_detail["blocks"].append(
-                            {
-                                "type": block_type,
-                                "tokens": block_tokens,
-                            },
-                        )
-                    msg_detail["text_tokens"] = total_tokens
-                    text_preview = "".join(text_parts)
-                    msg_detail["preview"] = f"{text_preview[:100]}..." if len(text_preview) > 100 else text_preview
-            except Exception as e:
-                msg_detail["error"] = str(e)
-                msg_detail["preview"] = f"<error: {e}>"
-
-            messages_detail.append(msg_detail)
 
         return {
             "total_messages": len(messages),
@@ -212,25 +163,28 @@ Use it as context to maintain continuity.
             "messages_detail": messages_detail,
         }
 
-    async def get_history_str(self) -> str:
+    async def get_history_str(self, max_input_length: int) -> str:
         """Get formatted history string similar to /history command output.
+
+        Args:
+            max_input_length: Max input length for context usage calculation.
 
         Returns:
             Formatted string containing conversation history details
         """
-        stats = await self.estimate_tokens()
+        stats = await self.estimate_tokens(max_input_length)
 
         lines = []
-        for msg_detail in stats["messages_detail"]:
+        for i, msg_stat in enumerate(stats["messages_detail"], 1):
             blocks_info = ""
-            if msg_detail["blocks"]:
-                block_strs = [f"{b['type']}(tokens={b['tokens']})" for b in msg_detail["blocks"]]
+            if msg_stat.content:
+                block_strs = [f"{b.block_type}(tokens={b.token_count})" for b in msg_stat.content]
                 blocks_info = f"\n    content: [{', '.join(block_strs)}]"
 
             lines.append(
-                f"[{msg_detail['index']}] **{msg_detail['role']}** "
-                f"(text_tokens={msg_detail['text_tokens']})"
-                f"{blocks_info}\n    preview: {msg_detail['preview']}",
+                f"[{i}] **{msg_stat.role}** "
+                f"(total_tokens={msg_stat.total_tokens})"
+                f"{blocks_info}\n    preview: {msg_stat.preview}",
             )
 
         return (

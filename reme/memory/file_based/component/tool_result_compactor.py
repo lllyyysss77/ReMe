@@ -1,16 +1,16 @@
 """Tool Result Compactor: truncate large tool results and save full content to files."""
 
-import logging
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from agentscope.message import Msg
 
-from .utils import is_truncated, truncate_text
-from ...core.op import BaseOp
+from ....core.op import BaseOp
+from ....core.utils import get_std_logger
+from ....core.utils import truncate_text, is_truncated
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class ToolResultCompactor(BaseOp):

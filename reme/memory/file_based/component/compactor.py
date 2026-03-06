@@ -1,17 +1,14 @@
 """Compactor module for memory compaction operations."""
 
-import logging
-
 from agentscope.agent import ReActAgent
-from agentscope.formatter import FormatterBase
 from agentscope.message import Msg
-from agentscope.model import ChatModelBase
 from agentscope.token import HuggingFaceTokenCounter
 
-from .memory_formatter import MemoryFormatter
-from ...core.op import BaseOp
+from ..as_msg_handler import AsMsgHandler
+from ....core.op import BaseOp
+from ....core.utils import get_std_logger
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class Compactor(BaseOp):
@@ -20,17 +17,13 @@ class Compactor(BaseOp):
     def __init__(
         self,
         memory_compact_threshold: int,
-        chat_model: ChatModelBase,
-        formatter: FormatterBase,
         token_counter: HuggingFaceTokenCounter,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.memory_compact_threshold: int = memory_compact_threshold
 
-        self.chat_model: ChatModelBase = chat_model
-        self.formatter: FormatterBase = formatter
-        self.as_token_counter: HuggingFaceTokenCounter = token_counter
+        self.msg_handler = AsMsgHandler(token_counter=token_counter)
 
     async def execute(self):
         messages: list[Msg] = self.context.get("messages", [])
@@ -39,11 +32,10 @@ class Compactor(BaseOp):
         if not messages:
             return ""
 
-        formatter = MemoryFormatter(
-            token_counter=self.as_token_counter,
+        history_formatted_str: str = self.msg_handler.format_msgs_to_str(
+            messages=messages,
             memory_compact_threshold=self.memory_compact_threshold,
         )
-        history_formatted_str: str = formatter.format(messages)
 
         if not history_formatted_str:
             logger.warning(f"No history to compact. messages={messages}")
@@ -51,9 +43,9 @@ class Compactor(BaseOp):
 
         agent = ReActAgent(
             name="reme_compactor",
-            model=self.chat_model,
+            model=self.as_llm,
             sys_prompt=self.get_prompt("system_prompt"),
-            formatter=self.formatter,
+            formatter=self.as_llm_formatter,
         )
 
         if previous_summary:

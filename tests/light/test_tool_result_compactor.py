@@ -6,9 +6,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from agentscope.message import Msg
-
-from reme.memory.file_based.tool_result_compactor import ToolResultCompactor
-from reme.memory.file_based.utils import TRUNCATION_MARKER_START
+from reme.memory.file_based import ToolResultCompactor
+from reme.core.utils import is_truncated
 
 
 def create_tool_result_msg(output: str | list, tool_name: str = "test_tool") -> Msg:
@@ -52,7 +51,7 @@ class TestToolResultCompactor:
             _ = asyncio.run(op.call(messages=messages))
 
             output = messages[0].content[0]["output"]
-            assert TRUNCATION_MARKER_START in output
+            assert is_truncated(output)
             assert "[Full content saved to:" in output
 
             # Verify file was created
@@ -69,7 +68,7 @@ class TestToolResultCompactor:
         """Test that already truncated content is not re-truncated."""
         with tempfile.TemporaryDirectory() as tmpdir:
             op = ToolResultCompactor(tool_result_dir=tmpdir, tool_result_threshold=100)
-            truncated_content = f"head{TRUNCATION_MARKER_START}(100 chars omitted)<<<END_TRUNCATED>>>tail"
+            truncated_content = "head<<<TRUNCATED>>>(100 chars omitted)<<<END_TRUNCATED>>>tail"
             messages = [create_tool_result_msg(truncated_content)]
 
             asyncio.run(op.call(messages=messages))
@@ -87,7 +86,7 @@ class TestToolResultCompactor:
             asyncio.run(op.call(messages=messages))
 
             text_block = messages[0].content[0]["output"][0]
-            assert TRUNCATION_MARKER_START in text_block["text"]
+            assert is_truncated(text_block["text"])
             assert len(list(Path(tmpdir).glob("*.txt"))) == 1
 
     def test_list_output_no_truncation_when_short(self):
@@ -116,9 +115,9 @@ class TestToolResultCompactor:
             asyncio.run(op.call(messages=messages))
 
             output = messages[0].content[0]["output"]
-            assert TRUNCATION_MARKER_START in output[0]["text"]
+            assert is_truncated(output[0]["text"])
             assert output[1]["text"] == "short"  # unchanged
-            assert TRUNCATION_MARKER_START in output[2]["text"]
+            assert is_truncated(output[2]["text"])
             assert len(list(Path(tmpdir).glob("*.txt"))) == 2
 
     def test_list_output_mixed_block_types(self):
@@ -134,7 +133,7 @@ class TestToolResultCompactor:
             asyncio.run(op.call(messages=messages))
 
             output = messages[0].content[0]["output"]
-            assert TRUNCATION_MARKER_START in output[0]["text"]
+            assert is_truncated(output[0]["text"])
             assert output[1] == {"type": "image", "source": {"type": "url", "url": "http://example.com/img.png"}}
             assert len(list(Path(tmpdir).glob("*.txt"))) == 1
 

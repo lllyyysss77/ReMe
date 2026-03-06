@@ -1,20 +1,17 @@
 """Summarizer module for memory summarization operations."""
 
 import datetime
-import logging
 
 from agentscope.agent import ReActAgent
-from agentscope.formatter import FormatterBase
 from agentscope.message import Msg
-from agentscope.model import ChatModelBase
 from agentscope.token import HuggingFaceTokenCounter
 from agentscope.tool import Toolkit
 
-from .memory_formatter import MemoryFormatter
-from .file_io import FileIO
-from ...core.op import BaseOp
+from ..as_msg_handler import AsMsgHandler
+from ....core.op import BaseOp
+from ....core.utils import get_std_logger
 
-logger = logging.getLogger(__name__)
+logger = get_std_logger()
 
 
 class Summarizer(BaseOp):
@@ -25,10 +22,8 @@ class Summarizer(BaseOp):
         working_dir: str,
         memory_dir: str,
         memory_compact_threshold: int,
-        chat_model: ChatModelBase,
-        formatter: FormatterBase,
         token_counter: HuggingFaceTokenCounter,
-        toolkit: Toolkit | None = None,
+        toolkit: Toolkit,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -36,17 +31,8 @@ class Summarizer(BaseOp):
         self.memory_dir: str = memory_dir
         self.memory_compact_threshold: int = memory_compact_threshold
 
-        self.chat_model: ChatModelBase = chat_model
-        self.formatter: FormatterBase = formatter
-        self.as_token_counter: HuggingFaceTokenCounter = token_counter
-        if toolkit is not None:
-            self.toolkit: Toolkit = toolkit
-        else:
-            self.toolkit = Toolkit()
-            file_io = FileIO(working_dir=self.working_dir)
-            self.toolkit.register_tool_function(file_io.read)
-            self.toolkit.register_tool_function(file_io.write)
-            self.toolkit.register_tool_function(file_io.edit)
+        self.msg_handler = AsMsgHandler(token_counter=token_counter)
+        self.toolkit: Toolkit = toolkit
 
     async def execute(self):
         messages: list[Msg] = self.context.get("messages", [])
@@ -54,11 +40,10 @@ class Summarizer(BaseOp):
         if not messages:
             return ""
 
-        formatter = MemoryFormatter(
-            token_counter=self.as_token_counter,
+        history_formatted_str: str = self.msg_handler.format_msgs_to_str(
+            messages=messages,
             memory_compact_threshold=self.memory_compact_threshold,
         )
-        history_formatted_str: str = formatter.format(messages)
 
         if not history_formatted_str:
             logger.warning(f"No history to summarize. messages={messages}")
@@ -66,9 +51,9 @@ class Summarizer(BaseOp):
 
         agent = ReActAgent(
             name="reme_summarizer",
-            model=self.chat_model,
+            model=self.as_llm,
             sys_prompt="You are a helpful assistant.",
-            formatter=self.formatter,
+            formatter=self.as_llm_formatter,
             toolkit=self.toolkit,
         )
 

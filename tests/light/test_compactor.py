@@ -1,7 +1,6 @@
 """Tests for Compactor."""
 
 import asyncio
-import logging
 
 from agentscope.message import Msg
 
@@ -10,14 +9,12 @@ from test_utils import (
     get_formatter,
     get_token_counter,
 )
+
+from reme.core.utils import get_std_logger
 from reme.memory.file_based import Compactor
 
-# 配置日志输出到控制台
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+
+logger = get_std_logger()
 
 
 # ANSI 颜色码
@@ -101,9 +98,10 @@ def create_compactor():
     """Create a Compactor instance for testing."""
     return Compactor(
         memory_compact_threshold=4000,
-        chat_model=get_dash_chat_model(),
-        formatter=get_formatter(),
         token_counter=get_token_counter(),
+        as_llm=get_dash_chat_model(),
+        as_llm_formatter=get_formatter(),
+        language="zh",
     )
 
 
@@ -286,9 +284,9 @@ def test_low_threshold():
     """Test compaction with low memory threshold."""
     compactor = Compactor(
         memory_compact_threshold=500,
-        chat_model=get_dash_chat_model(),
-        formatter=get_formatter(),
         token_counter=get_token_counter(),
+        as_llm=get_dash_chat_model(),
+        as_llm_formatter=get_formatter(),
     )
 
     messages = [
@@ -309,9 +307,9 @@ def test_high_threshold():
     """Test compaction with high memory threshold."""
     compactor = Compactor(
         memory_compact_threshold=10000,
-        chat_model=get_dash_chat_model(),
-        formatter=get_formatter(),
         token_counter=get_token_counter(),
+        as_llm=get_dash_chat_model(),
+        as_llm_formatter=get_formatter(),
     )
 
     messages = [

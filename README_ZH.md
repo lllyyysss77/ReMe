@@ -66,9 +66,10 @@ working_dir/
 | `close`                | 📕 关闭并清理     | 清理工具结果文件、停止文件监控、保存 Embedding 缓存                                                                          |
 | `compact_memory`       | 📦 压缩历史对话为摘要 | [Compactor](reme/memory/file_based/compactor.py) — ReActAgent 生成结构化上下文检查点                                |
 | `summary_memory`       | 📝 将重要记忆写入文件 | [Summarizer](reme/memory/file_based/summarizer.py) — ReActAgent + 文件工具（read / write / edit）              |
-| `compact_tool_result`  | ✂️ 压缩超长工具输出  | [ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) — 截断并转存到 `tool_result/`，消息中保留文件引用 | |
+| `compact_tool_result`  | ✂️ 压缩超长工具输出  | [ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) — 截断并转存到 `tool_result/`，消息中保留文件引用 |
+| `pre_reasoning_hook`   | 🔄 推理前预处理钩子  | 自动压缩工具结果 + 生成摘要 + 异步触发记忆总结任务                                                                             |
 | `memory_search`        | 🔍 语义搜索记忆    | [MemorySearch](reme/memory/tools/chunk/memory_search.py) — 向量 + BM25 混合检索                                |
-| `get_in_memory_memory` | 🗂️ 创建会话内存实例 | [ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) — Token 感知的内存管理，支持压缩摘要和状态序列化       |
+| `get_in_memory_memory` | 🗂️ 创建会话内存实例 | [ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) — Token 感知的内存管理，支持压缩摘要和状态序列化（静态方法） |
 
 ---
 
@@ -90,7 +91,6 @@ pip install -e ".[light]"
 | `LLM_BASE_URL`       | LLM base URL       | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
 | `EMBEDDING_API_KEY`  | Embedding API key  | `sk-xxx`                                            |
 | `EMBEDDING_BASE_URL` | Embedding base URL | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `LLM_MODEL_NAME`     | LLM model name     | `qwen3.5-plus`                                      |
 
 #### Python使用
 
@@ -102,38 +102,56 @@ from reme.reme_light import ReMeLight
 
 
 async def main():
+    # 初始化 ReMeLight
     reme = ReMeLight(
-        working_dir=".reme",  # 记忆文件存储目录
-        max_input_length=128000,  # 模型上下文窗口（tokens）
-        memory_compact_ratio=0.7,  # 达到 max_input_length * 0.7 时触发压缩
-        language="zh",  # 摘要语言（zh / ""）
-        tool_result_threshold=1000,  # 超过此字符数的工具输出自动转存
-        retention_days=7,  # tool_result/ 文件保留天数
+        default_as_llm_config={"model_name": "qwen3.5-35b-a3b"},
+        # default_embedding_model_config={"model_name": "text-embedding-v4"},
+        default_file_store_config={"fts_enabled": True, "vector_enabled": False},
     )
     await reme.start()
 
-    messages = [...]
+    messages = [...]  # 对话消息列表
 
     # 1. 压缩超长工具输出（防止工具结果撑爆上下文）
     messages = await reme.compact_tool_result(messages)
 
-    # 2. 将历史对话压缩为结构化摘要（触发时机：上下文接近上限），可传入上轮摘要，实现增量更新
-    summary = await reme.compact_memory(messages=messages, previous_summary="")
+    # 2. 将历史对话压缩为结构化摘要（可传入上轮摘要，实现增量更新）
+    summary = await reme.compact_memory(
+        messages=messages,
+        previous_summary="",
+        max_input_length=128000,      # 模型上下文窗口（tokens）
+        compact_ratio=0.7,            # 达到 max_input_length * 0.7 时触发压缩
+        language="zh",                # 摘要语言（zh / ""）
+    )
 
     # 3. 后台异步提交摘要任务（不阻塞对话，摘要写入 memory/YYYY-MM-DD.md）
     reme.add_async_summary_task(messages=messages)
 
-    # 4. 语义搜索记忆（向量 + BM25 混合检索）
+    # 4. 推理前预处理钩子（自动压缩工具结果 + 生成摘要）
+    processed_messages, compressed_summary = await reme.pre_reasoning_hook(
+        messages=messages,
+        system_prompt="你是一个有帮助的 AI 助手。",
+        compressed_summary="",
+        max_input_length=128000,
+        compact_ratio=0.7,
+        memory_compact_reserve=10000,
+        enable_tool_result_compact=True,
+        tool_result_compact_keep_n=3,
+    )
+
+    # 5. 语义搜索记忆（向量 + BM25 混合检索）
     result = await reme.memory_search(query="Python 版本偏好", max_results=5)
 
-    # 5. 获取会话内存实例（ReMeInMemoryMemory，管理单次对话的上下文）AgentScope InMemoryMemory
-    memory = reme.get_in_memory_memory()
-    token_stats = await memory.estimate_tokens()
+    # 6. 获取会话内存实例（静态方法，管理单次对话的上下文）
+    memory = ReMeLight.get_in_memory_memory()
+    for msg in messages:
+        await memory.add(msg)
+    token_stats = await memory.estimate_tokens(max_input_length=128000)
     print(f"当前上下文使用率: {token_stats['context_usage_ratio']:.1f}%")
     print(f"消息 Token 数: {token_stats['messages_tokens']}")
     print(f"预估总 Token 数: {token_stats['estimated_tokens']}")
 
-    # 6. 关闭前等待后台任务完成
+    # 7. 关闭前等待后台任务完成
     summary_result = await reme.await_summary_tasks()
 
     # 关闭 ReMeLight
@@ -144,6 +162,9 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+> 📂 完整示例代码：[test_reme_light.py](tests/light/test_reme_light.py)
+> 📋 运行结果示例：[test_reme_light.log](tests/light/test_reme_light.log)（223,838 tokens → 1,105 tokens，压缩率 99.5%）
+
 ### 基于文件的 ReMeLight 记忆系统架构
 
 [CoPaw MemoryManager](https://github.com/agentscope-ai/CoPaw/blob/main/src/copaw/agents/memory/memory_manager.py) 继承
@@ -151,18 +172,18 @@ if __name__ == "__main__":
 
 ```mermaid
 graph TB
-    CoPaw["CoPaw MemoryManager\n(继承 ReMeLight)"] -->|pre_reasoning hook| Hook[MemoryCompactionHook]
+    CoPaw["CoPaw MemoryManager<br>(继承 ReMeLight)"] -->|pre_reasoning hook| Hook[MemoryCompactionHook]
     CoPaw --> ReMeLight[ReMeLight]
     Hook -->|超出阈值| ReMeLight
-    ReMeLight --> CompactMemory[compact_memory\n历史对话压缩]
-    ReMeLight --> SummaryMemory[summary_memory\n记忆写入文件]
-    ReMeLight --> CompactToolResult[compact_tool_result\n超长工具输出压缩]
-    ReMeLight --> MemSearch[memory_search\n语义搜索]
-    ReMeLight --> InMemory[get_in_memory_memory\nReMeInMemoryMemory]
-    CompactMemory --> Compactor[Compactor\nReActAgent]
-    SummaryMemory --> Summarizer[Summarizer\nReActAgent + 文件工具]
-    CompactToolResult --> ToolResultCompactor[ToolResultCompactor\n截断 + 转存文件]
-    Summarizer --> FileIO[FileIO\nread / write / edit]
+    ReMeLight --> CompactMemory[compact_memory<br>历史对话压缩]
+    ReMeLight --> SummaryMemory[summary_memory<br>记忆写入文件]
+    ReMeLight --> CompactToolResult[compact_tool_result<br>超长工具输出压缩]
+    ReMeLight --> MemSearch[memory_search<br>语义搜索]
+    ReMeLight --> InMemory[get_in_memory_memory<br>ReMeInMemoryMemory]
+    CompactMemory --> Compactor[Compactor<br>ReActAgent]
+    SummaryMemory --> Summarizer[Summarizer<br>ReActAgent + 文件工具]
+    CompactToolResult --> ToolResultCompactor[ToolResultCompactor<br>截断 + 转存文件]
+    Summarizer --> FileIO[FileIO<br>read / write / edit]
     FileIO --> MemoryFiles[memory/YYYY-MM-DD.md]
     ToolResultCompactor --> ToolResultFiles[tool_result/*.txt]
     MemoryFiles -.->|文件变更| FileWatcher[异步文件监控]

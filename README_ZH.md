@@ -97,7 +97,6 @@ pip install -e ".[light]"
 ```python
 import asyncio
 
-from agentscope.message import Msg
 from reme.reme_light import ReMeLight
 
 
@@ -119,9 +118,9 @@ async def main():
     summary = await reme.compact_memory(
         messages=messages,
         previous_summary="",
-        max_input_length=128000,      # 模型上下文窗口（tokens）
-        compact_ratio=0.7,            # 达到 max_input_length * 0.7 时触发压缩
-        language="zh",                # 摘要语言（zh / ""）
+        max_input_length=128000,  # 模型上下文窗口（tokens）
+        compact_ratio=0.7,  # 达到 max_input_length * 0.7 时触发压缩
+        language="zh",  # 摘要语言（zh / ""）
     )
 
     # 3. 后台异步提交摘要任务（不阻塞对话，摘要写入 memory/YYYY-MM-DD.md）
@@ -163,7 +162,7 @@ if __name__ == "__main__":
 ```
 
 > 📂 完整示例代码：[test_reme_light.py](tests/light/test_reme_light.py)
-> 📋 运行结果示例：[test_reme_light.log](tests/light/test_reme_light.log)（223,838 tokens → 1,105 tokens，压缩率 99.5%）
+> 📋 运行结果示例：[test_reme_light.log](tests/light/test_reme_light_log.txt)（223,838 tokens → 1,105 tokens，压缩率 99.5%）
 
 ### 基于文件的 ReMeLight 记忆系统架构
 

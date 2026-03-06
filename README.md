@@ -66,15 +66,15 @@ working_dir/
 [ReMeLight](reme/reme_light.py) is the core class of this memory system, providing complete memory management
 capabilities for AI Agents:
 
-| Method                 | Function                           | Key Components                                                                                                                                              |
-|------------------------|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `start`                | 🚀 Start memory system             | Initialize file store, file watcher, Embedding cache; clean up expired tool result files                                                                    |
-| `close`                | 📕 Close and clean up              | Clean tool result files, stop file watcher, save Embedding cache                                                                                            |
-| `compact_memory`       | 📦 Compact history to summary      | [Compactor](reme/memory/file_based/compactor.py) — ReActAgent generates structured context checkpoint                                                       |
-| `summary_memory`       | 📝 Write important memory to files | [Summarizer](reme/memory/file_based/summarizer.py) — ReActAgent + file tools (read / write / edit)                                                          |
-| `compact_tool_result`  | ✂️ Compact oversized tool output   | [ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) — Truncate and save to `tool_result/`, keep file reference in message                |
-| `pre_reasoning_hook`   | 🔄 Pre-reasoning hook              | Auto compact tool results + generate summary + async trigger memory summarization task                                                                       |
-| `memory_search`        | 🔍 Semantic memory search          | [MemorySearch](reme/memory/tools/chunk/memory_search.py) — Vector + BM25 hybrid retrieval                                                                   |
+| Method                 | Function                           | Key Components                                                                                                                                                              |
+|------------------------|------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `start`                | 🚀 Start memory system             | Initialize file store, file watcher, Embedding cache; clean up expired tool result files                                                                                    |
+| `close`                | 📕 Close and clean up              | Clean tool result files, stop file watcher, save Embedding cache                                                                                                            |
+| `compact_memory`       | 📦 Compact history to summary      | [Compactor](reme/memory/file_based/compactor.py) — ReActAgent generates structured context checkpoint                                                                       |
+| `summary_memory`       | 📝 Write important memory to files | [Summarizer](reme/memory/file_based/summarizer.py) — ReActAgent + file tools (read / write / edit)                                                                          |
+| `compact_tool_result`  | ✂️ Compact oversized tool output   | [ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) — Truncate and save to `tool_result/`, keep file reference in message                                |
+| `pre_reasoning_hook`   | 🔄 Pre-reasoning hook              | Auto compact tool results + generate summary + async trigger memory summarization task                                                                                      |
+| `memory_search`        | 🔍 Semantic memory search          | [MemorySearch](reme/memory/tools/chunk/memory_search.py) — Vector + BM25 hybrid retrieval                                                                                   |
 | `get_in_memory_memory` | 🗂️ Create in-memory instance      | [ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) — Token-aware memory management, supports compression summary and state serialization (static method) |
 
 ---
@@ -125,9 +125,9 @@ async def main():
     summary = await reme.compact_memory(
         messages=messages,
         previous_summary="",
-        max_input_length=128000,      # Model context window (tokens)
-        compact_ratio=0.7,            # Trigger compaction when reaching max_input_length * 0.7
-        language="zh",                # Summary language (zh / "")
+        max_input_length=128000,  # Model context window (tokens)
+        compact_ratio=0.7,  # Trigger compaction when reaching max_input_length * 0.7
+        language="zh",  # Summary language (zh / "")
     )
 
     # 3. Submit async summary task in background (non-blocking, writes to memory/YYYY-MM-DD.md)
@@ -169,7 +169,8 @@ if __name__ == "__main__":
 ```
 
 > 📂 Full example code: [test_reme_light.py](tests/light/test_reme_light.py)
-> 📋 Example output: [test_reme_light.log](tests/light/test_reme_light.log) (223,838 tokens → 1,105 tokens, 99.5% compression ratio)
+> 📋 Example output: [test_reme_light.log](tests/light/test_reme_light_log.txt) (223,838 tokens → 1,105 tokens, 99.5%
+> compression ratio)
 
 ### File-Based ReMeLight Memory System Architecture
 

@@ -175,18 +175,18 @@ inherits `ReMeLight` and integrates memory capabilities into the Agent reasoning
 
 ```mermaid
 graph TB
-    CoPaw["CoPaw MemoryManager\n(inherits ReMeLight)"] -->|pre_reasoning hook| Hook[MemoryCompactionHook]
+    CoPaw["CoPaw MemoryManager<br>(inherits ReMeLight)"] -->|pre_reasoning hook| Hook[MemoryCompactionHook]
     CoPaw --> ReMeLight[ReMeLight]
     Hook -->|exceeds threshold| ReMeLight
-    ReMeLight --> CompactMemory[compact_memory\nHistory compaction]
-    ReMeLight --> SummaryMemory[summary_memory\nWrite memory to files]
-    ReMeLight --> CompactToolResult[compact_tool_result\nOversized tool output compaction]
-    ReMeLight --> MemSearch[memory_search\nSemantic search]
-    ReMeLight --> InMemory[get_in_memory_memory\nReMeInMemoryMemory]
-    CompactMemory --> Compactor[Compactor\nReActAgent]
-    SummaryMemory --> Summarizer[Summarizer\nReActAgent + file tools]
-    CompactToolResult --> ToolResultCompactor[ToolResultCompactor\nTruncate + save to file]
-    Summarizer --> FileIO[FileIO\nread / write / edit]
+    ReMeLight --> CompactMemory[compact_memory<br>History compaction]
+    ReMeLight --> SummaryMemory[summary_memory<br>Write memory to files]
+    ReMeLight --> CompactToolResult[compact_tool_result<br>Oversized tool output compaction]
+    ReMeLight --> MemSearch[memory_search<br>Semantic search]
+    ReMeLight --> InMemory[get_in_memory_memory<br>ReMeInMemoryMemory]
+    CompactMemory --> Compactor[Compactor<br>ReActAgent]
+    SummaryMemory --> Summarizer[Summarizer<br>ReActAgent + file tools]
+    CompactToolResult --> ToolResultCompactor[ToolResultCompactor<br>Truncate + save to file]
+    Summarizer --> FileIO[FileIO<br>read / write / edit]
     FileIO --> MemoryFiles[memory/YYYY-MM-DD.md]
     ToolResultCompactor --> ToolResultFiles[tool_result/*.txt]
     MemoryFiles -.->|File change| FileWatcher[Async File Watcher]

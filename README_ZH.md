@@ -169,18 +169,18 @@ if __name__ == "__main__":
 
 ```mermaid
 graph TB
-    CoPaw["CoPaw MemoryManager\n(继承 ReMeLight)"] -->|pre_reasoning hook| Hook[MemoryCompactionHook]
+    CoPaw["CoPaw MemoryManager<br>(继承 ReMeLight)"] -->|pre_reasoning hook| Hook[MemoryCompactionHook]
     CoPaw --> ReMeLight[ReMeLight]
     Hook -->|超出阈值| ReMeLight
-    ReMeLight --> CompactMemory[compact_memory\n历史对话压缩]
-    ReMeLight --> SummaryMemory[summary_memory\n记忆写入文件]
-    ReMeLight --> CompactToolResult[compact_tool_result\n超长工具输出压缩]
-    ReMeLight --> MemSearch[memory_search\n语义搜索]
-    ReMeLight --> InMemory[get_in_memory_memory\nReMeInMemoryMemory]
-    CompactMemory --> Compactor[Compactor\nReActAgent]
-    SummaryMemory --> Summarizer[Summarizer\nReActAgent + 文件工具]
-    CompactToolResult --> ToolResultCompactor[ToolResultCompactor\n截断 + 转存文件]
-    Summarizer --> FileIO[FileIO\nread / write / edit]
+    ReMeLight --> CompactMemory[compact_memory<br>历史对话压缩]
+    ReMeLight --> SummaryMemory[summary_memory<br>记忆写入文件]
+    ReMeLight --> CompactToolResult[compact_tool_result<br>超长工具输出压缩]
+    ReMeLight --> MemSearch[memory_search<br>语义搜索]
+    ReMeLight --> InMemory[get_in_memory_memory<br>ReMeInMemoryMemory]
+    CompactMemory --> Compactor[Compactor<br>ReActAgent]
+    SummaryMemory --> Summarizer[Summarizer<br>ReActAgent + 文件工具]
+    CompactToolResult --> ToolResultCompactor[ToolResultCompactor<br>截断 + 转存文件]
+    Summarizer --> FileIO[FileIO<br>read / write / edit]
     FileIO --> MemoryFiles[memory/YYYY-MM-DD.md]
     ToolResultCompactor --> ToolResultFiles[tool_result/*.txt]
     MemoryFiles -.->|文件变更| FileWatcher[异步文件监控]

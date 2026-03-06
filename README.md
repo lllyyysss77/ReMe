@@ -67,14 +67,15 @@ working_dir/
 capabilities for AI Agents:
 
 | Method                 | Function                           | Key Components                                                                                                                                              |
-|------------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|------------------------|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `start`                | 🚀 Start memory system             | Initialize file store, file watcher, Embedding cache; clean up expired tool result files                                                                    |
 | `close`                | 📕 Close and clean up              | Clean tool result files, stop file watcher, save Embedding cache                                                                                            |
 | `compact_memory`       | 📦 Compact history to summary      | [Compactor](reme/memory/file_based/compactor.py) — ReActAgent generates structured context checkpoint                                                       |
 | `summary_memory`       | 📝 Write important memory to files | [Summarizer](reme/memory/file_based/summarizer.py) — ReActAgent + file tools (read / write / edit)                                                          |
 | `compact_tool_result`  | ✂️ Compact oversized tool output   | [ToolResultCompactor](reme/memory/file_based/tool_result_compactor.py) — Truncate and save to `tool_result/`, keep file reference in message                |
+| `pre_reasoning_hook`   | 🔄 Pre-reasoning hook              | Auto compact tool results + generate summary + async trigger memory summarization task                                                                       |
 | `memory_search`        | 🔍 Semantic memory search          | [MemorySearch](reme/memory/tools/chunk/memory_search.py) — Vector + BM25 hybrid retrieval                                                                   |
-| `get_in_memory_memory` | 🗂️ Create in-memory instance      | [ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) — Token-aware memory management, supports compression summary and state serialization |
+| `get_in_memory_memory` | 🗂️ Create in-memory instance      | [ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) — Token-aware memory management, supports compression summary and state serialization (static method) |
 
 ---
 
@@ -108,38 +109,52 @@ from reme.reme_light import ReMeLight
 
 
 async def main():
-    reme = ReMeLight(
-        working_dir=".reme",  # Memory file storage directory
-        max_input_length=128000,  # Model context window (tokens)
-        memory_compact_ratio=0.7,  # Trigger compaction when reaching max_input_length * 0.7
-        language="zh",  # Summary language (zh / "")
-        tool_result_threshold=1000,  # Auto-save tool outputs exceeding this character count
-        retention_days=7,  # tool_result/ file retention days
-    )
+    # Initialize ReMeLight
+    reme = ReMeLight()
     await reme.start()
 
-    messages = [...]
+    messages = [...]  # Conversation message list
 
     # 1. Compact oversized tool outputs (prevent tool results from overflowing context)
     messages = await reme.compact_tool_result(messages)
 
-    # 2. Compact history to structured summary (trigger: context approaching limit), can pass previous summary for incremental update
-    summary = await reme.compact_memory(messages=messages, previous_summary="")
+    # 2. Compact history to structured summary (can pass previous summary for incremental update)
+    summary = await reme.compact_memory(
+        messages=messages,
+        previous_summary="",
+        max_input_length=128000,      # Model context window (tokens)
+        compact_ratio=0.7,            # Trigger compaction when reaching max_input_length * 0.7
+        language="zh",                # Summary language (zh / "")
+    )
 
     # 3. Submit async summary task in background (non-blocking, writes to memory/YYYY-MM-DD.md)
     reme.add_async_summary_task(messages=messages)
 
-    # 4. Semantic memory search (Vector + BM25 hybrid retrieval)
+    # 4. Pre-reasoning hook (auto compact tool results + generate summary)
+    processed_messages, compressed_summary = await reme.pre_reasoning_hook(
+        messages=messages,
+        system_prompt="You are a helpful AI assistant.",
+        compressed_summary="",
+        max_input_length=128000,
+        compact_ratio=0.7,
+        memory_compact_reserve=10000,
+        enable_tool_result_compact=True,
+        tool_result_compact_keep_n=3,
+    )
+
+    # 5. Semantic memory search (Vector + BM25 hybrid retrieval)
     result = await reme.memory_search(query="Python version preference", max_results=5)
 
-    # 5. Get in-memory instance (ReMeInMemoryMemory, manages single conversation context) AgentScope InMemoryMemory
-    memory = reme.get_in_memory_memory()
-    token_stats = await memory.estimate_tokens()
+    # 6. Get in-memory instance (static method, manages single conversation context)
+    memory = ReMeLight.get_in_memory_memory()
+    for msg in messages:
+        await memory.add(msg)
+    token_stats = await memory.estimate_tokens(max_input_length=128000)
     print(f"Current context usage: {token_stats['context_usage_ratio']:.1f}%")
     print(f"Message tokens: {token_stats['messages_tokens']}")
     print(f"Estimated total tokens: {token_stats['estimated_tokens']}")
 
-    # 6. Wait for background tasks before closing
+    # 7. Wait for background tasks before closing
     summary_result = await reme.await_summary_tasks()
 
     # Close ReMeLight
@@ -149,6 +164,9 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+> 📂 Full example code: [test_reme_light.py](tests/light/test_reme_light.py)
+> 📋 Example output: [test_reme_light.log](tests/light/test_reme_light.log) (223,838 tokens → 1,105 tokens, 99.5% compression ratio)
 
 ### File-Based ReMeLight Memory System Architecture
 

@@ -7,7 +7,7 @@ from typing import Optional
 from agentscope.message import TextBlock
 from agentscope.tool import ToolResponse
 
-from .utils import DEFAULT_MAX_BYTES, read_file_safe, truncate_output
+from ..utils import DEFAULT_MAX_BYTES, read_file_safe, truncate_output
 
 
 class FileIO:

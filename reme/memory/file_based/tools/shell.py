@@ -12,7 +12,7 @@ from pathlib import Path
 from agentscope.message import TextBlock
 from agentscope.tool import ToolResponse
 
-from .utils import truncate_shell_output
+from ..utils import truncate_shell_output
 
 
 def _execute_subprocess_sync(

@@ -38,7 +38,7 @@ class CustomFormatter(logging.Formatter):
         return super().format(record)
 
 
-def get_logger(
+def get_loggerv2(
     name: str = "reme",
     log_dir: str = "logs",
     level: str = "INFO",
@@ -80,22 +80,26 @@ def get_logger(
 
     # Configure file logging
     if log_to_file:
-        os.makedirs(log_dir, exist_ok=True)
-        current_ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        log_filename = f"{log_file_prefix}_{current_ts}.log"
-        log_filepath = os.path.join(log_dir, log_filename)
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+            current_ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            log_filename = f"{log_file_prefix}_{current_ts}.log"
+            log_filepath = os.path.join(log_dir, log_filename)
 
-        file_handler = TimedRotatingFileHandler(
-            log_filepath,
-            when=rotation,
-            interval=1,
-            backupCount=retention_days,
-            encoding="utf-8",
-        )
-        file_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
-        file_handler.setFormatter(CustomFormatter(log_format, colorize=False))
-        file_handler.suffix = "%Y-%m-%d"
-        logger.addHandler(file_handler)
+            file_handler = TimedRotatingFileHandler(
+                log_filepath,
+                when=rotation,
+                interval=1,
+                backupCount=retention_days,
+                encoding="utf-8",
+            )
+            file_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
+            file_handler.setFormatter(CustomFormatter(log_format, colorize=False))
+            file_handler.suffix = "%Y-%m-%d"
+            logger.addHandler(file_handler)
+
+        except Exception as e:
+            logger.error(f"Error configuring file logging: {e}")
 
     # Configure console logging
     if log_to_console:
@@ -106,4 +110,11 @@ def get_logger(
 
     # Cache logger
     _loggers[name] = logger
+    return logger
+
+
+def get_logger():
+    """Get a configured logger instance using loguru."""
+    from loguru import logger
+
     return logger

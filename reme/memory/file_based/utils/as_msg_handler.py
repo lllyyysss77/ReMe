@@ -50,8 +50,7 @@ class AsMsgHandler:
             try:
                 if not isinstance(block, dict) or "type" not in block:
                     logger.warning(
-                        "Invalid block: %s, expected a dict with 'type' key, skipped.",
-                        block,
+                        f"Invalid block: {block}, expected a dict with 'type' key, skipped.",
                     )
                     continue
 
@@ -79,15 +78,12 @@ class AsMsgHandler:
 
                 else:
                     logger.warning(
-                        "Unsupported block type '%s' in tool result, skipped.",
-                        block_type,
+                        f"Unsupported block type '{block_type}' in tool result, skipped.",
                     )
 
             except Exception as e:
                 logger.warning(
-                    "Failed to process block %s: %s, skipped.",
-                    block,
-                    e,
+                    f"Failed to process block {block}: {e}, skipped.",
                 )
 
         return "\n".join(textual_parts), total_token_count
@@ -186,7 +182,7 @@ class AsMsgHandler:
                 )
 
             else:
-                logger.warning("Unsupported block type %s, skipped.", block_type)
+                logger.warning(f"Unsupported block type {block_type}, skipped.")
 
         return AsMsgStat(
             name=message.name or message.role,
@@ -234,18 +230,15 @@ class AsMsgHandler:
             is_latest = i == len(messages) - 1
             if not is_latest and total_token_count + content_token_count > memory_compact_threshold:
                 logger.info(
-                    "Skipping older messages: adding %d tokens would exceed threshold %d (current: %d)",
-                    content_token_count,
-                    memory_compact_threshold,
-                    total_token_count,
+                    f"Skipping older messages: adding {content_token_count} tokens would exceed threshold "
+                    f"{memory_compact_threshold} (current: {total_token_count})",
                 )
                 break
 
             if is_latest and content_token_count > memory_compact_threshold:
                 logger.warning(
-                    "Latest message alone (%d tokens) exceeds threshold %d, including it anyway.",
-                    content_token_count,
-                    memory_compact_threshold,
+                    f"Latest message alone ({content_token_count} tokens) exceeds threshold "
+                    f"{memory_compact_threshold}, including it anyway.",
                 )
 
             formatted_parts.append(formatted_content)
@@ -345,11 +338,8 @@ class AsMsgHandler:
             # Check if adding this message would exceed reserve limit
             if accumulated_tokens + stat.total_tokens > memory_compact_reserve:
                 logger.info(
-                    "Context check: adding message %d with %d tokens would exceed reserve %d (current: %d)",
-                    i,
-                    stat.total_tokens,
-                    memory_compact_reserve,
-                    accumulated_tokens,
+                    f"Context check: adding message {i} with {stat.total_tokens} tokens would exceed reserve "
+                    f"{memory_compact_reserve} (current: {accumulated_tokens})",
                 )
                 break
 
@@ -374,11 +364,8 @@ class AsMsgHandler:
             # Check if we can fit this message plus its dependencies within reserve
             if accumulated_tokens + stat.total_tokens + extra_tokens > memory_compact_reserve:
                 logger.info(
-                    "Context check: message %d requires %d extra tokens for tool_use dependencies, "
-                    "total would exceed reserve %d",
-                    i,
-                    extra_tokens,
-                    memory_compact_reserve,
+                    f"Context check: message {i} requires {extra_tokens} extra tokens for tool_use dependencies, "
+                    f"total would exceed reserve {memory_compact_reserve}",
                 )
                 break
 
@@ -401,16 +388,11 @@ class AsMsgHandler:
         tools_aligned = self.validate_tool_ids_alignment(messages_to_keep)
 
         logger.info(
-            "Context check result: %d messages to compact, %d messages to keep, "
-            "total tokens: %d, threshold: %d, reserve: %d, kept tokens: %d, "
-            "tools_aligned: %s",
-            len(messages_to_compact),
-            len(messages_to_keep),
-            total_tokens,
-            memory_compact_threshold,
-            memory_compact_reserve,
-            accumulated_tokens,
-            tools_aligned,
+            f"Context check result: {len(messages_to_compact)} messages to compact, "
+            f"{len(messages_to_keep)} messages to keep, "
+            f"total tokens: {total_tokens}, threshold: {memory_compact_threshold}, "
+            f"reserve: {memory_compact_reserve}, kept tokens: {accumulated_tokens}, "
+            f"tools_aligned: {tools_aligned}",
         )
 
         return messages_to_compact, messages_to_keep, tools_aligned

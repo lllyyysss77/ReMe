@@ -62,7 +62,7 @@ class ReMeTokenCounter(HuggingFaceTokenCounter):
             self._tokenizer_available = True
 
         except Exception as e:
-            logger.exception("Failed to initialize tokenizer: %s", e)
+            logger.error(f"Failed to initialize tokenizer {e}")
             self._tokenizer_available = False
 
     async def count(

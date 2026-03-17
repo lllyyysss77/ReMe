@@ -9,9 +9,8 @@ as_llm_formatters:
 
 as_token_counters:
   default:
-    backend: hf
-    pretrained_model_name_or_path: "Qwen/Qwen2.5-7B-Instruct"
-    use_mirror: true
+    backend: rule
+    token_count_estimate_divisor: 3.75
 
 embedding_models:
   default:

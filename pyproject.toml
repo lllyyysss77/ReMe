@@ -33,7 +33,6 @@ classifiers = [
 keywords = ["llm", "memory", "experience", "memoryscope", "ai", "mcp", "http", "reme", "personal"]
 
 dependencies = [
-    "flowllm[reme]>=0.2.0.10",
     "sqlite-vec>=0.1.6",
     "prompt_toolkit>=3.0.52",
     "rich>=14.2.0",
@@ -81,6 +80,7 @@ full = [
 
 litellm = [
     "litellm==1.80.0",
+    "flowllm[reme]>=0.2.0.10",
 ]
 
 light = [

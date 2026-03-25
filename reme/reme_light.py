@@ -168,7 +168,7 @@ class ReMeLight(Application):
         Returns:
             Computed compaction threshold as an integer.
         """
-        return int(max_input_length * compact_ratio * 0.9)
+        return int(max_input_length * compact_ratio * 0.95)
 
     def _cleanup_tool_results(self) -> int:
         """
@@ -231,10 +231,10 @@ class ReMeLight(Application):
     async def compact_tool_result(
         self,
         messages: list[Msg],
+        old_max_bytes: int = 3000,
+        recent_max_bytes: int = 100 * 1024,
+        retention_days: int = 3,
         recent_n: int = 1,
-        old_threshold: int = 500,
-        recent_threshold: int = 30000,
-        retention_days: int = 7,
     ) -> list[Msg]:
         """
         Compact tool results by truncating large outputs and saving full content to files.
@@ -247,30 +247,37 @@ class ReMeLight(Application):
         Args:
             messages (list[Msg]): List of messages potentially containing tool results
                 that may need compaction.
-            recent_n (int): Number of recent messages to use recent_threshold for.
-                Default 1.
-            old_threshold (int): Character threshold for old messages. Default 500.
-            recent_threshold (int): Character threshold for recent messages. Default 30000.
+            old_max_bytes (int): Byte threshold for old (non-recent) messages. Default 3000.
+            recent_max_bytes (int): Byte threshold for recent messages (trailing consecutive
+                tool-result messages). Default 100KB (102400 bytes). Content exceeding this
+                limit is saved to disk; the message retains the first 100KB with a
+                read_file-style truncation notice and the saved file path.
             retention_days (int): Number of days to retain tool result files.
-                Default 7.
+                Default 3.
+            recent_n (int): Minimum number of most-recent tool-result messages to treat
+                as "recent" (using recent_max_bytes). The actual recent window is the
+                larger of this value and the trailing consecutive tool-result run.
+                Default 1.
 
         Returns:
             list[Msg]: The processed list of messages with large tool results compacted.
                 If an error occurs, returns the original unmodified messages.
 
         Note:
-            - Tool results are truncated based on old_threshold/recent_threshold
-            - Full content of truncated results is saved to tool_result_path
-            - Expired files are automatically cleaned up during this operation
+            - Recent tool results (trailing consecutive tool-result messages) are truncated
+              to recent_max_bytes using read_file-style output with a file path hint.
+            - Old tool results are truncated to old_max_bytes bytes.
+            - Full content of truncated results is saved to tool_result_path.
+            - Expired files are automatically cleaned up during this operation.
         """
         try:
             # Create compactor with instance configuration
             compactor = ToolResultCompactor(
                 tool_result_dir=self.tool_result_path,
                 retention_days=retention_days,
+                old_max_bytes=old_max_bytes,
+                recent_max_bytes=recent_max_bytes,
                 recent_n=recent_n,
-                old_threshold=old_threshold,
-                recent_threshold=recent_threshold,
             )
 
             # Execute compaction and get processed messages
@@ -455,9 +462,9 @@ class ReMeLight(Application):
             if toolkit is None:
                 toolkit = Toolkit()
                 file_io = FileIO(working_dir=str(self.working_path))
-                toolkit.register_tool_function(file_io.read)
-                toolkit.register_tool_function(file_io.write)
-                toolkit.register_tool_function(file_io.edit)
+                toolkit.register_tool_function(file_io.read_file)
+                toolkit.register_tool_function(file_io.write_file)
+                toolkit.register_tool_function(file_io.edit_file)
 
             summarizer = Summarizer(
                 working_dir=str(self.working_path),

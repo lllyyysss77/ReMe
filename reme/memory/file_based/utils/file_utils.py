@@ -1,112 +1,141 @@
+# -*- coding: utf-8 -*-
 """Shared utilities for file and shell tools."""
 
-# Default truncation limits
-DEFAULT_MAX_LINES = 1000
-DEFAULT_MAX_BYTES = 30 * 1024  # 30KB
+import re
+
+from ....core.utils import get_logger
+
+logger = get_logger()
+
+# Default truncation limit
+DEFAULT_MAX_BYTES = 100 * 1024
+
+# Maximum file size to read into memory (1GB)
+MAX_FILE_READ_BYTES = 1024 * 1024 * 1024
+
+# Marker prepended to every truncation notice.
+# Format: <<<TRUNCATED>>>
+#         File: file_path
+#         Content from start_line=X, next N bytes.
+#         total_lines=Z
+#         Use start_line=Y to continue.
+# Split on this to recover the original (un-truncated) portion:
+#   original = output.split(TRUNCATION_NOTICE_MARKER)[0]
+TRUNCATION_NOTICE_MARKER = "<<<TRUNCATED>>>"
 
 
-def truncate_output(
+# pylint: disable=too-many-return-statements
+def truncate_text_output(
     text: str,
-    max_lines: int = DEFAULT_MAX_LINES,
+    start_line: int = 0,
+    total_lines: int = 0,
     max_bytes: int = DEFAULT_MAX_BYTES,
-    keep: str = "head",
-) -> tuple[str, bool, int, str]:
-    """Smart truncation for large content.
+    file_path: str | None = None,
+) -> str:
+    """Truncate file output by bytes with line integrity.
 
-    Args:
-        text: Text content to truncate.
-        max_lines: Maximum number of lines.
-        max_bytes: Maximum size in bytes.
-        keep: Which part to keep - "head" (first lines) or "tail" (last lines).
+    If text is under byte limit, return as-is.
+    If over limit, truncate at the last complete line that fits,
+    allowing the next read to start from a fresh line.
 
-    Returns:
-        (truncated_content, was_truncated, output_line_count, truncate_reason)
-    """
-    if not text:
-        return text, False, 0, ""
-
-    lines = text.split("\n")
-    total_lines = len(lines)
-
-    # No truncation needed
-    if total_lines <= max_lines and len(text.encode("utf-8")) <= max_bytes:
-        return text, False, total_lines, ""
-
-    # Apply line limit
-    if total_lines > max_lines:
-        if keep == "tail":
-            lines = lines[-max_lines:]
-        else:
-            lines = lines[:max_lines]
-        reason = "lines"
-    else:
-        reason = ""
-
-    # Apply byte limit
-    if len("\n".join(lines).encode("utf-8")) > max_bytes:
-        if keep == "tail":
-            while lines and len("\n".join(lines).encode("utf-8")) > max_bytes:
-                lines.pop(0)
-        else:
-            truncated = []
-            current_bytes = 0
-            for line in lines:
-                line_bytes = len(line.encode("utf-8")) + 1
-                if current_bytes + line_bytes > max_bytes:
-                    break
-                truncated.append(line)
-                current_bytes += line_bytes
-            lines = truncated
-        reason = "bytes"
-
-    return "\n".join(lines), True, len(lines), reason
-
-
-def truncate_shell_output(text: str) -> str:
-    """Truncate shell output to last N lines or M bytes, with truncation notice.
+    If TRUNCATION_NOTICE_MARKER is already in text (previously truncated),
+    extract the original content, re-truncate it, and update the
+    truncation notice using regex.
 
     Args:
         text: The output text to truncate.
+        start_line: The starting line number (1-based). Ignored when text already
+            contains a truncation notice (values are parsed from the notice instead).
+        total_lines: Total lines in the original file. Ignored when text already
+            contains a truncation notice (values are parsed from the notice instead).
+        max_bytes: Maximum size in bytes.
+        file_path: Optional file path to include in the truncation notice.
 
     Returns:
         Truncated text with notice if truncated.
     """
     if not text:
         return text
+    if max_bytes <= 0:
+        return text
 
     try:
-        total_lines = len(text.split("\n"))
-        truncated, was_truncated, output_lines, reason = truncate_output(text, keep="tail")
+        if TRUNCATION_NOTICE_MARKER in text:
+            parts = text.split(TRUNCATION_NOTICE_MARKER, 1)
+            original_content = parts[0]
+            old_notice = parts[1]
 
-        if not was_truncated:
-            return text
+            text_bytes = original_content.encode("utf-8")
 
-        start_line = total_lines - output_lines + 1
-        if reason == "lines":
-            notice = f"\n\n[Output truncated: showing lines {start_line}-{total_lines} of {total_lines} total]"
+            # Allow a small slack to avoid re-truncating near-limit content
+            if len(text_bytes) <= max_bytes + 100:
+                return text
+
+            # Parse start_line and total_lines from notice; return text unchanged if not found
+            start_match = re.search(r"start_line=(\d+),", old_notice)
+            total_match = re.search(r"total_lines=(\d+)", old_notice)
+            if not start_match or not total_match:
+                return text
+            start_line_parsed = int(start_match.group(1))
+            total_lines_parsed = int(total_match.group(1))
+
+            truncated_bytes = text_bytes[:max_bytes]
+            result = truncated_bytes.decode("utf-8", errors="ignore")
+            newline_count = result.count("\n")
+
+            next_line = start_line_parsed + max(1, newline_count)
+
+            if not re.search(r"next \d+ bytes", old_notice):
+                return text
+            has_continuation = bool(re.search(r"Use start_line=\d+", old_notice))
+            new_notice = re.sub(r"next \d+ bytes", f"next {max_bytes} bytes", old_notice)
+            if has_continuation:
+                new_notice = re.sub(r"Use start_line=\d+", f"Use start_line={next_line}", new_notice)
+            elif next_line <= total_lines_parsed:
+                new_notice = re.sub(r"(total_lines=\d+)", f"\\1\nUse start_line={next_line} to continue.", new_notice)
+
+            return result + TRUNCATION_NOTICE_MARKER + new_notice
+
         else:
+            text_bytes = text.encode("utf-8")
+
+            if len(text_bytes) <= max_bytes:
+                return text
+
+            truncated = text_bytes[:max_bytes]
+            result = truncated.decode("utf-8", errors="ignore")
+
+            newline_count = result.count("\n")
+
+            next_line = start_line + max(1, newline_count)
+
+            continuation = f"\nUse start_line={next_line} to continue." if next_line <= total_lines else ""
             notice = (
-                f"\n\n[Output truncated: showing lines {start_line}-{total_lines} of {total_lines} "
-                f"({DEFAULT_MAX_BYTES // 1024}KB limit)]"
+                TRUNCATION_NOTICE_MARKER
+                + f"\n\nFile: {file_path or ''}\nContent from start_line={start_line}, next {max_bytes} bytes."
+                f"\ntotal_lines={total_lines}{continuation}"
             )
 
-        return truncated + notice
+            return result + notice
+
     except Exception:
+        logger.warning("truncate_text_output failed, returning original text", exc_info=True)
         return text
 
 
-def read_file_safe(file_path: str) -> str:
-    """Read file with Unicode error handling.
+def read_file_safe(file_path: str, max_bytes: int = MAX_FILE_READ_BYTES) -> str:
+    """Read file with Unicode error handling and memory protection.
 
     Args:
         file_path: Path to the file.
+        max_bytes: Maximum bytes to read into memory (default 1GB).
 
     Returns:
-        File content as string.
+        File content as string (up to max_bytes).
     """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
+            return f.read(max_bytes)
     except UnicodeDecodeError:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()
+            return f.read(max_bytes)

@@ -80,11 +80,11 @@ full = [
 
 litellm = [
     "litellm==1.80.0",
-    "flowllm[reme]>=0.2.0.10",
 ]
 
 light = [
     "agentscope==1.0.17",
+    "flowllm[reme]>=0.2.0.10",
 ]
 
 [tool.setuptools.packages.find]

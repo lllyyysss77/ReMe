@@ -185,6 +185,7 @@ class BaseFileWatcher:
                 logger.info(f"Starting watch on valid paths: {valid_paths}")
                 async for changes in awatch(
                     *valid_paths,
+                    force_polling=True,
                     watch_filter=self.watch_filter,
                     recursive=self.recursive,
                     debounce=self.debounce,

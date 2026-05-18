@@ -135,12 +135,14 @@ class ReMeLight(Application):
         self.vector_weight: float = vector_weight
         self.candidate_multiplier: float = candidate_multiplier
 
-        # Build the file watcher config: use provided watch_paths if given, otherwise use defaults
-        _default_watch_paths = [
-            str(self.working_path / "MEMORY.md"),
-            str(self.working_path / "memory.md"),
-            str(self.memory_path),
-        ]
+        # Pick the existing memory markdown file. On case-insensitive filesystems
+        # (Windows NTFS, macOS APFS/HFS+) ``MEMORY.md`` and ``memory.md`` are the
+        # same file, so this also avoids watching it twice. Default to ``MEMORY.md``
+        # when neither exists yet.
+        _memory_md = self.working_path / "MEMORY.md"
+        if not _memory_md.exists() and (self.working_path / "memory.md").exists():
+            _memory_md = self.working_path / "memory.md"
+        _default_watch_paths = [str(_memory_md), str(self.memory_path)]
         if default_file_watcher_config and default_file_watcher_config.get("watch_paths"):
             _merged_file_watcher_config = default_file_watcher_config
         else:

@@ -164,10 +164,10 @@ class SearchStep(BaseStep):
         query: str = (self.context.get("query", "") or "").strip()
         limit: int = int(self.context.get("limit", 5))
         min_score: float = float(self.context.get("min_score", 0.0))
-        vector_weight: float = float(self.context.get("vector_weight", 0.7))
-        candidate_multiplier: float = float(self.context.get("candidate_multiplier", 3.0))
-        expand_links: bool = bool(self.context.get("expand_links", True))
-        max_links_per_direction: int = int(self.context.get("max_links_per_direction", 10))
+        vector_weight: float = float(self.kwargs.get("vector_weight", 0.7))
+        candidate_multiplier: float = float(self.kwargs.get("candidate_multiplier", 3.0))
+        expand_links: bool = bool(self.kwargs.get("expand_links", True))
+        max_links_per_direction: int = int(self.kwargs.get("max_links_per_direction", 10))
 
         assert query, "query cannot be empty"
         assert 0.0 <= vector_weight <= 1.0, f"vector_weight must be in [0, 1], got {vector_weight}"

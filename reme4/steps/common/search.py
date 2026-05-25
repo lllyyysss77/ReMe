@@ -73,27 +73,25 @@ class SearchStep(BaseStep):
 
     @staticmethod
     def _node_meta(node: FileNode | None) -> dict:
-        """Extract a compact meta dict (title/description/tags) from a FileNode."""
+        """Extract a compact meta dict (name/description) from a FileNode."""
         if node is None:
             return {}
         fm = node.front_matter
         meta: dict = {}
-        if fm.title:
-            meta["title"] = fm.title
+        if fm.name:
+            meta["name"] = fm.name
         if fm.description:
             meta["description"] = fm.description
-        if fm.tags:
-            meta["tags"] = list(fm.tags)
         return meta
 
     @staticmethod
     def _format_meta_inline(meta: dict) -> str:
         """One-line render of node meta for the answer; '(no meta)' when empty."""
         parts = []
-        if "title" in meta:
-            parts.append(f'title="{meta["title"]}"')
-        if "tags" in meta:
-            parts.append(f"tags={meta['tags']}")
+        if "name" in meta:
+            parts.append(f'name="{meta["name"]}"')
+        if "description" in meta:
+            parts.append(f'description="{meta["description"]}"')
         return "  ".join(parts) if parts else "(no meta)"
 
     @staticmethod
@@ -169,7 +167,10 @@ class SearchStep(BaseStep):
         expand_links: bool = bool(self.kwargs.get("expand_links", True))
         max_links_per_direction: int = int(self.kwargs.get("max_links_per_direction", 10))
 
-        assert query, "query cannot be empty"
+        if not query:
+            self.context.response.success = False
+            self.context.response.answer = "Error: query cannot be empty"
+            return self.context.response
         assert 0.0 <= vector_weight <= 1.0, f"vector_weight must be in [0, 1], got {vector_weight}"
         assert limit > 0, f"limit must be positive, got {limit}"
 

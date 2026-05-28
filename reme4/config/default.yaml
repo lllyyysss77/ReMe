@@ -297,6 +297,25 @@ jobs:
         - path
     steps:
       - backend: read_step
+        with_neighbors: false
+        max_neighbors_per_direction: 10
+
+  read_image:
+    backend: base
+    description: "Read an image file as base64 (vault-relative path)."
+    parameters:
+      type: object
+      properties:
+        path:
+          type: string
+          description: >-
+            vault-relative path; common image formats supported
+            (png/jpg/jpeg/webp/gif/bmp/tiff/heic)
+      required:
+        - path
+    steps:
+      - backend: read_image_step
+        max_bytes: 5242880
 
   write:
     backend: base
@@ -316,6 +335,9 @@ jobs:
         content:
           type: string
           description: "body"
+        metadata:
+          type: object
+          description: "Optional extra frontmatter fields (md only)."
       required:
         - path
         - name

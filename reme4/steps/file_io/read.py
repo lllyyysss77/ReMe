@@ -5,11 +5,21 @@ from pathlib import Path
 from ._file_io import NON_MD_WARNING, gate_md, read_file_safe, resolve_path, truncate_text_output
 from ..base_step import BaseStep
 from ...components import R
+from ...utils import expand_links, render_expansion_lines
 
 
 @R.register("read_step")
 class ReadStep(BaseStep):
-    """Read a markdown file. Optional `start_line`/`end_line` for ranged reads."""
+    """Read a markdown file. Optional `start_line`/`end_line` for ranged reads.
+
+    Step-level attributes (``kwargs``, configured in yaml under ``steps:`` —
+    not exposed to LLM):
+        with_neighbors (bool, default False): when true and the file is
+            markdown, append a block listing first-order bidirectional
+            neighbors (out/in link targets) with name/description meta,
+            fetched via the file_store. Same rendering as SearchStep.
+        max_neighbors_per_direction (int, default 10): cap per direction.
+    """
 
     def _fail(self, message: str, **meta) -> None:
         """Mark the response failed and stash a human-readable error."""
@@ -81,6 +91,8 @@ class ReadStep(BaseStep):
         assert self.context is not None
         raw = str(self.context.get("path") or "")
         start_line, end_line = self.context.get("start_line"), self.context.get("end_line")
+        with_neighbors: bool = bool(self.kwargs.get("with_neighbors", False))
+        max_neighbors_per_direction: int = int(self.kwargs.get("max_neighbors_per_direction", 10))
 
         # Validate inputs and target before touching the filesystem twice.
         target = self._resolve_target(raw)
@@ -112,4 +124,37 @@ class ReadStep(BaseStep):
         self.context.response.success = True
         self.context.response.answer = text
         self.logger.info(f"[{self.name}] read path={target} lines={s}-{e}/{total} bytes={len(text.encode('utf-8'))}")
+
+        if with_neighbors and target.suffix.lower() == ".md":
+            await self._maybe_inject_neighbors(target, text, max_neighbors_per_direction)
+
         return self.context.response
+
+    # -- neighbor injection (opt-in) -----------------------------------------
+
+    async def _maybe_inject_neighbors(self, target: Path, text: str, max_per_direction: int) -> None:
+        """Append the rendered neighbor block + stash raw expansion in metadata."""
+        assert self.context is not None
+        try:
+            rel_path = str(target.relative_to(self.vault_path))
+        except ValueError:
+            self.logger.info(f"[{self.name}] skip neighbors: path outside vault_path path={target}")
+            return
+
+        try:
+            expansion = await expand_links(self.file_store, [rel_path], max_per_direction)
+        except Exception as exc:  # noqa: BLE001
+            self.logger.warning(f"[{self.name}] neighbor fetch failed: {type(exc).__name__}: {exc}")
+            return
+
+        per_path = expansion.get(rel_path, {})
+        lines = render_expansion_lines(per_path)
+        if not lines:
+            return
+
+        out_n = len(per_path.get("outlinks") or [])
+        in_n = len(per_path.get("inlinks") or [])
+        header = f"========== Related neighbors (outlinks={out_n}, inlinks={in_n}) =========="
+        block = "\n".join([header, *lines])
+        self.context.response.answer = f"{text}\n\n{block}"
+        self.context.response.metadata["link_expansion"] = expansion

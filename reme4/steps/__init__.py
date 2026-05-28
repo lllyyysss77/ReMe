@@ -1,46 +1,71 @@
-"""steps — registers every BaseStep subclass at import time.
+"""steps"""
 
-Each submodule's ``@R.register`` decorators only fire when the module
-is imported. Auto-importing them here means any config that names a
-step backend (e.g. ``graph_traverse_step``, ``write``, ``digester``)
-will find it in the registry without the caller having to remember
-which submodule it lives in.
-
-File-I/O is split by blast radius. The ``crud`` package covers both
-opaque-byte ops (list / stat / move / delete / upload / download) and
-whole-file text ops (read / write / append / edit) — they share the
-same path-resolution helpers, so they live in one package.
-``frontmatter`` is the one sliced surface that earns its own RUD
-package (YAML is structured data — surgical key edits cannot be safely
-emulated with string-substitution on the body). For mid-file body
-edits, use ``edit`` (exact string replacement) or do a read + write
-round-trip.
-
-* ``common``        — search / health_check / help / reindex / version / graph_traverse
-* ``crud``          — list / stat / move / delete / upload / download / read / write / append / edit
-* ``frontmatter``   — markdown frontmatter slice RUD (frontmatter_read_step / update / delete)
-* ``daily``         — note genesis / list / day-index reindex
-* ``jobs``          — synchronizer / digester (LLM-driven orchestrators)
-"""
-
-from . import common  # noqa: F401  -- registers common steps (search, version, graph_traverse, ...)
-from . import crud  # noqa: F401  -- registers list/stat/upload/download/move/delete/read/write/append/edit
-from . import frontmatter  # noqa: F401  -- registers frontmatter_read_step/update/delete
-from . import (
-    daily,
-)  # noqa: F401  -- registers daily_read_step / daily_write_step / daily_list_step / daily_reindex_step
-from . import background  # noqa: F401
-
-# from . import jobs  # noqa: F401  -- registers synchronizer / digester
 from .base_step import BaseStep
-from . import graph  # noqa: F401
+from .common.demo import DemoEchoStep1, DemoEchoStep2
+from .common.health_check import HealthCheckStep
+from .common.help import HelpStep
+from .common.stream_demo import StreamDemoStep1, StreamDemoStep2
+from .common.version import VersionStep
+from .file_io.daily_create import DailyCreateStep
+from .file_io.daily_list import DailyListStep
+from .file_io.daily_reindex import DailyReindexStep
+from .file_io.delete import DeleteStep
+from .file_io.edit import EditStep
+from .file_io.frontmatter_delete import FrontmatterDeleteStep
+from .file_io.frontmatter_read import FrontmatterReadStep
+from .file_io.frontmatter_update import FrontmatterUpdateStep
+from .file_io.list import ListStep
+from .file_io.move import MoveStep
+from .file_io.read import ReadStep
+from .file_io.stat import StatStep
+from .file_io.write import WriteStep
+from .index.clear_and_scan import ClearAndScanStep
+from .index.scan_changes import ScanChangesStep
+from .index.search import SearchStep
+from .index.traverse import TraverseStep
+from .index.update_catalog import UpdateCatalogStep
+from .index.update_index import UpdateIndexStep
+from .index.watch_changes import WatchChangesStep
+from .transfer.download import DownloadStep
+from .transfer.ingest import IngestStep
+from .transfer.upload import UploadStep
 
 __all__ = [
-    "background",
-    "common",
-    "crud",
-    "graph",
-    "frontmatter",
-    "daily",
     "BaseStep",
+    # common
+    "DemoEchoStep1",
+    "DemoEchoStep2",
+    "HealthCheckStep",
+    "HelpStep",
+    "StreamDemoStep1",
+    "StreamDemoStep2",
+    "VersionStep",
+    # file_io
+    "DeleteStep",
+    "EditStep",
+    "ListStep",
+    "MoveStep",
+    "ReadStep",
+    "StatStep",
+    "WriteStep",
+    # file_io (daily)
+    "DailyCreateStep",
+    "DailyListStep",
+    "DailyReindexStep",
+    # file_io.frontmatter
+    "FrontmatterDeleteStep",
+    "FrontmatterReadStep",
+    "FrontmatterUpdateStep",
+    # index
+    "ClearAndScanStep",
+    "ScanChangesStep",
+    "SearchStep",
+    "TraverseStep",
+    "UpdateCatalogStep",
+    "UpdateIndexStep",
+    "WatchChangesStep",
+    # transfer
+    "DownloadStep",
+    "IngestStep",
+    "UploadStep",
 ]

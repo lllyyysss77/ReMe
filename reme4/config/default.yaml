@@ -5,6 +5,7 @@ vault_dir: .reme
 daily_dir: daily
 digest_dir: digest
 resource_dir: ""
+# language: zh
 
 jobs:
   update_store_index_loop:
@@ -367,6 +368,41 @@ jobs:
         - new
     steps:
       - backend: edit_step
+
+  dream:
+    backend: base
+    description: "Dream: lift atomic units from one daily/resource file into digest/ (LLM)."
+    parameters:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "vault-relative path of one daily-event note or resource file"
+        hint:
+          type: string
+          description: "caller guidance to the dreamer LLM"
+          default: ""
+      required:
+        - path
+    steps:
+      - backend: dreamer_step
+
+  auto-dream:
+    backend: base
+    description: "Auto-dream: scan today's day-index <daily_dir>/<today>.md and session notes under <daily_dir>/<today>/*.md — run dream on each (Phase 1 extract+classify, Phase 2 per-bucket integrate)."
+    parameters:
+      type: object
+      properties:
+        date:
+          type: string
+          description: "YYYY-MM-DD to scan; defaults to today in the dreamer's timezone"
+          default: ""
+        hint:
+          type: string
+          description: "caller guidance passed through to each per-file dream"
+          default: ""
+    steps:
+      - backend: cron_dreamer_step
 
   auto_memory:
     backend: base

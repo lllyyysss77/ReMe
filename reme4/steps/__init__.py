@@ -8,6 +8,7 @@ from .common.llm_demo import LLMDemoStep
 from .common.stream_demo import StreamDemoStep1, StreamDemoStep2
 from .common.version import VersionStep
 from .evolve.auto_memory import AutoMemoryStep
+from .evolve.auto_dream import CronDreamer, Dreamer
 from .file_io.daily_create import DailyCreateStep
 from .file_io.daily_list import DailyListStep
 from .file_io.daily_reindex import DailyReindexStep
@@ -71,6 +72,9 @@ __all__ = [
     "UpdateCatalogStep",
     "UpdateIndexStep",
     "WatchChangesStep",
+    # evolve (dream)
+    "CronDreamer",
+    "Dreamer",
     # transfer
     "DownloadStep",
     "IngestStep",

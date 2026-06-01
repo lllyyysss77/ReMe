@@ -3,14 +3,8 @@
 import frontmatter
 import yaml
 
-from ._file_io import (
-    NON_MD_WARNING,
-    gate_md,
-    get_path_lock,
-    read_file_safe,
-    resolve_path,
-    write_file_safe,
-)
+from ._file_io import get_path_lock, read_file_safe, write_file_safe
+from ._path import NON_MD_WARNING, gate_md, resolve_path
 from ..base_step import BaseStep
 from ...components import R
 
@@ -44,7 +38,7 @@ class EditStep(BaseStep):
             self._fail("`old` is required and must be non-empty")
             return None
         if new is None:
-            self.fail("`new` is required")
+            self._fail("`new` is required")
             return None
         old_str = str(old)
         new_str = str(new)

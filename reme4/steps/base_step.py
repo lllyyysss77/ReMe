@@ -11,6 +11,7 @@ from agentscope.model import ChatModelBase
 from agentscope.token import TokenCounterBase
 from agentscope.tool import Toolkit, ToolResponse
 
+from ..components.base_component import ComponentMixin
 from ..components.embedding import BaseEmbeddingModel
 from ..components.file_parser import BaseFileParser
 from ..components.file_store import BaseFileStore
@@ -18,7 +19,6 @@ from ..components.prompt_handler import PromptHandler
 from ..components.runtime_context import RuntimeContext
 from ..enumeration import ComponentEnum
 from ..schema import FileChunk, FileNode, Response
-from ..utils import get_logger
 
 if TYPE_CHECKING:
     from ..components import ApplicationContext
@@ -26,8 +26,81 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+_UNSET = object()
 
-class BaseStep(ABC):
+
+class Ref:
+    """Descriptor that lazily resolves a component dependency for Steps.
+
+    Replaces the ``@property`` + ``_resolve()`` boilerplate with a single
+    class-level declaration::
+
+        as_llm = Ref(ChatModelBase, ComponentEnum.AS_LLM, "model")
+        file_store = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
+
+    Resolution follows a 3-source fallback identical to the old ``_resolve``:
+    ``kwargs`` -> ``context`` -> ``app_context`` component registry.
+    The resolved value is cached on the instance for its lifetime
+    (steps are rebuilt per job call via ``_build_steps``).
+    """
+
+    __slots__ = ("base_cls", "comp_enum", "attr", "optional", "key", "_cache_attr")
+
+    def __init__(
+        self,
+        base_cls: type,
+        comp_enum: ComponentEnum,
+        attr: str | None = None,
+        *,
+        optional: bool = False,
+    ) -> None:
+        self.base_cls = base_cls
+        self.comp_enum = comp_enum
+        self.attr = attr
+        self.optional = optional
+        self.key: str = ""
+        self._cache_attr: str = ""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self.key = name
+        self._cache_attr = f"_ref_{name}"
+
+    def __get__(self, obj: "BaseStep | None", objtype: type | None = None):
+        if obj is None:
+            return self
+        cached = obj.__dict__.get(self._cache_attr, _UNSET)
+        if cached is not _UNSET:
+            return cached
+        value = self._resolve(obj)
+        obj.__dict__[self._cache_attr] = value
+        return value
+
+    def __set__(self, obj: "BaseStep", value) -> None:
+        obj.__dict__[self._cache_attr] = value
+
+    def __delete__(self, obj: "BaseStep") -> None:
+        obj.__dict__.pop(self._cache_attr, None)
+
+    def _resolve(self, obj: "BaseStep"):
+        for source in (obj.kwargs, obj.context or {}):
+            value = source.get(self.key)
+            if isinstance(value, self.base_cls):
+                return value
+
+        name = obj.kwargs.get(self.key, "default")
+        if obj.app_context is None:
+            if self.optional:
+                return None
+            raise RuntimeError(f"app_context is not set when resolving '{self.key}'")
+        comp = obj.app_context.components[self.comp_enum].get(name)
+        if comp is None:
+            if self.optional:
+                return None
+            raise KeyError(f"Component '{name}' not found in {self.comp_enum.value}")
+        return getattr(comp, self.attr) if self.attr else comp
+
+
+class BaseStep(ComponentMixin, ABC):
     """Composable unit of an LLM workflow."""
 
     component_type = ComponentEnum.STEP
@@ -50,30 +123,32 @@ class BaseStep(ABC):
         output_mapping: dict[str, str] | None = None,
         **kwargs,
     ):
-        super().__init__()
-        self.name: str = name or self.__class__.__name__
-        self.backend: str = backend
-        self.app_context: "ApplicationContext | None" = app_context
+        super().__init__(name=name, backend=backend, app_context=app_context, **kwargs)
         self.language: str = language
         self.input_mapping = input_mapping
         self.output_mapping = output_mapping
-        self.kwargs: dict = kwargs
         self.context: RuntimeContext | None = None
-
-        self.logger = get_logger()
-        if hasattr(self.logger, "bind"):
-            self.logger = self.logger.bind(component=self.name)
 
         # Load class-level prompts first, then overlay caller-provided overrides.
         self.prompt = PromptHandler(language=self.language)
         self.prompt.load_prompt_by_class(self.__class__).load_prompt_dict(prompt_dict)
+
+    # ----- Component references (resolved lazily on first access) ----------
+
+    as_llm: ChatModelBase = Ref(ChatModelBase, ComponentEnum.AS_LLM, "model")
+    as_llm_formatter: FormatterBase = Ref(FormatterBase, ComponentEnum.AS_LLM_FORMATTER, "formatter")
+    as_token_counter: TokenCounterBase = Ref(TokenCounterBase, ComponentEnum.AS_TOKEN_COUNTER, "token_counter")
+    file_store: BaseFileStore = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
+    embedding: BaseEmbeddingModel = Ref(BaseEmbeddingModel, ComponentEnum.EMBEDDING_MODEL)
 
     @abstractmethod
     async def execute(self):
         """Run the step's logic against ``self.context``."""
 
     async def __call__(self, context: RuntimeContext | None = None, **kwargs):
-        # Build runtime context, then apply key remapping around execute().
+        # Clear cached Ref values so context-supplied overrides take effect.
+        for key in [k for k in self.__dict__ if k.startswith("_ref_")]:
+            del self.__dict__[key]
         self.context = RuntimeContext.from_context(context, **kwargs)
         assert self.context is not None
         if self.input_mapping:
@@ -83,57 +158,6 @@ class BaseStep(ABC):
             self.context.apply_mapping(self.output_mapping)
         return result
 
-    @property
-    def vault_path(self) -> Path:
-        """Resolved vault root path from app context or cwd."""
-        if self.app_context is None:
-            return Path.cwd()
-        return Path(self.app_context.app_config.vault_dir).absolute()
-
-    def _resolve(
-        self,
-        key: str,
-        base_cls: type[T],
-        comp_enum: ComponentEnum,
-        attr: str | None = None,
-    ) -> T:
-        """Return a kwargs-supplied instance, or look one up by name in the app registry."""
-        # 1. Step init kwargs, 2. Runtime context (run_job kwargs), 3. App registry by name.
-        for source in (self.kwargs, self.context or {}):
-            value = source.get(key)
-            if isinstance(value, base_cls):
-                return value
-
-        name = self.kwargs.get(key, "default")
-        assert self.app_context is not None
-        comp = self.app_context.components[comp_enum][name]
-        return getattr(comp, attr) if attr else comp
-
-    @property
-    def as_llm(self) -> ChatModelBase:
-        """Return the chat model component."""
-        return self._resolve("as_llm", ChatModelBase, ComponentEnum.AS_LLM, "model")
-
-    @property
-    def as_llm_formatter(self) -> FormatterBase:
-        """Return the LLM formatter component."""
-        return self._resolve("as_llm_formatter", FormatterBase, ComponentEnum.AS_LLM_FORMATTER, "formatter")
-
-    @property
-    def as_token_counter(self) -> TokenCounterBase:
-        """Return the token counter component."""
-        return self._resolve("as_token_counter", TokenCounterBase, ComponentEnum.AS_TOKEN_COUNTER, "token_counter")
-
-    @property
-    def file_store(self) -> BaseFileStore:
-        """Return the file store component."""
-        return self._resolve("file_store", BaseFileStore, ComponentEnum.FILE_STORE)
-
-    @property
-    def embedding(self) -> BaseEmbeddingModel:
-        """Return the embedding model component."""
-        return self._resolve("embedding", BaseEmbeddingModel, ComponentEnum.EMBEDDING_MODEL)
-
     async def parse_file(self, path: str | Path) -> tuple[FileNode, list[FileChunk]]:
         """Parse ``path`` with the parser whose ``supported_extensions`` claims its suffix.
 
@@ -141,7 +165,8 @@ class BaseStep(ABC):
         ``default`` parser (stat-only) when no parser claims the suffix — that's
         how attachments / binaries / unknown types still produce a FileNode.
         """
-        assert self.app_context is not None
+        if self.app_context is None:
+            raise RuntimeError("app_context is not set when resolving file parser")
         file_parser_dict: dict[str, BaseFileParser] = self.app_context.components[ComponentEnum.FILE_PARSER]
 
         suffix = Path(path).suffix.lstrip(".").lower()

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from watchfiles import Change
 
-from ..base_step import BaseStep
+from ..base_step import BaseStep, Ref
 from ...components import R
 from ...components.file_catalog import BaseFileCatalog
 from ...enumeration import ComponentEnum
@@ -15,17 +15,7 @@ from ...schema import FileNode
 class UpdateCatalogStep(BaseStep):
     """Classify raw watcher changes and update the file_catalog."""
 
-    @property
-    def file_catalog(self) -> BaseFileCatalog:
-        """Return the file catalog component."""
-        return self._resolve("file_catalog", BaseFileCatalog, ComponentEnum.FILE_CATALOG)
-
-    def _to_vault_relative(self, path: str | Path) -> str:
-        abs_path = Path(path).absolute()
-        try:
-            return str(abs_path.relative_to(self.vault_path))
-        except ValueError:
-            return str(abs_path)
+    file_catalog: BaseFileCatalog = Ref(BaseFileCatalog, ComponentEnum.FILE_CATALOG)
 
     async def execute(self):
         assert self.context is not None
@@ -58,7 +48,7 @@ class UpdateCatalogStep(BaseStep):
                 self.logger.info(f"{action} file: {path}")
                 try:
                     stat = abs_path.stat()
-                    nodes.append(FileNode(path=self._to_vault_relative(abs_path), st_mtime=stat.st_mtime))
+                    nodes.append(FileNode(path=self.to_vault_relative(abs_path), st_mtime=stat.st_mtime))
                     ok_paths.append(path)
                 except Exception as e:
                     self.logger.exception(f"Failed to stat {path}")
@@ -78,7 +68,7 @@ class UpdateCatalogStep(BaseStep):
             if self.file_catalog is None:
                 raise RuntimeError("file_catalog is not initialized!")
             self.logger.info(f"Detected {len(deleted)} deleted file(s)")
-            rel_deleted = [self._to_vault_relative(p) for p in deleted]
+            rel_deleted = [self.to_vault_relative(p) for p in deleted]
             try:
                 await self.file_catalog.delete(rel_deleted)
                 results.extend({"change": "deleted", "path": p, "success": True} for p in deleted)

@@ -8,13 +8,11 @@ class ComponentEnum(str, Enum):
 
     BASE = "base"
 
-    AS_LLM = "as_llm"
+    LLM = "llm"
 
-    AS_LLM_FORMATTER = "as_llm_formatter"
+    EMBEDDING = "embedding"
 
-    AS_TOKEN_COUNTER = "as_token_counter"
-
-    EMBEDDING_MODEL = "embedding_model"
+    EMBEDDING_STORE = "embedding_store"
 
     FILE_PARSER = "file_parser"
 

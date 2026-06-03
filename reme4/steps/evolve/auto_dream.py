@@ -52,11 +52,13 @@ import zoneinfo
 from pathlib import Path
 from typing import Literal
 
-from agentscope.message import Msg
+from agentscope.agent import Agent
+from agentscope.message import Msg, TextBlock
+from agentscope.permission import PermissionContext, PermissionMode
+from agentscope.state import AgentState
 from agentscope.tool import Toolkit
 from pydantic import BaseModel, Field
 
-from ._evolve import FlexReActAgent
 from ..base_step import BaseStep
 from ...components import R
 
@@ -232,13 +234,11 @@ class Dreamer(BaseStep):
     def __init__(
         self,
         toolkit: Toolkit | None = None,
-        console_enabled: bool = False,
         timezone: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.toolkit = toolkit
-        self.console_enabled = console_enabled
         self.timezone = timezone
 
     def _now(self) -> datetime.datetime:
@@ -255,7 +255,7 @@ class Dreamer(BaseStep):
 
     def _llm_available(self) -> bool:
         try:
-            return self.as_llm is not None
+            return self.llm is not None
         except Exception:
             return False
 
@@ -287,18 +287,21 @@ class Dreamer(BaseStep):
         alongside its structured emission.
         """
         toolkit = self._build_extract_toolkit()
-        agent = FlexReActAgent(
+        agent = Agent(
             name="reme_dreamer_extract",
-            model=self.as_llm,
-            sys_prompt=self.prompt_format(
+            model=self.llm,
+            system_prompt=self.prompt_format(
                 "extract_system_prompt",
                 vault_dir=str(vault_dir),
                 buckets=", ".join(BUCKETS),
             ),
-            formatter=self.as_llm_formatter,
             toolkit=toolkit,
+            state=AgentState(
+                permission_context=PermissionContext(
+                    mode=PermissionMode.BYPASS,
+                ),
+            ),
         )
-        agent.set_console_output_enabled(self.console_enabled)
         user_message = self.prompt_format(
             "extract_user_message",
             today=self._now().strftime("%Y-%m-%d"),
@@ -306,13 +309,14 @@ class Dreamer(BaseStep):
             material_blob=material_blob,
         )
         msg = await agent.reply(
-            Msg(name="reme", role="user", content=user_message),
-            structured_model=ExtractedUnits,
+            Msg(name="reme", role="user", content=[TextBlock(text=user_message)]),
         )
 
-        # Structured output lands in msg.metadata as a dict matching ExtractedUnits.
-        # Empty / missing → no sub-units (Phase 2 will skip).
-        meta = msg.metadata if isinstance(msg.metadata, dict) else {}
+        structured_resp = await self.llm.generate_structured_output(
+            agent.state.context,
+            structured_model=ExtractedUnits,
+        )
+        meta = structured_resp.content if isinstance(structured_resp.content, dict) else {}
         cleaned: list[dict] = []
         for raw in meta.get("units") or []:
             if not isinstance(raw, dict):
@@ -342,19 +346,22 @@ class Dreamer(BaseStep):
         bucket = unit.get("bucket") or "wiki"
         toolkit = self._build_integrate_toolkit()
         digest_dir = getattr(self.app_context.app_config, "digest_dir", "")
-        agent = FlexReActAgent(
+        agent = Agent(
             name=f"reme_dreamer_integrate_{unit.get('name', 'unit')}",
-            model=self.as_llm,
-            sys_prompt=self.prompt_format(
+            model=self.llm,
+            system_prompt=self.prompt_format(
                 f"integrate_system_prompt_{bucket}",
                 vault_dir=str(vault_dir),
                 digest_dir=digest_dir,
                 bucket=bucket,
             ),
-            formatter=self.as_llm_formatter,
             toolkit=toolkit,
+            state=AgentState(
+                permission_context=PermissionContext(
+                    mode=PermissionMode.BYPASS,
+                ),
+            ),
         )
-        agent.set_console_output_enabled(self.console_enabled)
         user_message = self.prompt_format(
             "integrate_user_message",
             hint=hint or "(none)",
@@ -363,12 +370,14 @@ class Dreamer(BaseStep):
             unit_summary=unit.get("summary", ""),
             material_blob=material_blob,
         )
-        msg = await agent.reply(
-            Msg(name="reme", role="user", content=user_message),
+        await agent.reply(
+            Msg(name="reme", role="user", content=[TextBlock(text=user_message)]),
+        )
+        structured_resp = await self.llm.generate_structured_output(
+            agent.state.context,
             structured_model=IntegrateOutcome,
         )
-        meta = msg.metadata if isinstance(msg.metadata, dict) else {}
-        return IntegrateOutcome.model_validate(meta)
+        return IntegrateOutcome.model_validate(structured_resp.content)
 
     async def dream_one(self, path: str, hint: str = "") -> DreamResult:
         """Run the full extract + integrate pipeline on one vault-relative
@@ -389,7 +398,7 @@ class Dreamer(BaseStep):
                 used_llm=False,
                 skipped=True,
                 path=path,
-                error="no as_llm configured; dreaming requires an LLM",
+                error="no llm configured; dreaming requires an LLM",
             )
 
         material_blob = _pack_material(self.file_store, path)

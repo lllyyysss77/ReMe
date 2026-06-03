@@ -5,14 +5,10 @@ from abc import abstractmethod, ABC
 from pathlib import Path
 from typing import TypeVar, TYPE_CHECKING
 
-from agentscope.formatter import FormatterBase
-from agentscope.message import TextBlock
 from agentscope.model import ChatModelBase
-from agentscope.token import TokenCounterBase
-from agentscope.tool import Toolkit, ToolResponse
+from agentscope.tool import Toolkit, FunctionTool
 
 from ..components.base_component import ComponentMixin
-from ..components.embedding import BaseEmbeddingModel
 from ..components.file_parser import BaseFileParser
 from ..components.file_store import BaseFileStore
 from ..components.prompt_handler import PromptHandler
@@ -35,7 +31,7 @@ class Ref:
     Replaces the ``@property`` + ``_resolve()`` boilerplate with a single
     class-level declaration::
 
-        as_llm = Ref(ChatModelBase, ComponentEnum.AS_LLM, "model")
+        llm = Ref(ChatModelBase, ComponentEnum.LLM, "model")
         file_store = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
 
     Resolution follows a 3-source fallback identical to the old ``_resolve``:
@@ -105,6 +101,9 @@ class BaseStep(ComponentMixin, ABC):
 
     component_type = ComponentEnum.STEP
 
+    llm: ChatModelBase = Ref(ChatModelBase, ComponentEnum.LLM, "model")
+    file_store: BaseFileStore = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
+
     def __new__(cls, *args, **kwargs):
         # Snapshot init args so copy() can rebuild an equivalent instance later.
         instance = object.__new__(cls)
@@ -139,14 +138,6 @@ class BaseStep(ComponentMixin, ABC):
         for cls in reversed(self.__class__.__mro__):
             self.prompt.load_prompt_by_class(cls)
         self.prompt.load_prompt_dict(prompt_dict)
-
-    # ----- Component references (resolved lazily on first access) ----------
-
-    as_llm: ChatModelBase = Ref(ChatModelBase, ComponentEnum.AS_LLM, "model")
-    as_llm_formatter: FormatterBase = Ref(FormatterBase, ComponentEnum.AS_LLM_FORMATTER, "formatter")
-    as_token_counter: TokenCounterBase = Ref(TokenCounterBase, ComponentEnum.AS_TOKEN_COUNTER, "token_counter")
-    file_store: BaseFileStore = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
-    embedding: BaseEmbeddingModel = Ref(BaseEmbeddingModel, ComponentEnum.EMBEDDING_MODEL)
 
     @abstractmethod
     async def execute(self):
@@ -226,20 +217,15 @@ class BaseStep(ComponentMixin, ABC):
         if job is None:
             raise RuntimeError(f"Job {job_name} not found")
 
-        async def run_job(**_kwargs) -> ToolResponse:
+        async def run_job(**_kwargs) -> str:
             response = await job(**{**_kwargs, **kwargs})
-            return ToolResponse(content=[TextBlock(type="text", text=response.answer)])
+            return response.answer
 
-        toolkit.register_tool_function(
-            tool_func=run_job,
-            func_name=job_name,
-            func_description=job.description,
-            json_schema={
-                "type": "function",
-                "function": {
-                    "name": job_name,
-                    "description": job.description,
-                    "parameters": job.parameters,
-                },
-            },
+        tool = FunctionTool(
+            func=run_job,
+            name=job_name,
+            description=job.description,
         )
+        if job.parameters:
+            tool.input_schema = job.parameters
+        toolkit.tool_groups[0].tools.append(tool)

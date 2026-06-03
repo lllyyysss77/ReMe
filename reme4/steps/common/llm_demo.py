@@ -1,34 +1,38 @@
-"""Demo step that drives a ReActAgent via BaseStep.as_llm/as_llm_formatter."""
+"""Demo step that drives an Agent via BaseStep.llm."""
 
-from agentscope.agent import ReActAgent
+from typing import Type
+
+from agentscope.agent import Agent
+from agentscope.state import AgentState
 from agentscope.message import Msg, TextBlock
-from agentscope.tool import Toolkit, ToolResponse
+from agentscope.permission import PermissionContext, PermissionMode
+from agentscope.tool import FunctionTool, Toolkit
+from pydantic import BaseModel
 
 from ..base_step import BaseStep
 from ...components import R
 
 
-def _add(a: float, b: float) -> ToolResponse:
+def add(a: float, b: float) -> str:
     """Add two numbers and return the sum.
 
     Args:
         a: first addend
         b: second addend
     """
-    return ToolResponse(content=[TextBlock(type="text", text=str(a + b))])
+    return str(a + b)
 
 
 @R.register("llm_demo_step")
 class LLMDemoStep(BaseStep):
-    """Drive a ReActAgent powered by ``self.as_llm`` / ``self.as_llm_formatter``.
+    """Drive an Agent powered by ``self.llm``.
 
     Inputs (from RuntimeContext):
         query     (str, required): user message content.
         sys_prompt (str, optional): system prompt for the agent.
         use_add_tool (bool, optional): register the ``add`` tool when True.
-        console_enabled (bool, optional): mirror agent output to stdout.
 
-    Output (written to context.response.answer):fa
+    Output (written to context.response.answer):
         The agent's final reply text.
     """
 
@@ -39,31 +43,40 @@ class LLMDemoStep(BaseStep):
         query: str = self.context.get("query", "")
         sys_prompt: str = self.context.get("sys_prompt") or self.DEFAULT_SYS_PROMPT
         use_add_tool: bool = bool(self.context.get("use_add_tool", False))
-        console_enabled: bool = bool(self.context.get("console_enabled", False))
+        structured_model: Type[BaseModel] | None = self.context.get("structured_model")
 
         if not query:
             self.context.response.success = False
             self.context.response.answer = "Skipped: empty query"
             return self.context.response
 
-        toolkit = Toolkit()
-        if use_add_tool:
-            toolkit.register_tool_function(_add)
+        toolkit = Toolkit(tools=[FunctionTool(add)]) if use_add_tool else Toolkit()
 
-        agent = ReActAgent(
+        agent = Agent(
             name=self.name,
-            sys_prompt=sys_prompt,
-            model=self.as_llm,
-            formatter=self.as_llm_formatter,
+            system_prompt=sys_prompt,
+            model=self.llm,
             toolkit=toolkit,
+            state=AgentState(
+                permission_context=PermissionContext(
+                    mode=PermissionMode.BYPASS,
+                ),
+            ),
         )
-        agent.set_console_output_enabled(console_enabled)
 
         response: Msg = await agent.reply(
-            Msg(name="user", role="user", content=query),
+            Msg(name="user", role="user", content=[TextBlock(text=query)]),
         )
         text = (response.get_text_content() or "").strip()
         self.logger.info(f"[{self.name}] response: {text!r}")
+
+        structured_content: dict | None = None
+        if structured_model is not None:
+            structured_resp = await self.llm.generate_structured_output(
+                agent.state.context,
+                structured_model=structured_model,
+            )
+            structured_content = structured_resp.content
 
         self.context.response.success = True
         self.context.response.answer = text
@@ -73,6 +86,7 @@ class LLMDemoStep(BaseStep):
                 "sys_prompt": sys_prompt,
                 "use_add_tool": use_add_tool,
                 "response": text,
+                "structured_output": structured_content,
             },
         )
         return self.context.response

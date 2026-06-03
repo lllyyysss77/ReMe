@@ -57,11 +57,15 @@ def _mb_str(*objs) -> str:
 
 def _embedding_status(comp) -> dict:
     cache = getattr(comp, "_embedding_cache", {}) or {}
+    try:
+        dims = comp.dimensions
+    except Exception:
+        dims = None
     return {
         "is_started": comp.is_started,
         "is_healthy": getattr(comp, "is_healthy", None),
         "model_name": getattr(comp, "model_name", None),
-        "dimensions": getattr(comp, "dimensions", None),
+        "dimensions": dims,
         "cache_size": len(cache),
         "memory": _mb_str(cache),
     }
@@ -124,7 +128,7 @@ def _keyword_index_status(comp) -> dict:
 
 
 _HANDLERS = {
-    ComponentEnum.EMBEDDING_MODEL: _embedding_status,
+    ComponentEnum.EMBEDDING_STORE: _embedding_status,
     ComponentEnum.FILE_GRAPH: _file_graph_status,
     ComponentEnum.FILE_STORE: _file_store_status,
     ComponentEnum.KEYWORD_INDEX: _keyword_index_status,
@@ -140,7 +144,7 @@ def _is_healthy(ctype: ComponentEnum, status: dict) -> bool:
     """Unstarted = unhealthy; embedding model also requires is_healthy != False."""
     if not status.get("is_started"):
         return False
-    if ctype is ComponentEnum.EMBEDDING_MODEL and status.get("is_healthy") is False:
+    if ctype is ComponentEnum.EMBEDDING_STORE and status.get("is_healthy") is False:
         return False
     return True
 

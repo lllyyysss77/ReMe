@@ -1,11 +1,11 @@
-service:
-  backend: http
-
 vault_dir: .reme
 daily_dir: daily
 digest_dir: digest
 resource_dir: ""
 # language: zh
+
+service:
+  backend: http
 
 jobs:
   update_store_index_loop:
@@ -436,7 +436,7 @@ components:
     default:
       backend: regex
 
-  embedding_model:
+  embedding:
     default:
       backend: ${EMBEDDING_BACKEND:-openai}
       api_key: ${EMBEDDING_API_KEY:-}
@@ -444,17 +444,26 @@ components:
       model_name: ${EMBEDDING_MODEL_NAME:-text-embedding-v4}
       dimensions: 1024
 
-  as_llm:
+  embedding_store:
     default:
-      backend: ${LLM_BACKEND:-anthropic}
-      model_name: ${LLM_MODEL_NAME:-glm-5}
-      api_key: ${LLM_API_KEY:-}
-      client_kwargs:
-        base_url: ${LLM_BASE_URL:-https://dashscope.aliyuncs.com/apps/anthropic}
+      backend: local
+      embedding: default
 
-  as_llm_formatter:
+  llm:
     default:
       backend: ${LLM_BACKEND:-anthropic}
+      model: ${LLM_MODEL_NAME:-glm-5.1}
+      stream: true
+      context_size: 200000
+      max_retries: 3
+      retry_delay: 1.0
+      credential:
+        api_key: ${LLM_API_KEY:-}
+        base_url: ${LLM_BASE_URL:-https://dashscope.aliyuncs.com/apps/anthropic}
+      parameters:
+        max_tokens: 100000
+        thinking_enable: true
+        thinking_budget: 38000
 
   file_graph:
     default:
@@ -479,7 +488,7 @@ components:
     default:
       backend: local
       store_name: local
-      #  embedding_model: default
-      embedding_model: ""
+      #  embedding_store: default
+      embedding_store: ""
       keyword_index: default
       file_graph: default

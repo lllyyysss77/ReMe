@@ -13,7 +13,7 @@ jobs:
     watch_paths: [ "daily", "digest" ]
     suffix_filters: [ "md" ]
     steps:
-      - backend: scan_changes_step
+      - backend: scan_store_changes_step
       - backend: update_index_step
         persist: true
       - backend: watch_changes_step
@@ -107,6 +107,26 @@ jobs:
         candidate_multiplier: 3.0
         expand_links: true
         max_links_per_direction: 10
+
+  node_search:
+    backend: base
+    description: "Digest node recall — given a candidate abstraction's name+description, surface existing digest nodes similar enough to either dedup against or link to as related."
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          description: "search query"
+        limit:
+          type: integer
+          description: "max digest nodes to return"
+          default: 20
+      required:
+        - query
+    steps:
+      - backend: node_search_step
+        vector_weight: 0.7
+        candidate_multiplier: 5.0
 
   daily_create:
     backend: base
@@ -385,7 +405,7 @@ jobs:
       required:
         - path
     steps:
-      - backend: dreamer_step
+      - backend: dream_step
 
   auto-dream:
     backend: base
@@ -402,7 +422,7 @@ jobs:
           description: "caller guidance passed through to each per-file dream"
           default: ""
     steps:
-      - backend: cron_dreamer_step
+      - backend: auto_dream_step
 
   auto_memory:
     backend: base
@@ -456,16 +476,18 @@ components:
       stream: true
       context_size: 200000
       max_retries: 3
-      retry_delay: 1.0
       credential:
         api_key: ${LLM_API_KEY:-}
         base_url: ${LLM_BASE_URL:-https://dashscope.aliyuncs.com/apps/anthropic}
       parameters:
-        max_tokens: 100000
+        max_tokens: 65536
         thinking_enable: true
-        thinking_budget: 38000
 
   file_graph:
+    default:
+      backend: local
+
+  file_catalog:
     default:
       backend: local
 

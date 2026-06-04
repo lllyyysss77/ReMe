@@ -73,6 +73,7 @@ def precheck_start(svc_config: dict | None) -> bool:
     """Pre-flight check for `start`: False if reme is up, exits 1 on port conflict."""
     host = (svc_config or {}).get("host") or REME_DEFAULT_HOST
     port = (svc_config or {}).get("port") or REME_DEFAULT_PORT
+    port = int(port)
     status = asyncio.run(find_reme(host, port))
     if status == "reme":
         print(f"reme already running at {host}:{port}")

@@ -5,8 +5,9 @@ from abc import abstractmethod, ABC
 from pathlib import Path
 from typing import TypeVar, TYPE_CHECKING
 
+from agentscope.message import TextBlock
 from agentscope.model import ChatModelBase
-from agentscope.tool import Toolkit, FunctionTool
+from agentscope.tool import Toolkit, FunctionTool, ToolChunk
 
 from ..components.base_component import ComponentMixin
 from ..components.file_parser import BaseFileParser
@@ -132,8 +133,8 @@ class BaseStep(ComponentMixin, ABC):
 
         # Load class-level prompts first, then overlay caller-provided overrides.
         # Walk MRO in reverse so most-derived class wins; subclasses without their
-        # own YAML inherit prompts from their parent (e.g. CronDreamer inherits
-        # dreamer.yaml from Dreamer).
+        # own YAML inherit prompts from their parent (e.g. AutoDreamStep inherits
+        # dream.yaml from DreamStep).
         self.prompt = PromptHandler(language=self.language)
         for cls in reversed(self.__class__.__mro__):
             self.prompt.load_prompt_by_class(cls)
@@ -217,9 +218,12 @@ class BaseStep(ComponentMixin, ABC):
         if job is None:
             raise RuntimeError(f"Job {job_name} not found")
 
-        async def run_job(**_kwargs) -> str:
+        async def run_job(**_kwargs) -> ToolChunk:
             response = await job(**{**_kwargs, **kwargs})
-            return response.answer
+            return ToolChunk(
+                content=[TextBlock(text=str(response.answer))],
+                state="success" if response.success else "error",
+            )
 
         tool = FunctionTool(
             func=run_job,

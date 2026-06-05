@@ -10,7 +10,7 @@ from agentscope.model import ChatModelBase
 from agentscope.tool import Toolkit, FunctionTool, ToolChunk
 
 from ..components.base_component import ComponentMixin
-from ..components.file_parser import BaseFileParser
+from ..components.file_chunker import BaseFileChunker
 from ..components.file_store import BaseFileStore
 from ..components.prompt_handler import PromptHandler
 from ..components.runtime_context import RuntimeContext
@@ -32,7 +32,7 @@ class Ref:
     Replaces the ``@property`` + ``_resolve()`` boilerplate with a single
     class-level declaration::
 
-        llm = Ref(ChatModelBase, ComponentEnum.LLM, "model")
+        as_llm = Ref(ChatModelBase, ComponentEnum.AS_LLM, "model")
         file_store = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
 
     Resolution follows a 3-source fallback identical to the old ``_resolve``:
@@ -102,7 +102,7 @@ class BaseStep(ComponentMixin, ABC):
 
     component_type = ComponentEnum.STEP
 
-    llm: ChatModelBase = Ref(ChatModelBase, ComponentEnum.LLM, "model")
+    as_llm: ChatModelBase = Ref(ChatModelBase, ComponentEnum.AS_LLM, "model")
     file_store: BaseFileStore = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
 
     def __new__(cls, *args, **kwargs):
@@ -165,24 +165,24 @@ class BaseStep(ComponentMixin, ABC):
         how attachments / binaries / unknown types still produce a FileNode.
         """
         if self.app_context is None:
-            raise RuntimeError("app_context is not set when resolving file parser")
-        file_parser_dict: dict[str, BaseFileParser] = self.app_context.components[ComponentEnum.FILE_PARSER]
+            raise RuntimeError("app_context is not set when resolving file chunker")
+        file_chunker_dict: dict[str, BaseFileChunker] = self.app_context.components[ComponentEnum.FILE_CHUNKER]
 
         suffix = Path(path).suffix.lstrip(".").lower()
 
-        parser: BaseFileParser | None = None
+        parser: BaseFileChunker | None = None
         if suffix:
-            for candidate in file_parser_dict.values():
+            for candidate in file_chunker_dict.values():
                 if suffix in {ext.lower().lstrip(".") for ext in candidate.supported_extensions}:
                     parser = candidate
                     break
 
         if parser is None:
-            parser = file_parser_dict.get("default")
+            parser = file_chunker_dict.get("default")
 
         if parser is None:
             raise RuntimeError(
-                f"No file parser supports {path} (suffix={suffix!r}) and no 'default' parser is configured",
+                f"No file chunker supports {path} (suffix={suffix!r}) and no 'default' chunker is configured",
             )
 
         return await parser.parse(path)

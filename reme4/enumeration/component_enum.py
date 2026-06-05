@@ -8,13 +8,13 @@ class ComponentEnum(str, Enum):
 
     BASE = "base"
 
-    LLM = "llm"
+    AS_LLM = "as_llm"
 
-    EMBEDDING = "embedding"
+    AS_EMBEDDING = "as_embedding"
 
     EMBEDDING_STORE = "embedding_store"
 
-    FILE_PARSER = "file_parser"
+    FILE_CHUNKER = "file_chunker"
 
     FILE_STORE = "file_store"
 
@@ -33,3 +33,5 @@ class ComponentEnum(str, Enum):
     JOB = "job"
 
     TOKENIZER = "tokenizer"
+
+    AGENT_WRAPPER = "agent_wrapper"

@@ -2,20 +2,18 @@
 
 import copy
 from abc import abstractmethod, ABC
-from pathlib import Path
 from typing import TypeVar, TYPE_CHECKING
 
-from agentscope.message import TextBlock
 from agentscope.model import ChatModelBase
-from agentscope.tool import Toolkit, FunctionTool, ToolChunk
 
+from ..components.agent_wrapper.base_agent_wrapper import BaseAgentWrapper
 from ..components.base_component import ComponentMixin
-from ..components.file_chunker import BaseFileChunker
+from ..components.file_catalog import BaseFileCatalog
 from ..components.file_store import BaseFileStore
 from ..components.prompt_handler import PromptHandler
 from ..components.runtime_context import RuntimeContext
 from ..enumeration import ComponentEnum
-from ..schema import FileChunk, FileNode, Response
+from ..schema import Response
 
 if TYPE_CHECKING:
     from ..components import ApplicationContext
@@ -103,6 +101,8 @@ class BaseStep(ComponentMixin, ABC):
     component_type = ComponentEnum.STEP
 
     as_llm: ChatModelBase = Ref(ChatModelBase, ComponentEnum.AS_LLM, "model")
+    agent_wrapper: BaseAgentWrapper = Ref(BaseAgentWrapper, ComponentEnum.AGENT_WRAPPER, optional=True)
+    file_catalog: BaseFileCatalog = Ref(BaseFileCatalog, ComponentEnum.FILE_CATALOG, optional=True)
     file_store: BaseFileStore = Ref(BaseFileStore, ComponentEnum.FILE_STORE)
 
     def __new__(cls, *args, **kwargs):
@@ -157,36 +157,6 @@ class BaseStep(ComponentMixin, ABC):
             self.context.apply_mapping(self.output_mapping)
         return result
 
-    async def parse_file(self, path: str | Path) -> tuple[FileNode, list[FileChunk]]:
-        """Parse ``path`` with the parser whose ``supported_extensions`` claims its suffix.
-
-        First registered match wins (config insertion order). Falls back to the
-        ``default`` parser (stat-only) when no parser claims the suffix — that's
-        how attachments / binaries / unknown types still produce a FileNode.
-        """
-        if self.app_context is None:
-            raise RuntimeError("app_context is not set when resolving file chunker")
-        file_chunker_dict: dict[str, BaseFileChunker] = self.app_context.components[ComponentEnum.FILE_CHUNKER]
-
-        suffix = Path(path).suffix.lstrip(".").lower()
-
-        parser: BaseFileChunker | None = None
-        if suffix:
-            for candidate in file_chunker_dict.values():
-                if suffix in {ext.lower().lstrip(".") for ext in candidate.supported_extensions}:
-                    parser = candidate
-                    break
-
-        if parser is None:
-            parser = file_chunker_dict.get("default")
-
-        if parser is None:
-            raise RuntimeError(
-                f"No file chunker supports {path} (suffix={suffix!r}) and no 'default' chunker is configured",
-            )
-
-        return await parser.parse(path)
-
     def prompt_format(self, prompt_name: str, **kwargs) -> str:
         """Format a named prompt template with the given kwargs."""
         return self.prompt.prompt_format(prompt_name=prompt_name, **kwargs)
@@ -211,25 +181,3 @@ class BaseStep(ComponentMixin, ABC):
         if job is None:
             raise RuntimeError(f"Job {name} not found")
         return await job(**kwargs)
-
-    def add_as_tool(self, toolkit: Toolkit, job_name: str, **kwargs) -> None:
-        """Add the step as a tool to the toolkit."""
-        job: "BaseJob | None" = self.get_job(job_name)
-        if job is None:
-            raise RuntimeError(f"Job {job_name} not found")
-
-        async def run_job(**_kwargs) -> ToolChunk:
-            response = await job(**{**_kwargs, **kwargs})
-            return ToolChunk(
-                content=[TextBlock(text=str(response.answer))],
-                state="success" if response.success else "error",
-            )
-
-        tool = FunctionTool(
-            func=run_job,
-            name=job_name,
-            description=job.description,
-        )
-        if job.parameters:
-            tool.input_schema = job.parameters
-        toolkit.tool_groups[0].tools.append(tool)

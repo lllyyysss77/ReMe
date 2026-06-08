@@ -49,11 +49,9 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from ._evolve import now
 from .dream import DreamStep, DreamResult
-from ..base_step import Ref
 from ...components import R
-from ...components.file_catalog import BaseFileCatalog
-from ...enumeration import ComponentEnum
 from ...schema import FileNode
 
 
@@ -76,8 +74,6 @@ class AutoDreamStep(DreamStep):
     """Scan ``daily/<today>.md`` + ``daily/<today>/`` and dream each file
     whose ``st_mtime`` doesn't already match its ``file_catalog`` entry."""
 
-    file_catalog: BaseFileCatalog = Ref(BaseFileCatalog, ComponentEnum.FILE_CATALOG)
-
     def __init__(self, persist: bool = True, **kwargs):
         super().__init__(**kwargs)
         self.persist: bool = persist
@@ -92,7 +88,8 @@ class AutoDreamStep(DreamStep):
         cfg = self.app_context.app_config if self.app_context is not None else None
         daily_dir = (cfg.daily_dir if cfg else "") or "daily"
 
-        today = date_input or self._now().strftime("%Y-%m-%d")
+        tz = self.app_context.app_config.timezone if self.app_context is not None else None
+        today = date_input or now(tz).strftime("%Y-%m-%d")
         vault = self._vault_dir()
         files = _scan_today_files(vault, today, daily_dir)
 

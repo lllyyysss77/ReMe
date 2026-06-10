@@ -30,11 +30,32 @@ class CcAgentWrapper(BaseAgentWrapper):
         for k, v in self.kwargs.items():
             kwargs.setdefault(k, v)
 
+        session_id: str = kwargs.pop("session_id", "")
+        fork_session: bool = kwargs.pop("fork_session", False)
+
+        sp = kwargs.get("system_prompt")
+        if isinstance(sp, str):
+            kwargs["system_prompt"] = {
+                "type": "preset",
+                "preset": "claude_code",
+                "append": sp,
+                "exclude_dynamic_sections": True,
+            }
+        kwargs.setdefault("setting_sources", [])
+
         opts = ClaudeAgentOptions()
         skip_keys = {"tools", "output_schema"}
         for k, v in kwargs.items():
             if k not in skip_keys and hasattr(opts, k):
                 setattr(opts, k, v)
+
+        if session_id:
+            opts.resume = session_id
+            if fork_session:
+                opts.fork_session = True
+        elif fork_session:
+            # fork_session with no session_id to fork from is meaningless.
+            raise ValueError("fork_session=True requires a non-empty session_id")
 
         tools: list["BaseJob"] = kwargs.get("tools", [])
         if tools:
@@ -57,5 +78,7 @@ class CcAgentWrapper(BaseAgentWrapper):
         if last_msg is None:
             raise ValueError("No message received from Claude Code.")
 
-        result = last_msg.structured_output if output_schema and last_msg.structured_output else last_msg
-        return last_msg.session_id or "", result
+        if output_schema:
+            structured = last_msg.structured_output or {}
+            return last_msg.session_id or "", {"message": last_msg, "structured_output": structured}
+        return last_msg.session_id or "", last_msg

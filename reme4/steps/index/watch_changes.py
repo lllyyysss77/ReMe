@@ -115,7 +115,8 @@ class WatchChangesStep(BaseStep):
             ]
             if changes:
                 self.logger.info(f"Detected {len(changes)} change(s)")
-                extra = {k: v for k, v in self.context.data.items() if k not in ("stop_event",)}
+                # TODO @jinli
+                extra = {k: v for k, v in self.context.data.items() if k not in ("stop_event", "changes")}
                 for cls in dispatch_classes:
                     s = cls(app_context=self.app_context)
                     await s(changes=changes, **extra)

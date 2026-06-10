@@ -37,9 +37,6 @@ from .index.update_index import UpdateIndexStep
 from .index.foreach_dispatch import ForeachDispatchStep
 from .index.log_changes import LogChangesStep
 from .index.watch_changes import WatchChangesStep
-from .transfer.download import DownloadStep
-from .transfer.ingest import IngestStep
-from .transfer.upload import UploadStep
 
 __all__ = [
     "BaseStep",
@@ -90,8 +87,4 @@ __all__ = [
     # evolve (dream)
     "AutoDreamStep",
     "DreamStep",
-    # transfer
-    "DownloadStep",
-    "IngestStep",
-    "UploadStep",
 ]

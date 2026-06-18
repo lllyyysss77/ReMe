@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import AsyncGenerator, TypeVar
 
 from .components import BaseComponent, ApplicationContext
-from .components.job import BaseJob
+from .components.job import BackgroundJob, BaseJob, CronJob, StreamJob
 from .components.service import BaseService
 from .enumeration import ComponentEnum
 from .schema import ComponentConfig, Response, StreamChunk
@@ -48,7 +48,7 @@ class Application(BaseComponent):
         cfg = self.config
         vault_path = Path(cfg.vault_dir).absolute()
         vault_path.mkdir(parents=True, exist_ok=True)
-        for subdir in [cfg.metadata_dir, cfg.resource_dir, cfg.daily_dir, cfg.digest_dir]:
+        for subdir in [cfg.metadata_dir, cfg.session_dir, cfg.resource_dir, cfg.daily_dir, cfg.digest_dir]:
             if subdir:
                 (vault_path / subdir).mkdir(parents=True, exist_ok=True)
 
@@ -168,28 +168,34 @@ class Application(BaseComponent):
     # ----- Lifecycle -----------------------------------------------------
 
     async def _start(self) -> None:
-        """Start components in dependency order, then jobs (background last)."""
+        """Start components, then jobs as base > stream > background > cron."""
         pool_size = self.config.thread_pool_max_workers
         if pool_size > 0:
             self.context.thread_pool = ThreadPoolExecutor(max_workers=pool_size)
             self.logger.info(f"Thread pool created with max_workers={pool_size}")
-        components = self._topological_order()
-        jobs = list(self.context.jobs.values())
-        # Background jobs come last so they observe a fully wired system.
-        foreground = [j for j in jobs if j.backend != "background"]
-        background = [j for j in jobs if j.backend == "background"]
-        for c in components + foreground + background:
-            await self._start_one(c)
+        try:
+            components = self._topological_order()
+            jobs = list(self.context.jobs.values())
+            base_jobs = [j for j in jobs if not isinstance(j, (StreamJob, BackgroundJob))]
+            stream_jobs = [j for j in jobs if isinstance(j, StreamJob)]
+            background_jobs = [j for j in jobs if isinstance(j, BackgroundJob) and not isinstance(j, CronJob)]
+            cron_jobs = [j for j in jobs if isinstance(j, CronJob)]
+            for c in components + base_jobs + stream_jobs + background_jobs + cron_jobs:
+                await self._start_one(c)
+        except Exception:
+            await self._close()
+            raise
 
     async def _start_one(self, c: BaseComponent) -> None:
-        """Start one component and record it for ordered shutdown; log and swallow failures."""
+        """Start one component and record it for ordered shutdown."""
         try:
-            if c.backend == "background":
+            if isinstance(c, BackgroundJob):
                 self.logger.info(f"Starting background job: {c.name}")
             await c.start()
             self._started_components.append(c)
         except Exception as e:
             self.logger.exception(f"Failed to start {c.component_type.value}:{c.name}: {e}")
+            raise
 
     async def _close(self) -> None:
         """Close in reverse start order so every peer outlives its dependents."""
@@ -210,6 +216,20 @@ class Application(BaseComponent):
         if name not in self.context.jobs:
             raise KeyError(f"Job '{name}' not found")
         return await self.context.jobs[name](**kwargs)
+
+    async def update_component(self, component_enum: ComponentEnum | str, name: str, /, **kwargs) -> BaseComponent:
+        """Update an existing component by type/name; never creates missing components."""
+        component_enum = ComponentEnum(component_enum)
+        group = self.context.components.get(component_enum)
+        if not group or name not in group:
+            raise KeyError(f"Component '{name}' not found in {component_enum.value}")
+
+        component = group[name]
+        for key, value in kwargs.items():
+            if not hasattr(component, key):
+                raise AttributeError(f"Component {component_enum.value}:{name} has no attribute '{key}'")
+            setattr(component, key, value)
+        return component
 
     async def run_stream_job(self, name: str, /, **kwargs) -> AsyncGenerator[StreamChunk, None]:
         """Execute a streaming job, yielding chunks as they are produced."""

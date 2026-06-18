@@ -6,6 +6,7 @@ from .base_file_graph import BaseFileGraph
 from ..component_registry import R
 from ...enumeration import LinkScopeEnum
 from ...schema import FileLink, FileNode
+from ...utils.jsonl_zst import read_jsonl_zst, write_jsonl_zst
 
 
 @R.register("local")
@@ -17,7 +18,7 @@ class LocalFileGraph(BaseFileGraph):
         self._nodes: dict[str, FileNode] = {}
         self._inverse: dict[str, set[str]] = {}  # real target → sources
         self._pending: dict[str, set[str]] = {}  # virtual target → sources
-        self._graph_file: Path = self.component_metadata_path / f"{self.name}.jsonl"
+        self._graph_file: Path = self.component_metadata_path / f"{self.name}.jsonl.zst"
 
     # -- Lifecycle ---------------------------------------------------------
 
@@ -30,21 +31,17 @@ class LocalFileGraph(BaseFileGraph):
         if not self._graph_file.exists():
             return
         try:
-            with open(self._graph_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    if line.strip():
-                        node = FileNode.model_validate_json(line)
-                        self._nodes[node.path] = node
+            for line in read_jsonl_zst(self._graph_file):
+                if line.strip():
+                    node = FileNode.model_validate_json(line)
+                    self._nodes[node.path] = node
             self.logger.info(f"Loaded {len(self._nodes)} nodes from {self._graph_file}")
         except Exception as e:
             self.logger.exception(f"Failed to load {self._graph_file}: {e}")
 
     async def dump(self) -> None:
         try:
-            tmp = self._graph_file.with_suffix(".tmp")
-            with open(tmp, "w", encoding="utf-8") as f:
-                f.writelines(f"{n.model_dump_json()}\n" for n in self._nodes.values())
-            tmp.replace(self._graph_file)
+            write_jsonl_zst(self._graph_file, (n.model_dump_json() for n in self._nodes.values()))
             self.logger.info(f"Saved {len(self._nodes)} nodes to {self._graph_file}")
         except Exception as e:
             self.logger.exception(f"Failed to write {self._graph_file}: {e}")
@@ -67,7 +64,12 @@ class LocalFileGraph(BaseFileGraph):
                 if not srcs:
                     del bucket[target]
 
-    def _scope_match(self, target: str, scope: LinkScopeEnum) -> bool:
+    @staticmethod
+    def _normalize_scope(scope: LinkScopeEnum | str) -> LinkScopeEnum:
+        return scope if isinstance(scope, LinkScopeEnum) else LinkScopeEnum(scope)
+
+    def _scope_match(self, target: str, scope: LinkScopeEnum | str) -> bool:
+        scope = self._normalize_scope(scope)
         if scope is LinkScopeEnum.ALL:
             return True
         is_real = target in self._nodes
@@ -120,18 +122,24 @@ class LocalFileGraph(BaseFileGraph):
 
     # -- Link access -------------------------------------------------------
 
-    async def get_outlinks(self, path: str, scope: LinkScopeEnum = LinkScopeEnum.REAL) -> list[FileLink]:
+    async def get_outlinks(self, path: str, scope: LinkScopeEnum | str = LinkScopeEnum.REAL) -> list[FileLink]:
+        scope = self._normalize_scope(scope)
         node = self._nodes.get(path)
         if node is None:
             return []
         return [lnk for lnk in node.links if lnk.target_path and self._scope_match(lnk.target_path, scope)]
 
-    async def get_inlinks(self, path: str, scope: LinkScopeEnum = LinkScopeEnum.REAL) -> list[FileLink]:
+    async def get_inlinks(self, path: str, scope: LinkScopeEnum | str = LinkScopeEnum.REAL) -> list[FileLink]:
+        scope = self._normalize_scope(scope)
         sources: set[str] = set()
         if scope in (LinkScopeEnum.REAL, LinkScopeEnum.ALL):
             sources |= self._inverse.get(path, set())
         if scope in (LinkScopeEnum.VIRTUAL, LinkScopeEnum.ALL):
             sources |= self._pending.get(path, set())
         return [
-            link for src in sources if src in self._nodes for link in self._nodes[src].links if link.target_path == path
+            link
+            for src in sorted(sources)
+            if src in self._nodes
+            for link in self._nodes[src].links
+            if link.target_path == path
         ]

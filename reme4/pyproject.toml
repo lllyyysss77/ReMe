@@ -35,11 +35,12 @@ dependencies = [
     "rich>=14.3.3",
     "uvicorn>=0.41.0",
     "watchfiles>=1.1.1",
+    "zstandard>=0.23.0",
 ]
 
 [project.optional-dependencies]
 core = [
-    "agentscope>=2.0.0",
+    "agentscope>=2.0.2",
     "faiss-cpu>=1.13.2",
     "jieba>=0.42.1",
     "rjieba>=0.2.1",
@@ -70,6 +71,7 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "*" = ["py.typed", "**/*.yaml", "**/*.json"]
+"reme4.components.tokenizer" = ["stopwords"]
 
 [tool.setuptools.dynamic]
 version = { attr = "reme4.__version__" }

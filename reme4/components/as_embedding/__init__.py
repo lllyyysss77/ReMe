@@ -1,12 +1,16 @@
 """AgentScope embedding model wrappers."""
 
+from typing import Any
+
+from agentscope.credential import (
+    CredentialBase,
+    DashScopeCredential,
+    GeminiCredential,
+    OllamaCredential,
+    OpenAICredential,
+)
 from agentscope.embedding import (
-    DashScopeMultiModalEmbedding,
-    DashScopeTextEmbedding,
     EmbeddingModelBase,
-    GeminiTextEmbedding,
-    OllamaTextEmbedding,
-    OpenAITextEmbedding,
 )
 
 from ..base_component import BaseComponent
@@ -15,13 +19,14 @@ from ...enumeration import ComponentEnum
 
 
 class BaseAsEmbedding(BaseComponent):
-    """Base wrapper for AgentScope embedding models. Builds ``self.model`` in ``_start``."""
+    """Base wrapper for AgentScope embedding models."""
 
     component_type = ComponentEnum.AS_EMBEDDING
+    credential_cls: type[CredentialBase]
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.model: EmbeddingModelBase | None = None
+        self.model: EmbeddingModelBase[Any] | None = None
 
     @property
     def dimensions(self) -> int:
@@ -29,58 +34,60 @@ class BaseAsEmbedding(BaseComponent):
         assert self.model is not None
         return self.model.dimensions
 
-    async def __call__(self, text: list[str], **kwargs) -> list[list[float]]:
+    async def __call__(self, inputs: list[Any], **kwargs) -> list[list[float]]:
         assert self.model is not None
-        response = await self.model(text, **kwargs)  # pylint: disable=not-callable
+        response = await self.model(inputs, **kwargs)  # pylint: disable=not-callable
         return response.embeddings
 
-    async def _close(self) -> None:
-        self.model = None
+    async def _start(self) -> None:
+        if self.model is not None:
+            return
+
+        kwargs = dict(self.kwargs)
+        credential = self.credential_cls(**kwargs.pop("credential", {}))
+
+        model_cls = self.credential_cls.get_embedding_model_class()
+        if model_cls is None:
+            raise ValueError(f"{self.credential_cls.__name__} does not support embeddings.")
+
+        params_dict = kwargs.pop("parameters", None)
+        parameters = model_cls.Parameters(**params_dict) if params_dict else None
+        self.model = model_cls(credential=credential, parameters=parameters, **kwargs)
 
 
 @R.register("openai")
 class OpenAIAsEmbedding(BaseAsEmbedding):
     """OpenAI embedding model wrapper."""
 
-    async def _start(self) -> None:
-        self.model = OpenAITextEmbedding(**self.kwargs)
-
-    async def _close(self) -> None:
-        if self.model is not None:
-            assert isinstance(self.model, OpenAITextEmbedding)
-            await self.model.client.close()
+    credential_cls = OpenAICredential
 
 
 @R.register("dashscope")
 class DashScopeAsEmbedding(BaseAsEmbedding):
-    """DashScope text embedding model wrapper."""
+    """DashScope embedding model wrapper."""
 
-    async def _start(self) -> None:
-        self.model = DashScopeTextEmbedding(**self.kwargs)
+    credential_cls = DashScopeCredential
 
 
 @R.register("dashscope_multimodal")
 class DashScopeMultiModalAsEmbedding(BaseAsEmbedding):
     """DashScope multimodal embedding model wrapper."""
 
-    async def _start(self) -> None:
-        self.model = DashScopeMultiModalEmbedding(**self.kwargs)
+    credential_cls = DashScopeCredential
 
 
 @R.register("gemini")
 class GeminiAsEmbedding(BaseAsEmbedding):
     """Gemini embedding model wrapper."""
 
-    async def _start(self) -> None:
-        self.model = GeminiTextEmbedding(**self.kwargs)
+    credential_cls = GeminiCredential
 
 
 @R.register("ollama")
 class OllamaAsEmbedding(BaseAsEmbedding):
     """Ollama embedding model wrapper."""
 
-    async def _start(self) -> None:
-        self.model = OllamaTextEmbedding(**self.kwargs)
+    credential_cls = OllamaCredential
 
 
 __all__ = [

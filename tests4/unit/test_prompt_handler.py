@@ -211,16 +211,9 @@ def test_format_variables():
 
 def test_format_missing_variable_raises():
     ph = PromptHandler()
-    ph.load_prompt_dict({"p": "Hello {name}"})
-    with pytest.raises(ValueError, match="Missing format variables"):
-        ph.prompt_format("p")
-
-
-def test_format_missing_variable_no_validate():
-    ph = PromptHandler()
-    ph.load_prompt_dict({"p": "Hello {name}"})
-    result = ph.prompt_format("p", validate=False)
-    assert "{name}" in result
+    ph.load_prompt_dict({"p": "Hello {name}, welcome to {place}"})
+    with pytest.raises(KeyError, match="place"):
+        ph.prompt_format("p", name="Alice")
 
 
 def test_format_no_variables_no_error():
@@ -296,7 +289,6 @@ if __name__ == "__main__":
     test_flag_filter_unflagged_lines_always_kept()
     test_format_variables()
     test_format_missing_variable_raises()
-    test_format_missing_variable_no_validate()
     test_format_no_variables_no_error()
     test_format_flags_and_variables_combined()
     test_format_flags_false_variable_not_needed()

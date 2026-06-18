@@ -15,7 +15,7 @@ The caller fills the body via ``file_write`` / ``file_edit`` /
 does not accept a body.
 
 Inputs:
-    session_id (optional) — the note's session identifier (also the file stem);
+    session_id (optional) — the note's session identifier;
                empty string → day-level file
     date       (optional, ``YYYY-MM-DD``; empty = today)
 
@@ -30,6 +30,7 @@ import frontmatter
 
 from ._daily_index import refresh_day_index, validate_session_id
 from ._file_io import write_file_safe
+from ._path import resolve_path
 from ..base_step import BaseStep
 from ...components import R
 from ...steps.evolve import now
@@ -53,7 +54,7 @@ class DailyCreateStep(BaseStep):
         session_id = self.context.get("session_id", "")
         tz = self.app_context.app_config.timezone if self.app_context is not None else None
         day = self.context.get("date", "") or now(tz).strftime("%Y-%m-%d")
-        daily_dir = self.app_context.app_config.daily_dir if self.app_context is not None else "daily"
+        daily_dir = self.config_value("daily_dir")
         return session_id, day, daily_dir
 
     @staticmethod
@@ -86,13 +87,16 @@ class DailyCreateStep(BaseStep):
             if err:
                 self._fail(err)
                 return None
-            path_rel = f"{daily_dir}/{day}/session_agent_{session_id}.md"
             name = session_id
+            path_rel = f"{daily_dir}/{day}/{session_id}.md"
         else:
             path_rel = f"{daily_dir}/{day}.md"
             name = day
 
-        path_abs = (self.vault_path / path_rel).resolve()
+        path_abs, err = resolve_path(self.vault_path, path_rel)
+        if err or path_abs is None:
+            self._fail(err or "invalid path", date=day, session_id=session_id, path=path_rel)
+            return None
         try:
             created = await self._create_if_missing(path_abs, name)
         except Exception as e:  # pylint: disable=broad-except

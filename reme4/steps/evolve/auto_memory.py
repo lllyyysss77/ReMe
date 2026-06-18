@@ -7,10 +7,12 @@ from agentscope.message import Msg
 
 from ._evolve import format_history, now
 from ..base_step import BaseStep
+from ..file_io import refresh_day_index, validate_session_id
 from ...components import R
 
 _TOOL_OUTPUT_MAX = 2048
 _TOOL_OUTPUT_HALF = 1024
+_SOURCE_CONVERSATION_KEY = "source_conversation"
 
 
 def _truncate_text(text: str) -> str:
@@ -73,17 +75,20 @@ class AutoMemoryStep(BaseStep):
         super().__init__(**kwargs)
         self.agent_tools: list[str] = ["read", "edit", "frontmatter_update", "write"]
 
-    def _session_path(self, session_id: str, tz: str | None) -> Path:
-        current = now(tz)
-        date_str = current.strftime("%Y-%m-%d")
-        resource = self.app_context.app_config.resource_dir if self.app_context else "resource"
-        return self.file_store.vault_path / resource / date_str / f"session_agent_{session_id}.jsonl"
+    def _session_dir(self) -> str:
+        return str(self.config_value("session_dir")).strip("/")
 
-    async def _save_session_messages(self, session_id: str, messages: list[Msg], tz: str | None) -> None:
+    def _session_path(self, session_id: str) -> Path:
+        return self.file_store.vault_path / self._session_dir() / "dialog" / f"{session_id}.jsonl"
+
+    def _session_link(self, session_id: str) -> str:
+        return f"[[{self._session_dir()}/dialog/{session_id}.jsonl]]"
+
+    async def _save_session_messages(self, session_id: str, messages: list[Msg]) -> None:
         if not session_id or not messages:
             return
 
-        path = self._session_path(session_id, tz)
+        path = self._session_path(session_id)
 
         existing: list[Msg] = []
         if path.exists():
@@ -139,7 +144,12 @@ class AutoMemoryStep(BaseStep):
 
         messages: list[Msg] = [self._to_msg(item) for item in raw_messages]
 
-        await self._save_session_messages(session_id, messages, tz)
+        if session_id and (err := validate_session_id(session_id)):
+            self.context.response.success = False
+            self.context.response.answer = f"Error: {err}"
+            return
+
+        await self._save_session_messages(session_id, messages)
 
         if not messages:
             self.context.response.success = True
@@ -169,16 +179,44 @@ class AutoMemoryStep(BaseStep):
             history=format_history(messages),
         )
 
-        tools = [self.get_job(name) for name in self.agent_tools]
-        _, msg = await self.agent_wrapper.reply(
+        result = await self.agent_wrapper.reply(
             user_message,
             system_prompt=self.prompt_format("system_prompt"),
-            tools=tools,
+            job_tools=self.agent_tools,
         )
 
+        source_conversation = ""
+        if session_id:
+            source_conversation = self._session_link(session_id)
+            link_response = await self.run_job(
+                "frontmatter_update",
+                path=note_path,
+                metadata={_SOURCE_CONVERSATION_KEY: source_conversation},
+            )
+            if not link_response.success:
+                self.context.response.success = False
+                self.context.response.answer = f"frontmatter_update failed: {link_response.answer}"
+                self.context.response.metadata.update(
+                    {"path": note_path, "created": created, "n_messages": len(messages), "index": None},
+                )
+                self.logger.info(
+                    f"[{self.name}] source conversation link failed "
+                    f"path={note_path} session_id={session_id!r} answer={link_response.answer!r}",
+                )
+                return
+
+        daily_dir = self.config_value("daily_dir")
+        index_payload = await refresh_day_index(self.file_store, create_response.metadata["date"], daily_dir)
+
         self.context.response.success = True
-        self.context.response.answer = (msg.get_text_content() or "").strip()
+        self.context.response.answer = (result.get("result") or "").strip()
         self.context.response.metadata.update(
-            {"path": note_path, "created": created, "n_messages": len(messages)},
+            {
+                "path": note_path,
+                "created": created,
+                "n_messages": len(messages),
+                "source_conversation": source_conversation,
+                "index": index_payload,
+            },
         )
         self.logger.info(f"[{self.name}] done {note_path}")

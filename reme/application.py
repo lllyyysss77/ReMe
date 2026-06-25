@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import AsyncGenerator, TypeVar
 
+from . import __version__
 from .components import BaseComponent, ApplicationContext
 from .components.job import BackgroundJob, BaseJob, CronJob, StreamJob
 from .components.service import BaseService
@@ -29,7 +30,7 @@ class Application(BaseComponent):
         if self.config.enable_logo:
             print_logo(self.config)
         logger = get_logger(log_to_console=self.config.log_to_console, log_to_file=self.config.log_to_file)
-        logger.info(f"Initializing {self.config.app_name} Application")
+        logger.info(f"Initializing {self.config.app_name} Application v{__version__}")
         super().__init__()
 
         self._init_service()
@@ -209,14 +210,6 @@ class Application(BaseComponent):
             self.context.thread_pool.shutdown(wait=True)
             self.context.thread_pool = None
 
-    # ----- Job execution -------------------------------------------------
-
-    async def run_job(self, name: str, /, **kwargs) -> Response:
-        """Execute a registered job by name and return its final Response."""
-        if name not in self.context.jobs:
-            raise KeyError(f"Job '{name}' not found")
-        return await self.context.jobs[name](**kwargs)
-
     async def update_component(self, component_enum: ComponentEnum | str, name: str, /, **kwargs) -> BaseComponent:
         """Update an existing component by type/name; never creates missing components."""
         component_enum = ComponentEnum(component_enum)
@@ -230,6 +223,14 @@ class Application(BaseComponent):
                 raise AttributeError(f"Component {component_enum.value}:{name} has no attribute '{key}'")
             setattr(component, key, value)
         return component
+
+    # ----- Job execution -------------------------------------------------
+
+    async def run_job(self, name: str, /, **kwargs) -> Response:
+        """Execute a registered job by name and return its final Response."""
+        if name not in self.context.jobs:
+            raise KeyError(f"Job '{name}' not found")
+        return await self.context.jobs[name](**kwargs)
 
     async def run_stream_job(self, name: str, /, **kwargs) -> AsyncGenerator[StreamChunk, None]:
         """Execute a streaming job, yielding chunks as they are produced."""

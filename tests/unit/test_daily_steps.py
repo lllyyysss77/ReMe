@@ -24,10 +24,8 @@ to the plugin layer.
 import asyncio
 import os
 import tempfile
-from datetime import date as _date
-from pathlib import Path
-
 import warnings
+from pathlib import Path
 
 import frontmatter
 
@@ -61,7 +59,9 @@ class temp_chdir:
 
 
 def _today() -> str:
-    return _date.today().isoformat()
+    from reme.steps.evolve import now
+
+    return now("Asia/Shanghai").strftime("%Y-%m-%d")
 
 
 async def _make_store_with_dailies(entries: list[tuple[str, str, str]]) -> LocalFileStore:
@@ -120,7 +120,9 @@ def test_daily_list_default_date_is_today():
                     ("2026-05-17", "yesterday", "y"),
                 ],
             )
-            step = daily_list_step.DailyListStep(file_store=store)
+            app_context = ApplicationContext(workspace_dir=tmp)
+            app_context.components[ComponentEnum.FILE_STORE] = {"default": store}
+            step = daily_list_step.DailyListStep(file_store=store, app_context=app_context)
             await step()
             payload = _metadata(step)
             assert payload["date"] == _today()

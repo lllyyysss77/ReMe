@@ -68,6 +68,33 @@ session/
 
 daily note 会指向对应的原始对话。需要核对某条记忆时，可以顺着链接回到当时的完整上下文。
 
+## 消息时间
+
+Auto Memory 会在 prompt 和原始会话 JSONL 中保留每条消息的 `created_at`。导入历史对话或 benchmark 数据时，建议为每条
+message 提供真实发生时间，避免模型把事件时间误解为运行时间：
+
+```bash
+reme auto_memory \
+  session_id=locomo-session \
+  messages='[
+    {"role":"user","content":"Jon lost his job today.","created_at":"2023-01-19T08:00:00"},
+    {"role":"assistant","content":"I am sorry to hear that.","created_at":"2023-01-19T08:01:00"}
+  ]'
+```
+
+为了兼容常见数据集字段，`auto_memory` 也会在缺少 `created_at` 时读取 `time_created`、`timestamp`、`createdAt`、
+`timeCreated` 或 `created_time`。这些字段可以放在 message 顶层，也可以放在 `metadata` 中。
+
+当调用没有显式传入 `date` 时，Auto Memory 会使用消息中最早的有效 `created_at` 日期作为 daily note 日期；如果消息没有有效时间，
+则回退到当前日期。历史导入也可以显式指定目标日期：
+
+```bash
+reme auto_memory \
+  session_id=locomo-session \
+  date=2023-01-19 \
+  messages='[{"role":"user","content":"Jon lost his job today."}]'
+```
+
 ## 后续流向
 
 Auto Memory 只生成 daily 层记忆。要把这些材料进一步沉淀为长期 `digest/` 节点，使用 [Auto Dream](./auto_dream.md)；要搜索

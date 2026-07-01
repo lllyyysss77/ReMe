@@ -8,11 +8,13 @@ from agentscope.message import Msg
 
 from ._evolve import agent_reply_result_text, format_history, now
 from ..base_step import BaseStep
-from ..file_io import refresh_day_index, validate_filename_component, validate_session_id
+from ..file_io import extract_daily_date, parse_daily_date, refresh_day_index
+from ..file_io import validate_filename_component, validate_session_id
 from ...components import R
 
 _SESSION_ID_KEY = "session_id"
 _SOURCE_CONVERSATION_KEY = "source_conversation"
+_MESSAGE_TIME_ALIASES = ("time_created", "timestamp", "createdAt", "timeCreated", "created_time")
 
 
 def _sanitize_msg_for_save(msg: Msg) -> Msg:
@@ -32,6 +34,26 @@ def _sanitize_msg_for_save(msg: Msg) -> Msg:
     if not changed:
         return msg
     return msg.model_copy(update={"content": new_content})
+
+
+def _normalize_msg_timestamp(item: dict) -> dict:
+    """Map common message timestamp aliases to AgentScope's ``created_at`` field."""
+    if item.get("created_at"):
+        return item
+
+    for key in _MESSAGE_TIME_ALIASES:
+        value = item.get(key)
+        if value:
+            return {**item, "created_at": value}
+
+    metadata = item.get("metadata")
+    if isinstance(metadata, dict):
+        for key in _MESSAGE_TIME_ALIASES:
+            value = metadata.get(key)
+            if value:
+                return {**item, "created_at": value}
+
+    return item
 
 
 @R.register("auto_memory_step")
@@ -191,9 +213,16 @@ class AutoMemoryStep(BaseStep):
     def _to_msg(item) -> Msg:
         if isinstance(item, Msg):
             return item
+        if isinstance(item, dict):
+            item = _normalize_msg_timestamp(item)
         if isinstance(item, dict) and isinstance(item.get("content"), str):
             item = {**item, "content": [{"type": "text", "text": item["content"]}]}
         return Msg.model_validate(item)
+
+    @staticmethod
+    def _messages_day(messages: list[Msg]) -> str | None:
+        days = [day for msg in messages if (day := extract_daily_date(msg.created_at))]
+        return max(days) if days else None
 
     # pylint: disable=too-many-return-statements
     async def execute(self):
@@ -201,6 +230,7 @@ class AutoMemoryStep(BaseStep):
         raw_messages = self.context.get("messages") or []
         session_id: str = self.context.get("session_id", "")
         memory_hint: str = self.context.get("memory_hint", "")
+        raw_date = self.context.get("date", "")
         tz = self.app_context.app_config.timezone if self.app_context is not None else None
         current = now(tz)
 
@@ -221,21 +251,29 @@ class AutoMemoryStep(BaseStep):
             self.logger.warning(f"[{self.name}] missing session_id")
             return
 
+        day = parse_daily_date(raw_date) if raw_date else self._messages_day(messages) or current.strftime("%Y-%m-%d")
+        if raw_date and day is None:
+            self.context.response.success = False
+            self.context.response.answer = "Error: date must be YYYY-MM-DD"
+            self.context.response.metadata.update({"date": raw_date, "modified": False, "n_messages": len(messages)})
+            self.logger.warning(f"[{self.name}] invalid date={raw_date!r}")
+            return
+
         await self._save_session_messages(session_id, messages)
 
         if not messages:
             self.context.response.success = True
             self.context.response.answer = "Skipped: no messages"
-            self.context.response.metadata.update({"modified": False, "n_messages": 0})
+            self.context.response.metadata.update({"date": day, "modified": False, "n_messages": 0})
             self.logger.info(f"[{self.name}] Skipped: no messages session_id={session_id!r} modified=False")
             return
 
-        day = current.strftime("%Y-%m-%d")
         try:
             note = await self._list_session_note(day, session_id)
         except RuntimeError as exc:
             self.context.response.success = False
             self.context.response.answer = str(exc)
+            self.context.response.metadata.update({"date": day, "modified": False, "n_messages": len(messages)})
             self.logger.info(f"[{self.name}] list failed session_id={session_id!r} answer={str(exc)!r}")
             return
 
@@ -272,7 +310,7 @@ class AutoMemoryStep(BaseStep):
                 self.context.response.success = False
                 self.context.response.answer = str(exc)
                 self.context.response.metadata.update(
-                    {"path": None, "created": created, "modified": False, "n_messages": len(messages)},
+                    {"date": day, "path": None, "created": created, "modified": False, "n_messages": len(messages)},
                 )
                 self.logger.info(f"[{self.name}] post-create list failed session_id={session_id!r} answer={str(exc)!r}")
                 return
@@ -280,7 +318,7 @@ class AutoMemoryStep(BaseStep):
                 self.context.response.success = True
                 self.context.response.answer = agent_reply_result_text(result)
                 self.context.response.metadata.update(
-                    {"path": None, "created": False, "modified": False, "n_messages": len(messages)},
+                    {"date": day, "path": None, "created": False, "modified": False, "n_messages": len(messages)},
                 )
                 self.logger.info(f"[{self.name}] done without note session_id={session_id!r} modified=False")
                 return
@@ -294,6 +332,7 @@ class AutoMemoryStep(BaseStep):
                 self.context.response.answer = str(exc)
                 self.context.response.metadata.update(
                     {
+                        "date": day,
                         "path": note_path,
                         "created": created,
                         "modified": self._note_modified(before_note_path, before_note_bytes, note_path),
@@ -314,6 +353,7 @@ class AutoMemoryStep(BaseStep):
         self.context.response.answer = agent_reply_result_text(result)
         self.context.response.metadata.update(
             {
+                "date": day,
                 "path": note_path,
                 "created": created,
                 "modified": modified,

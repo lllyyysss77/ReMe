@@ -54,5 +54,6 @@ vault/
 docs/_build/
 site/
 
+longmemeval/
 evaluation/
 datasets/

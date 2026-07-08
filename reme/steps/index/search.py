@@ -2,6 +2,8 @@
 
 import asyncio
 import datetime
+import os
+from typing import Final
 
 from ..base_step import BaseStep
 from ..file_io import extract_daily_date
@@ -9,26 +11,37 @@ from ...components import R
 from ...schema import FileChunk
 from ...utils import expand_links, render_expansion_lines
 
-_RRF_K = 60
-_MAX_CANDIDATES = 200
+_RRF_K: Final = 60
+_MAX_CANDIDATES: Final = 200
+_DEFAULT_LIMIT_ENV: Final = "REME_SEARCH_LIMIT"
+_DEFAULT_LIMIT: Final = 5
+
+
+def _default_limit() -> int:
+    value = os.getenv(_DEFAULT_LIMIT_ENV)
+    if value is None:
+        return _DEFAULT_LIMIT
+    try:
+        return int(value)
+    except ValueError:
+        return _DEFAULT_LIMIT
 
 
 @R.register("search_step")
 class SearchStep(BaseStep):
     """Hybrid search: run vector + keyword in parallel, fuse via RRF, filter, truncate."""
 
+    TOOL_CONTEXTS_KEY: Final[str] = "tool_contexts"
+    SEARCH_SEEN_KEY: Final[str] = "search_seen_chunk_ids"
+
     def __init__(
         self,
         *args,
-        tool_contexts_key: str = "tool_contexts",
-        search_seen_key: str = "search_seen_chunk_ids",
-        tool_context_chunk_ttl_hours: float = 24,
+        seen_ttl_hours: float = 24,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.tool_contexts_key = tool_contexts_key
-        self.search_seen_key = search_seen_key
-        self.tool_context_chunk_ttl_hours = tool_context_chunk_ttl_hours
+        self.seen_ttl_hours = seen_ttl_hours
 
     @staticmethod
     def _rrf_merge(
@@ -81,9 +94,9 @@ class SearchStep(BaseStep):
     def _tool_context_store(self, tool_context_id: str) -> dict:
         """Return the mutable state bucket for a tool context."""
         if self.app_context is not None:
-            contexts = self.app_context.metadata.setdefault(self.tool_contexts_key, {})
+            contexts = self.app_context.metadata.setdefault(self.TOOL_CONTEXTS_KEY, {})
         else:
-            contexts = self.kwargs.setdefault(self.tool_contexts_key, {})
+            contexts = self.kwargs.setdefault(self.TOOL_CONTEXTS_KEY, {})
         return contexts.setdefault(tool_context_id, {})
 
     def _dedupe_tool_context(
@@ -96,15 +109,15 @@ class SearchStep(BaseStep):
         ttl = float(
             self.kwargs.get(
                 "tool_context_chunk_ttl_seconds",
-                float(self.tool_context_chunk_ttl_hours) * 60 * 60,
+                float(self.seen_ttl_hours) * 60 * 60,
             ),
         )
         store = self._tool_context_store(tool_context_id)
-        seen = store.get(self.search_seen_key, {})
+        seen = store.get(self.SEARCH_SEEN_KEY, {})
         if not isinstance(seen, dict):
             seen = dict.fromkeys(seen, now)
         before_expire = len(seen)
-        store[self.search_seen_key] = seen = {chunk_id: ts for chunk_id, ts in seen.items() if now - float(ts) < ttl}
+        store[self.SEARCH_SEEN_KEY] = seen = {chunk_id: ts for chunk_id, ts in seen.items() if now - float(ts) < ttl}
 
         seen_before = len(seen)
         unvisited = [chunk for chunk in chunks if chunk.id not in seen]
@@ -124,7 +137,7 @@ class SearchStep(BaseStep):
     async def execute(self):
         assert self.context is not None
         query: str = (self.context.get("query", "") or "").strip()
-        limit: int = int(self.context.get("limit") or 5)
+        limit: int = int(self.context.get("limit") or _default_limit())
         min_score: float = float(self.context.get("min_score") or 0.0)
         vector_weight: float = float(self.kwargs.get("vector_weight", 0.7))
         candidate_multiplier: float = float(self.kwargs.get("candidate_multiplier", 5.0))

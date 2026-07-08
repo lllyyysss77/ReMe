@@ -1,49 +1,23 @@
 service:
-  backend: http
+  backend: cli
+
+workspace_dir: ${LME_WORKSPACE_DIR:-datasets/longmemeval/1}
+session_dir: history_session
+resource_dir: session
+daily_dir: ""
+digest_dir: ""
 
 jobs:
   update_index:
     backend: base
-    watch_dirs: [daily_dir, digest_dir, resource_dir]
-#    watch_dirs: [daily_dir, digest_dir]
-    watch_suffixes: [md, jsonl]
-#    watch_suffixes: [md]
+    watch_dirs: [resource_dir]
+    watch_suffixes: [md, json, jsonl]
     steps:
+      - backend: clear_store_step
       - backend: init_changes_step
         monitor_type: file_store
         monitor_name: default
         dispatch_steps: [update_index_step]
-      - backend: watch_changes_step
-        dispatch_steps:
-          - backend: update_index_step
-            persist: False
-
-  auto_memory:
-    backend: base
-    description: "Auto-memory: record conversation facts into a daily note"
-    parameters:
-      type: object
-      properties:
-        messages:
-          type: array
-          description: "messages"
-          items:
-            type: object
-        session_id:
-          type: string
-          description: "source conversation session identifier"
-          default: ""
-        memory_hint:
-          type: string
-          description: "optional hint"
-        date:
-          type: string
-          description: "YYYY-MM-DD daily note date; empty = infer from message timestamps or today"
-          default: ""
-      required:
-        - messages
-    steps:
-      - backend: auto_memory_step
 
   version:
     backend: base
@@ -63,14 +37,6 @@ jobs:
         query:
           type: string
           description: "search query"
-        limit:
-          type: integer
-          description: "max results"
-          default: 5
-        min_score:
-          type: number
-          description: "min fused score"
-          default: 0.0
         start_date:
           type: string
           description: "optional inclusive start date filter (YYYY-MM-DD); results earlier than this date are excluded"
@@ -85,6 +51,46 @@ jobs:
         candidate_multiplier: 5.0
         expand_links: true
         max_links_per_direction: 10
+
+  add_draft:
+    backend: base
+    description: "Append text to the current draft list."
+    parameters:
+      type: object
+      properties:
+        text:
+          type: string
+          description: "draft text to append"
+      required:
+        - text
+    steps:
+      - backend: add_draft_step
+
+  read_all_draft:
+    backend: base
+    description: "Read all draft text previously appended in the current tool context."
+    parameters:
+      type: object
+      properties: { }
+    steps:
+      - backend: read_all_draft_step
+
+  python_execute:
+    backend: base
+    description: "Execute Python code and return printed stdout."
+    parameters:
+      type: object
+      properties:
+        code:
+          type: string
+          description: "Python code to execute. Print the final result to stdout."
+        timeout:
+          type: number
+          description: "Execution timeout in seconds; defaults to 60."
+      required:
+        - code
+    steps:
+      - backend: python_execute_step
 
 components:
   tokenizer:
@@ -109,16 +115,15 @@ components:
   as_llm:
     default:
       backend: ${LLM_BACKEND:-openai}
-      model: ${LLM_MODEL_NAME:-qwen3.7-plus}
+      model: ${LLM_MODEL_NAME:-qwen3.7-max}
       stream: true
-      context_size: 200000
+      context_size: 1000000
       max_retries: 3
       credential:
         api_key: ${LLM_API_KEY:-}
         base_url: ${LLM_BASE_URL:-}
       parameters:
         max_tokens: 65536
-        thinking_enable: false
 
   agent_wrapper:
     default:
@@ -128,14 +133,36 @@ components:
       react_config:
         max_iters: 30
       context_config:
-        trigger_ratio: 0.8
+        trigger_ratio: 0.89
         reserve_ratio: 0.1
         tool_result_limit: 50000
       model_config:
-        max_retries: 1
+        max_retries: 3
+
+    agentic_search_agentwrapper:
+      backend: agentscope
+      as_llm: default
+      cwd: session
+      permission_mode: bypass
+      builtin_tools: false
+      job_tools:
+        - search
+        - add_draft
+        - read_all_draft
+        - python_execute
+      sequential_tool_calls: true
+      react_config:
+        max_iters: 100
+      context_config:
+        trigger_ratio: 0.89
+        reserve_ratio: 0.1
+        tool_result_limit: 1000000
+      model_config:
+        max_retries: 3
+
     claude_code:
       backend: claude_code
-      model: ${CLAUDE_CODE_MODEL_NAME:-glm-5.1}
+      model: ${CLAUDE_CODE_MODEL_NAME:-glm-5.2}
       api_key: ${CLAUDE_CODE_API_KEY:-}
       base_url: ${CLAUDE_CODE_BASE_URL:-https://dashscope.aliyuncs.com/apps/anthropic}
       permission_mode: bypassPermissions
@@ -144,23 +171,14 @@ components:
     default:
       backend: local
 
-  file_catalog:
-    default:
-      backend: local
-    resource:
-      backend: local
-    digest:
-      backend: local
-    dream:
-      backend: local
-
   file_chunker:
     markdown:
       backend: markdown
       supported_extensions: [ "md" ]
     default:
       backend: default
-      supported_extensions: [ "jsonl" ]
+      supported_extensions: [ "json", "jsonl" ]
+      chunk_byte_size: 100000
 
   keyword_index:
     default:
@@ -171,7 +189,7 @@ components:
     default:
       backend: local
       store_name: local
-      #  embedding_store: default
-      embedding_store: ""
+      embedding_store: default
+#      embedding_store: ""
       keyword_index: default
       file_graph: default

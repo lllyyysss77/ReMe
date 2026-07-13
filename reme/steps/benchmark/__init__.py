@@ -1,10 +1,12 @@
 """Benchmark steps."""
 
 from . import lme
-from .lme import AnswerJudgeStep, ContextAnswerStep
+from .lme import ContextAnswerStep, GoldenCheckStep, LmeLlmJudgeStep, SessionReviewStep
 
 __all__ = [
-    "AnswerJudgeStep",
     "ContextAnswerStep",
+    "GoldenCheckStep",
+    "LmeLlmJudgeStep",
+    "SessionReviewStep",
     "lme",
 ]

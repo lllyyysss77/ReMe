@@ -110,6 +110,26 @@ def test_search_step_rrf_merges_vector_and_keyword_by_chunk_id():
     asyncio.run(run())
 
 
+def test_lme_plain_search_steps_use_ten_times_limit_candidates():
+    """LME vector/bm25 tools fetch a wider candidate pool before truncating."""
+
+    async def run():
+        store = FakeSearchStore()
+
+        vector = VectorSearchStep(file_store=store, include_source=False)
+        bm25 = Bm25SearchStep(file_store=store, include_source=False)
+
+        await vector(RuntimeContext(query="alpha", limit=3))
+        await bm25(RuntimeContext(query="alpha", limit=3))
+
+        assert store.calls == [
+            ("vector", "alpha", 30, {}),
+            ("keyword", "alpha", 30, {}),
+        ]
+
+    asyncio.run(run())
+
+
 def test_draft_steps_accumulate_by_tool_context_id():
     """Drafts are stored in app metadata and isolated by injected tool_context_id."""
 
@@ -168,10 +188,10 @@ def test_plain_search_steps_apply_min_score_before_truncation():
             ],
         )
 
-        vector = await VectorSearchStep(file_store=vector_store)(
+        vector = await VectorSearchStep(file_store=vector_store, include_source=False)(
             RuntimeContext(query="alpha", limit=5, min_score=0.5),
         )
-        keyword = await Bm25SearchStep(file_store=keyword_store)(
+        keyword = await Bm25SearchStep(file_store=keyword_store, include_source=False)(
             RuntimeContext(query="alpha", limit=5, min_score=1.0),
         )
 

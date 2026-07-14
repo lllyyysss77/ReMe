@@ -46,7 +46,7 @@ class BaseEmbeddingStore(BaseComponent):
             return text[:limit]
 
         # Reserve a 5% safety margin for token estimation.
-        budget = limit * 2 * 95 // 100
+        budget = limit * 2 * 92 // 100
         used = 0
         for index, char in enumerate(text):
             used += 3 if unicodedata.east_asian_width(char) in {"W", "F"} else 2

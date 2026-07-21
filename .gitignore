@@ -2,8 +2,8 @@
 .DS_Store
 .idea/
 .vscode/
-*.code-workspace
 .qoder/
+*.code-workspace
 
 # Local environment
 .env
@@ -54,5 +54,17 @@ vault/
 docs/_build/
 site/
 
-evaluation/
-datasets/
+# Memory workspaces (keep dirs, ignore contents)
+benchmark/memory_workspaces/
+
+# LongMemEval raw data (download via download.py)
+benchmark/datasets/longmemeval/longmemeval_s_reme_cleaned.json
+
+# BEAM dataset (clone via git)
+benchmark/datasets/BEAM/
+
+# Benchmark outputs
+benchmark/results/
+
+# integration tests outputs
+tests/integration/logs/

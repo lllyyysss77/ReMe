@@ -1,6 +1,7 @@
 """Client and response normalization for Hugging Face Papers."""
 
 import asyncio
+import os
 import re
 from collections.abc import Iterable
 from typing import Any
@@ -67,17 +68,14 @@ class HuggingFacePapersClient:
     def __init__(
         self,
         *,
-        proxy_url: str | None = None,
         client: httpx.AsyncClient | None = None,
-        timeout: float = 30.0,
+        timeout: float = 600.0,
         max_retries: int = 3,
         detail_concurrency: int = 5,
         logger: Any | None = None,
     ) -> None:
-        if client is not None and proxy_url is not None:
-            raise ValueError("client and proxy_url cannot be provided together")
         self.logger = logger or get_logger()
-        self.proxy_url = proxy_url
+        self.base_url = os.getenv("HF_MIRROR_URL", "").strip().rstrip("/") or HF_BASE_URL
         self._owns_client = client is None
         self._timeout = timeout
         self.client = client
@@ -87,15 +85,12 @@ class HuggingFacePapersClient:
     async def __aenter__(self) -> "HuggingFacePapersClient":
         if self.client is None:
             self.client = httpx.AsyncClient(
-                base_url=HF_BASE_URL,
-                proxy=self.proxy_url,
-                trust_env=False,
+                base_url=self.base_url,
                 timeout=self._timeout,
                 follow_redirects=True,
                 headers={"User-Agent": "ReMe daily-paper cookbook"},
             )
-            mode = "outbound_proxy" if self.proxy_url else "direct"
-            self.logger.info(f"[HuggingFacePapersClient] network mode={mode}")
+            self.logger.info(f"[HuggingFacePapersClient] base_url={self.base_url}")
         else:
             self.logger.debug("[HuggingFacePapersClient] network mode=injected_client")
         return self
@@ -118,7 +113,10 @@ class HuggingFacePapersClient:
                     f"[HuggingFacePapersClient] request start path={path} params={params} "
                     f"attempt={attempt + 1}/{self.max_retries}",
                 )
-                response = await self._require_client().get(path, params=params)
+                # Keep an optional path prefix in HF_MIRROR_URL. httpx treats a
+                # leading slash as host-relative and would otherwise discard a
+                # prefix such as ``/hf`` from the configured base URL.
+                response = await self._require_client().get(path.lstrip("/"), params=params)
                 response.raise_for_status()
                 self.logger.debug(
                     f"[HuggingFacePapersClient] request done path={path} status={response.status_code} "

@@ -1,234 +1,157 @@
-"""Prepare local news and ETF market data for Auto Fin."""
+"""Fetch the latest 24 hours of CLS telegraph news into runtime context."""
 
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import date, datetime, time, timedelta
-from pathlib import Path
+from datetime import date, datetime, timedelta, timezone
+import hashlib
 from typing import Any
 
-from ....components import R
-from ._base import SHANGHAI_TIMEZONE, AutoFinStep, _news_id, _plain_text, _write, _write_jsonl
+import httpx
 
-NEWS_FILENAME = "auto_fin_news.md"
-MAJOR_NEWS_PAGE_LIMIT = 400  # major_news caps a single response; split the window when hit.
-FUND_PAGE_LIMIT = 2000  # fund_daily / fund_adj cap a single response; page backwards past it.
+from ....components import R
+from ._base import AutoFinStep, _plain_text
+
+API_URL = "https://www.cls.cn/v1/roll/get_roll_list"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://www.cls.cn/telegraph",
+}
+SHANGHAI_TIMEZONE = timezone(timedelta(hours=8), "Asia/Shanghai")
+DEFAULT_TOPICS = ("黄金", "机器人", "半导体")
+WINDOW = timedelta(hours=24)
 
 
 @R.register("auto_fin_data_step")
 class AutoFinDataStep(AutoFinStep):
-    """Skip closed markets, then overwrite today's news and all configured ETF data."""
+    """Fetch and normalize one rolling day of CLS news without writing files."""
 
     def _schedule(self) -> tuple[date, datetime]:
-        value = str(self._value("now", "")).strip()
-        now = datetime.fromisoformat(value) if value else datetime.now(SHANGHAI_TIMEZONE)
-        if now.tzinfo is not None:
-            now = now.astimezone(SHANGHAI_TIMEZONE).replace(tzinfo=None)
-        requested = str(self._value("date", "")).strip()
-        run_date = date.fromisoformat(requested) if requested else now.date()
+        raw_now = str(self._value("now", "")).strip()
+        now = datetime.fromisoformat(raw_now) if raw_now else datetime.now(SHANGHAI_TIMEZONE)
+        now = now.replace(tzinfo=SHANGHAI_TIMEZONE) if now.tzinfo is None else now.astimezone(SHANGHAI_TIMEZONE)
+        raw_date = str(self._value("date", "")).strip()
+        run_date = date.fromisoformat(raw_date) if raw_date else now.date()
         if run_date != now.date():
             raise ValueError("Auto Fin only supports the current date")
         return run_date, now
 
-    async def _is_trade_day(self, day: date) -> bool:
-        rows = await self._fetch(
-            "trade_cal",
-            exchange="SSE",
-            start_date=day.strftime("%Y%m%d"),
-            end_date=day.strftime("%Y%m%d"),
-            fields="cal_date,is_open",
-        )
-        return any(
-            str(row.get("cal_date")) == day.strftime("%Y%m%d") and int(row.get("is_open", 0)) == 1 for row in rows
-        )
-
-    def _news_path(self, day: date) -> Path:
-        return self.workspace_path / str(self.config_value("daily_dir")) / day.isoformat() / NEWS_FILENAME
-
-    async def _fetch_news(self, start: datetime, end: datetime) -> list[dict[str, Any]]:
-        rows = await self._fetch(
-            "major_news",
-            src="财联社",
-            start_date=start.strftime("%Y-%m-%d %H:%M:%S"),
-            end_date=end.strftime("%Y-%m-%d %H:%M:%S"),
-            fields="title,pub_time,src,content",
-        )
-        if len(rows) < MAJOR_NEWS_PAGE_LIMIT or end - start <= timedelta(minutes=1):
-            return rows
-        middle = start + (end - start) / 2
-        left, right = await asyncio.gather(self._fetch_news(start, middle), self._fetch_news(middle, end))
-        return left + right
-
-    async def _write_news(self, day: date, decision_at: datetime) -> str:
-        start = datetime.combine(day, time.min)
-        end = decision_at if day == decision_at.date() else start + timedelta(days=1)
-        records: dict[str, dict[str, str]] = {}
-        for row in await self._fetch_news(start, end):
-            published_at = self._published_at(row)
-            if published_at is None or str(row.get("src") or "") != "财联社":
-                continue
-            if not start <= published_at <= end or (day != decision_at.date() and published_at == end):
-                continue
-            news_id = _news_id(row, published_at)
-            records.setdefault(
-                news_id,
-                {
-                    "news_id": news_id,
-                    "event_time": published_at.isoformat(),
-                    "title": _plain_text(str(row.get("title") or "")),
-                    "content": _plain_text(str(row.get("content") or "")),
-                },
-            )
-        ordered = sorted(records.values(), key=lambda row: (row["event_time"], row["news_id"]))
-        path = self._news_path(day)
-        change = "modified" if path.exists() else "added"
-        _write(path, self._render_news(day, ordered))
-        return change
-
     @staticmethod
-    def _render_news(day: date, rows: list[dict[str, str]]) -> str:
-        blocks = [f"# 财联社新闻 {day.isoformat()}\n"]
-        for row in rows:
-            blocks.append(
-                "\n".join(
-                    [
-                        f"## {row['title'] or '无标题'}",
-                        "",
-                        f"- news_id: `{row['news_id']}`",
-                        f"- 时间: {row['event_time']}",
-                        "- 来源: 财联社",
-                        "",
-                        row["content"] or row["title"],
-                        "",
-                    ],
-                ),
-            )
-        return "\n".join(blocks).rstrip() + "\n"
+    def _signed_params(last_time: int) -> dict[str, str | int]:
+        params: dict[str, str | int] = {
+            "refresh_type": 1,
+            "rn": 50,
+            "last_time": last_time,
+            "app": "CailianpressWeb",
+            "os": "web",
+            "sv": "8.7.9",
+        }
+        raw = "&".join(f"{key}={params[key]}" for key in sorted(params, key=str.upper))
+        params["sign"] = hashlib.md5(hashlib.sha1(raw.encode()).hexdigest().encode()).hexdigest()
+        return params
 
-    @staticmethod
-    def read_news(path: Path) -> list[dict[str, str]]:
-        """Parse an Auto Fin news Markdown file written by `_render_news`."""
-        text = path.read_text(encoding="utf-8")
-        rows = []
-        for block in text.split("\n## ")[1:]:
-            lines = block.splitlines()
-            if len(lines) < 5:
-                continue
-            news_line = next((line for line in lines if line.startswith("- news_id: `")), "")
-            time_line = next((line for line in lines if line.startswith("- 时间: ")), "")
-            news_id = news_line.removeprefix("- news_id: `").removesuffix("`").strip()
-            event_time = time_line.removeprefix("- 时间: ").strip()
-            content_start = next(
-                (index + 1 for index, line in enumerate(lines) if line == "- 来源: 财联社"),
-                len(lines),
-            )
-            content = "\n".join(lines[content_start:]).strip()
-            if news_id and event_time:
-                rows.append(
-                    {
-                        "news_id": news_id,
-                        "event_time": event_time,
-                        "title": lines[0].strip(),
-                        "content": content,
-                    },
-                )
+    async def _request_page(self, client: httpx.AsyncClient, last_time: int) -> list[dict[str, Any]]:
+        response = await client.get(API_URL, params=self._signed_params(last_time))
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("errno") != 0:
+            raise RuntimeError(f"CLS API error {payload.get('errno')}: {payload.get('msg', '')}")
+        rows = (payload.get("data") or {}).get("roll_data") or []
+        if not isinstance(rows, list):
+            raise RuntimeError("CLS API returned invalid roll_data")
         return rows
 
-    async def _fetch_all(self, endpoint: str, code: str, end: date) -> list[dict[str, Any]]:
-        """Page backwards because TuShare fund endpoints cap one response."""
-        rows_by_date: dict[str, dict[str, Any]] = {}
-        end_date = end
-        while True:
-            page = await self._fetch(
-                endpoint,
-                ts_code=code,
-                start_date="19900101",
-                end_date=end_date.strftime("%Y%m%d"),
-            )
-            for row in page:
-                if trade_date := str(row.get("trade_date") or ""):
-                    rows_by_date[trade_date] = row
-            if len(page) < FUND_PAGE_LIMIT:
-                break
-            dates = [
-                datetime.strptime(str(row["trade_date"]), "%Y%m%d").date() for row in page if row.get("trade_date")
-            ]
-            if not dates or min(dates) <= date(1990, 1, 1):
-                break
-            next_end = min(dates) - timedelta(days=1)
-            if next_end >= end_date:
-                raise RuntimeError(f"TuShare pagination did not advance for {endpoint} {code}")
-            end_date = next_end
-        return [rows_by_date[key] for key in sorted(rows_by_date)]
+    def _window(self) -> timedelta:
+        hours = float(self._value("window_hours", WINDOW.total_seconds() / 3600))
+        if hours <= 0:
+            raise ValueError("Auto Fin window_hours must be greater than zero")
+        return timedelta(hours=hours)
+
+    async def _fetch_recent(self, decision_at: datetime, window: timedelta) -> list[dict[str, str]]:
+        cutoff = decision_at - window
+        cursor = int(decision_at.timestamp())
+        interval = max(0.0, float(self._value("request_interval", 10)))
+        max_retries = max(1, int(self._value("max_retries", 3)))
+        records: dict[str, dict[str, str]] = {}
+        async with httpx.AsyncClient(headers=HEADERS, timeout=httpx.Timeout(20, connect=5)) as client:
+            while True:
+                for attempt in range(max_retries):
+                    try:
+                        rows = await self._request_page(client, cursor)
+                        break
+                    except (httpx.HTTPError, ValueError, RuntimeError) as exc:
+                        if attempt + 1 == max_retries:
+                            raise RuntimeError(f"CLS request failed after {max_retries} attempts: {exc}") from exc
+                        await asyncio.sleep(2**attempt)
+                    finally:
+                        if interval:
+                            await asyncio.sleep(interval)
+                if not rows:
+                    raise RuntimeError("CLS API returned no news before the 24-hour window was covered")
+                timestamps = [int(row["ctime"]) for row in rows if str(row.get("ctime", "")).isdigit()]
+                if not timestamps:
+                    raise RuntimeError("CLS API page contained no valid timestamps")
+                oldest = min(timestamps)
+                if oldest >= cursor:
+                    raise RuntimeError("CLS pagination did not move backward")
+                for row in rows:
+                    normalized = self._normalize(row, cutoff, decision_at)
+                    if normalized is not None:
+                        records.setdefault(normalized["news_id"], normalized)
+                if oldest <= int(cutoff.timestamp()):
+                    break
+                cursor = oldest
+        return sorted(records.values(), key=lambda row: (row["event_time"], row["news_id"]))
 
     @staticmethod
-    def _etf_name(row: dict[str, Any]) -> str:
-        return str(row.get("csname") or row.get("extname") or row.get("cname") or "").strip()
+    def _normalize(row: dict[str, Any], start: datetime, end: datetime) -> dict[str, str] | None:
+        try:
+            news_id = str(int(row["id"]))
+            published_at = datetime.fromtimestamp(int(row["ctime"]), SHANGHAI_TIMEZONE)
+        except (KeyError, TypeError, ValueError, OSError):
+            return None
+        if not start <= published_at <= end:
+            return None
+        content = _plain_text(str(row.get("content") or row.get("brief") or ""))
+        title = _plain_text(str(row.get("title") or row.get("brief") or content))
+        if not title and not content:
+            return None
+        return {
+            "news_id": news_id,
+            "event_time": published_at.isoformat(),
+            "title": title,
+            "content": content,
+        }
 
-    async def _cache_etfs(self, codes: list[str], run_date: date) -> dict[str, str]:
-        basics = await self._fetch(
-            "etf_basic",
-            list_status="L",
-            fields="ts_code,csname,extname,cname,list_status",
-        )
-        names = {str(row.get("ts_code") or "").strip().upper(): self._etf_name(row) for row in basics}
-        missing = [code for code in codes if not names.get(code)]
-        if missing:
-            raise ValueError(f"TuShare returned no ETF name for: {', '.join(missing)}")
-
-        fin_dir = self.workspace_path / str(self.config_value("resource_dir")) / "fin"
-        mapping = [{"etf_code": code, "etf_name": names[code]} for code in codes]
-        _write(
-            fin_dir / "etfs.json",
-            json.dumps(mapping, ensure_ascii=False, indent=2) + "\n",
-        )
-        for code in codes:
-            daily, factors = await asyncio.gather(
-                self._fetch_all("fund_daily", code, run_date),
-                self._fetch_all("fund_adj", code, run_date),
-            )
-            factor_by_date = {str(row.get("trade_date")): row.get("adj_factor") for row in factors}
-            merged = [{**row, "adj_factor": factor_by_date.get(str(row.get("trade_date")))} for row in daily]
-            _write_jsonl(fin_dir / f"{code}.jsonl", merged)
-        return {code: names[code] for code in codes}
+    @staticmethod
+    def _topics(value: Any) -> list[str]:
+        values = value if isinstance(value, list) else str(value or "").replace("，", ",").split(",")
+        topics = list(dict.fromkeys(str(item).strip() for item in values if str(item).strip()))
+        return topics or list(DEFAULT_TOPICS)
 
     async def execute(self):
         assert self.context is not None
         run_date, decision_at = self._schedule()
-        if not await self._is_trade_day(run_date):
-            reason = f"{run_date.isoformat()} 不是交易日，Auto Fin 已跳过。"
-            self.context["auto_fin_skipped"] = True
-            self.context["auto_fin_skip_reason"] = reason
-            self.context.response.answer = reason
-            self.context.response.metadata.update({"date": run_date.isoformat(), "skipped": True})
-            return self.context.response
-
-        lookback = int(self._value("news_lookback_days", 60))
-        if lookback < 1:
-            raise ValueError("news_lookback_days must be positive")
-        news_start = run_date - timedelta(days=lookback - 1)
-        changes = []
-        for day in self._days(news_start, run_date):
-            path = self._news_path(day)
-            if day != run_date and path.is_file():
-                continue
-            change = await self._write_news(day, decision_at)
-            changes.append({"change": change, "path": str(path)})
-
-        codes = self._value("etf_codes")
-        if not codes:
-            raise ValueError("auto_fin_data_step requires a non-empty etf_codes")
-        codes = [str(code).strip().upper() for code in codes]
-        names = await self._cache_etfs(codes, run_date)
+        window = self._window()
+        news = await self._fetch_recent(decision_at, window)
+        topics = self._topics(self._value("topics"))
         self.context.update(
             {
-                "changes": changes,
                 "auto_fin_date": run_date.isoformat(),
                 "auto_fin_decision_at": decision_at.isoformat(),
-                "auto_fin_news_start": news_start.isoformat(),
-                "auto_fin_etf_names": names,
+                "auto_fin_window_start": (decision_at - window).isoformat(),
+                "auto_fin_window_hours": window.total_seconds() / 3600,
+                "auto_fin_topics": topics,
+                "auto_fin_news": news,
             },
         )
-        self.context.response.metadata.update({"date": run_date.isoformat(), "news_downloaded": len(changes)})
+        self.context.response.metadata.update(
+            {
+                "date": run_date.isoformat(),
+                "fetched_news_count": len(news),
+                "window_hours": window.total_seconds() / 3600,
+                "topics": topics,
+            },
+        )
         return self.context.response

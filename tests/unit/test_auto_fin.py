@@ -1,333 +1,273 @@
-"""Focused tests for the tool-free Auto Fin workflow."""
+"""Focused tests for the rolling CLS Auto Fin workflow."""
 
 # pylint: disable=missing-function-docstring,protected-access
 
-import hashlib
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from reme.components import ApplicationContext
 from reme.components.agent_wrapper.base_agent_wrapper import BaseAgentWrapper
 from reme.components.runtime_context import RuntimeContext
-from reme.schema import (
-    AutoFinEtfsOutput,
-    AutoFinHistoricalOutput,
-    AutoFinReportOutput,
-    Response,
-)
+from reme.schema import AutoFinReportOutput, AutoFinTopicOutput
 from reme.steps.cookbook.auto_fin._base import _plain_text, _write
 from reme.steps.cookbook.auto_fin.data import AutoFinDataStep
-from reme.steps.cookbook.auto_fin.history import AutoFinHistoryStep
 from reme.steps.cookbook.auto_fin.merge import AutoFinMergeStep
 from reme.steps.cookbook.auto_fin.topic import AutoFinTopicStep
 
+SHANGHAI = ZoneInfo("Asia/Shanghai")
+
+
+def _row(news_id: int, value: datetime, title: str = "新闻", content: str = "正文") -> dict:
+    return {"id": news_id, "ctime": int(value.timestamp()), "title": title, "content": content}
+
 
 def test_atomic_write_preserves_existing_file_on_failure(tmp_path: Path, monkeypatch):
-    path = tmp_path / "result.json"
+    path = tmp_path / "result.md"
     path.write_text("existing", encoding="utf-8")
+    monkeypatch.setattr(
+        "reme.steps.cookbook.auto_fin._base.os.replace",
+        lambda *_args: (_ for _ in ()).throw(OSError()),
+    )
 
-    def fail_replace(_source, _destination):
-        raise OSError("replace failed")
-
-    monkeypatch.setattr("reme.steps.cookbook.auto_fin._base.os.replace", fail_replace)
-    with pytest.raises(OSError, match="replace failed"):
+    with pytest.raises(OSError):
         _write(path, "replacement")
+
     assert path.read_text(encoding="utf-8") == "existing"
     assert not list(tmp_path.glob(".*.tmp"))
-
-
-def test_news_markdown_round_trip_and_plain_text(tmp_path: Path):
-    rows = [
-        {
-            "news_id": "20260724070000_abcd",
-            "event_time": "2026-07-24T07:00:00",
-            "title": "黄金上涨",
-            "content": "避险需求增强",
-        },
-    ]
-    path = tmp_path / "news.md"
-    path.write_text(AutoFinDataStep._render_news(date(2026, 7, 24), rows), encoding="utf-8")
-
-    assert AutoFinDataStep.read_news(path) == rows
     assert _plain_text("<p>甲&amp;乙</p><style>隐藏</style><p>丙</p>") == "甲&乙 丙"
 
 
 @pytest.mark.asyncio
-async def test_non_trade_day_stops_after_trade_calendar(tmp_path: Path):
-    calls = []
+async def test_data_step_fetches_exact_24_hours_with_default_topics(tmp_path: Path, monkeypatch):
+    end = datetime(2026, 8, 10, 9, 30, tzinfo=SHANGHAI)
 
-    def provider(endpoint, **kwargs):
-        calls.append((endpoint, kwargs))
-        return [{"cal_date": "20260725", "is_open": 0}]
+    async def page(_self, _client, _last_time):
+        return [
+            _row(1, end, "黄金上涨"),
+            _row(2, end.replace(day=9), "窗口边界"),
+            _row(3, end.replace(day=9, minute=29), "窗口之外"),
+            _row(1, end, "重复"),
+        ]
 
-    context = RuntimeContext(date="2026-07-25", now="2026-07-25T09:00:00+08:00", tushare_provider=provider)
+    monkeypatch.setattr(AutoFinDataStep, "_request_page", page)
+    context = RuntimeContext(date="2026-08-10", now=end.isoformat(), topics="")
     response = await AutoFinDataStep(
         app_context=ApplicationContext(workspace_dir=str(tmp_path), timezone="Asia/Shanghai"),
+        request_interval=0,
     )(context)
 
-    assert [call[0] for call in calls] == ["trade_cal"]
-    assert context["auto_fin_skipped"] is True
-    assert response.metadata["skipped"] is True
-
-
-def test_adjusted_returns_use_close_before_1500_and_next_open_after_1500():
-    rows = [
-        {"trade_date": "20260601", "open": 9, "close": 10, "adj_factor": 1},
-        {"trade_date": "20260602", "open": 10, "close": 11, "adj_factor": 1},
-        {"trade_date": "20260603", "open": 11, "close": 12, "adj_factor": 1},
-        {"trade_date": "20260604", "open": 12, "close": 13, "adj_factor": 1},
-        {"trade_date": "20260605", "open": 13, "close": 14, "adj_factor": 1},
-        {"trade_date": "20260608", "open": 14, "close": 15, "adj_factor": 1},
-    ]
-
-    before = AutoFinHistoryStep._returns(datetime(2026, 6, 1, 14), rows)
-    after = AutoFinHistoryStep._returns(datetime(2026, 6, 1, 16), rows)
-
-    assert before == pytest.approx({"d1": 0.1, "d2": 0.2, "d3": 0.3, "d5": 0.5})
-    assert after == pytest.approx({"d1": 0.1, "d2": 0.2, "d3": 0.3, "d5": 0.5})
-
-
-def test_returns_enter_next_session_for_before_close_non_trade_day():
-    # A Saturday 14:00 event has no same-day close, so it must fall back to the
-    # first following trading day's open rather than yielding no returns.
-    rows = [
-        {"trade_date": "20260605", "open": 8, "close": 9, "adj_factor": 1},
-        {"trade_date": "20260608", "open": 10, "close": 11, "adj_factor": 1},
-        {"trade_date": "20260609", "open": 11, "close": 12, "adj_factor": 1},
-        {"trade_date": "20260610", "open": 12, "close": 13, "adj_factor": 1},
-        {"trade_date": "20260611", "open": 13, "close": 14, "adj_factor": 1},
-        {"trade_date": "20260612", "open": 14, "close": 15, "adj_factor": 1},
-    ]
-
-    returns = AutoFinHistoryStep._returns(datetime(2026, 6, 6, 14), rows)
-
-    assert returns == pytest.approx({"d1": 0.1, "d2": 0.2, "d3": 0.3, "d5": 0.5})
-
-
-class _SearchJob:
-    def __init__(self, path: str, news_id: str):
-        self.path = path
-        self.news_id = news_id
-        self.calls = []
-
-    async def __call__(self, **kwargs):
-        self.calls.append(kwargs)
-        return Response(
-            metadata={
-                "results": [
-                    {
-                        "path": self.path,
-                        "text": f"- news_id: `{self.news_id}`\n历史降息新闻",
-                    },
-                ],
-            },
-        )
-
-
-class _Agent(BaseAgentWrapper):
-    def __init__(self, current_id: str, historical_id: str, **kwargs):
-        super().__init__(**kwargs)
-        self.current_id = current_id
-        self.historical_id = historical_id
-        self.schemas = []
-
-    async def reply(self, inputs, **kwargs):
-        assert kwargs.keys() == {"output_schema"}
-        schema = kwargs["output_schema"]
-        self.schemas.append(schema)
-        prompt = str(inputs)
-        assert "不得搜索、调用工具" in prompt
-        assert "```json" not in prompt
-        if schema is AutoFinEtfsOutput:
-            value = {
-                "etfs": [
-                    {
-                        "etf_code": "518880.SH",
-                        "etf_name": "错误名称",
-                        "events": [{"news_id": self.current_id, "reason": "降息预期利好黄金"}],
-                    },
-                ],
-            }
-        elif schema is AutoFinHistoricalOutput:
-            value = {
-                "historical_events": [
-                    {
-                        "news_id": self.historical_id,
-                        "reason": "同属利率政策变化且对黄金影响相同",
-                        "direction": "same",
-                    },
-                    {
-                        "news_id": "20260101000000_ffff",
-                        "reason": "模型虚构",
-                        "direction": "same",
-                    },
-                ],
-            }
-        elif schema is AutoFinReportOutput:
-            assert '"d5": 0.5' in prompt
-            assert "上一份建议" in prompt
-            value = {
-                "title": "# 黄金观察",
-                "description": "降息事件偏利好黄金。",
-                "body": "## 建议\n\n关注黄金ETF。",
-            }
-        else:  # pragma: no cover
-            raise AssertionError(schema)
-        return {"structured_output": schema.model_validate(value)}
+    assert [row["news_id"] for row in context["auto_fin_news"]] == ["2", "1"]
+    assert context["auto_fin_topics"] == ["黄金", "机器人", "半导体"]
+    assert context["auto_fin_window_start"] == "2026-08-09T09:30:00+08:00"
+    assert response.metadata["fetched_news_count"] == 2
+    assert not list(tmp_path.rglob("*.md"))
 
 
 @pytest.mark.asyncio
-async def test_new_pipeline_prepares_context_and_uses_three_tool_free_agents(
-    tmp_path: Path,
-):
-    current_content = "美联储释放降息信号"
-    historical_content = "美联储宣布降息"
-    current_id = f"20260724090000_{hashlib.sha256(f'财联社{current_content}'.encode()).hexdigest()[:4]}"
-    historical_id = f"20260601100000_{hashlib.sha256(f'财联社{historical_content}'.encode()).hexdigest()[:4]}"
-    market_dates = [
-        "20260601",
-        "20260602",
-        "20260603",
-        "20260604",
-        "20260605",
-        "20260608",
-    ]
+async def test_data_step_uses_configurable_window_hours(tmp_path: Path, monkeypatch):
+    end = datetime(2026, 8, 10, 9, 30, tzinfo=SHANGHAI)
 
-    def provider(endpoint, **kwargs):
-        if endpoint == "trade_cal":
-            return [{"cal_date": "20260724", "is_open": 1}]
-        if endpoint == "major_news":
-            day = kwargs["start_date"][:10]
-            if day == "2026-07-24":
-                return [
-                    {
-                        "title": "降息信号",
-                        "pub_time": "2026-07-24 09:00:00",
-                        "src": "财联社",
-                        "content": current_content,
-                    },
-                ]
-            return []
-        if endpoint == "etf_basic":
-            return [{"ts_code": "518880.SH", "csname": "黄金ETF", "list_status": "L"}]
-        if endpoint == "fund_daily":
-            return [
-                {
-                    "ts_code": "518880.SH",
-                    "trade_date": trade_date,
-                    "open": 9 + index,
-                    "close": 10 + index,
-                    "pct_chg": 1,
-                }
-                for index, trade_date in enumerate(market_dates)
-            ]
-        if endpoint == "fund_adj":
-            return [{"trade_date": trade_date, "adj_factor": 1} for trade_date in market_dates]
-        raise AssertionError(endpoint)
+    async def page(_self, _client, _last_time):
+        return [
+            _row(1, end, "窗口内"),
+            _row(2, end.replace(day=9, hour=21, minute=30), "窗口边界"),
+            _row(3, end.replace(day=9, hour=21, minute=29), "窗口之外"),
+        ]
 
-    historical_path = tmp_path / "daily" / "2026-06-01" / "auto_fin_news.md"
-    historical_path.parent.mkdir(parents=True)
-    historical_path.write_text(
-        AutoFinDataStep._render_news(
-            date(2026, 6, 1),
-            [
-                {
-                    "news_id": historical_id,
-                    "event_time": "2026-06-01T10:00:00",
-                    "title": "历史降息",
-                    "content": historical_content,
-                },
-            ],
-        ),
-        encoding="utf-8",
-    )
-    previous = tmp_path / "daily" / "2026-07-23" / "auto_fin.md"
-    previous.parent.mkdir(parents=True)
-    previous.write_text("# 上一份建议\n", encoding="utf-8")
+    monkeypatch.setattr(AutoFinDataStep, "_request_page", page)
+    context = RuntimeContext(date="2026-08-10", now=end.isoformat(), topics="黄金", window_hours=12)
+    await AutoFinDataStep(
+        app_context=ApplicationContext(workspace_dir=str(tmp_path), timezone="Asia/Shanghai"),
+        request_interval=0,
+    )(context)
 
+    assert [row["news_id"] for row in context["auto_fin_news"]] == ["2", "1"]
+    assert context["auto_fin_window_start"] == "2026-08-09T21:30:00+08:00"
+    assert context["auto_fin_window_hours"] == 12
+
+
+class _TopicAgent(BaseAgentWrapper):
+    def __init__(self, news_ids: list[str], **kwargs):
+        super().__init__(**kwargs)
+        self.news_ids = news_ids
+        self.calls = []
+
+    async def reply(self, inputs, **kwargs):
+        self.calls.append((str(inputs), kwargs))
+        return {"structured_output": AutoFinTopicOutput(news_ids=self.news_ids)}
+
+
+@pytest.mark.asyncio
+async def test_topic_step_keeps_real_ids_in_memory_only(tmp_path: Path):
     app_context = ApplicationContext(workspace_dir=str(tmp_path), timezone="Asia/Shanghai")
-    search = _SearchJob("daily/2026-06-01/auto_fin_news.md", historical_id)
-    app_context.jobs["memory_search"] = search
-    agent = _Agent(current_id, historical_id, app_context=app_context)
+    agent = _TopicAgent(["2", "missing", "2"], app_context=app_context)
     context = RuntimeContext(
-        date="2026-07-24",
-        now="2026-07-24T09:30:00+08:00",
-        tushare_provider=provider,
-        etf_codes=["518880.SH"],
-        news_lookback_days=1,
-        historical_search_limit=7,
+        auto_fin_news=[
+            {"news_id": "1", "event_time": "2026-08-10T08:00:00+08:00", "title": "甲", "content": "甲"},
+            {"news_id": "2", "event_time": "2026-08-10T09:00:00+08:00", "title": "乙", "content": "乙"},
+        ],
+        auto_fin_topics=["黄金"],
     )
 
-    await AutoFinDataStep(app_context=app_context)(context)
-    await AutoFinTopicStep(app_context=app_context, agent_wrapper=agent)(context)
-    await AutoFinHistoryStep(app_context=app_context, agent_wrapper=agent)(context)
-    response = await AutoFinMergeStep(app_context=app_context, agent_wrapper=agent)(context)
+    response = await AutoFinTopicStep(app_context=app_context, agent_wrapper=agent)(context)
 
-    assert agent.schemas == [
-        AutoFinEtfsOutput,
-        AutoFinHistoricalOutput,
-        AutoFinReportOutput,
-    ]
-    assert search.calls[0]["end_date"] == "2026-07-23"
-    assert search.calls[0]["limit"] == 7
-    assert context["auto_fin_etfs"][0]["etf_name"] == "黄金ETF"
-    historical = context["auto_fin_analyses"][0]["events"][0]["historical_events"]
-    assert [event["news_id"] for event in historical] == [historical_id]
-    assert historical[0]["returns"]["d5"] == pytest.approx(0.5)
-    assert response.metadata["digest_path"] == "daily/2026-07-24/auto_fin.md"
-    report = (tmp_path / "daily" / "2026-07-24" / "auto_fin.md").read_text(encoding="utf-8")
-    assert report.startswith("# 黄金观察\n\n> 降息事件偏利好黄金。")
+    assert [row["news_id"] for row in context["auto_fin_selected_news"]] == ["2"]
+    assert agent.calls[0][1] == {"output_schema": AutoFinTopicOutput}
+    assert response.metadata["relevant_news_count"] == 1
+    assert not list(tmp_path.rglob("*.*"))
 
 
-def test_previous_and_current_reports_feed_merge_context(tmp_path: Path):
+@pytest.mark.asyncio
+async def test_topic_step_marks_empty_selection_as_successful_skip(tmp_path: Path):
+    app_context = ApplicationContext(workspace_dir=str(tmp_path), timezone="Asia/Shanghai")
+    agent = _TopicAgent([], app_context=app_context)
+    context = RuntimeContext(
+        auto_fin_news=[
+            {"news_id": "1", "event_time": "2026-08-10T08:00:00+08:00", "title": "甲", "content": "甲"},
+        ],
+        auto_fin_topics=["黄金"],
+        auto_fin_window_hours=12,
+    )
+
+    response = await AutoFinTopicStep(
+        app_context=app_context,
+        agent_wrapper=agent,
+    )(context)
+
+    assert context["auto_fin_skipped"] is True
+    assert response.metadata["skipped"] is True
+    assert response.answer == "最近12小时没有与 黄金 相关的财联社新闻。"
+    assert "最近12小时" in agent.calls[0][0]
+    assert not list(tmp_path.rglob("*.md"))
+
+
+class _ResearchAgent(BaseAgentWrapper):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.calls = []
+
+    async def reply(self, inputs, **kwargs):
+        self.calls.append((str(inputs), kwargs))
+        return {
+            "structured_output": AutoFinReportOutput(
+                title="# 主题新闻观察",
+                description="关注黄金政策变化。",
+                body=(
+                    "## 今日判断\n\n"
+                    "CLS 1（09:00，黄金上涨）与 "
+                    "[[daily/2026-08-01/auto_fin.md|历史黄金观察]]"
+                    "(daily/2026-08-01/auto_fin.md) 背景相似。\n\n"
+                    "无效引用 [[daily/missing.md|缺失文章]] 和 [[../../outside.md|越界文章]] 应降级。"
+                ),
+            ),
+        }
+
+
+@pytest.mark.asyncio
+async def test_merge_writes_only_final_report_and_validates_historical_links(tmp_path: Path):
+    historical = tmp_path / "daily" / "2026-08-01" / "auto_fin.md"
+    historical.parent.mkdir(parents=True)
+    historical.write_text("# 历史黄金观察\n", encoding="utf-8")
+    app_context = ApplicationContext(workspace_dir=str(tmp_path), timezone="Asia/Shanghai")
+    agent = _ResearchAgent(app_context=app_context)
+    context = RuntimeContext(
+        auto_fin_date="2026-08-10",
+        auto_fin_decision_at="2026-08-10T09:30:00+08:00",
+        auto_fin_window_start="2026-08-09T09:30:00+08:00",
+        auto_fin_topics=["黄金"],
+        auto_fin_selected_news=[
+            {
+                "news_id": "1",
+                "event_time": "2026-08-10T09:00:00+08:00",
+                "title": "黄金上涨",
+                "content": "避险需求增强",
+            },
+        ],
+    )
+
+    response = await AutoFinMergeStep(
+        app_context=app_context,
+        agent_wrapper=agent,
+        job_tools=["memory_search", "read"],
+    )(context)
+
+    prompt, kwargs = agent.calls[0]
+    assert "end_date 设为 2026-08-09" in prompt
+    assert "调用 `memory_search`" in prompt
+    assert "调用 `read`" in prompt
+    assert kwargs == {"output_schema": AutoFinReportOutput, "job_tools": ["memory_search", "read"]}
+    report = (tmp_path / "daily" / "2026-08-10" / "auto_fin.md").read_text(encoding="utf-8")
+    assert "[[daily/2026-08-01/auto_fin.md|历史黄金观察]]" in report
+    assert "](daily/2026-08-01/auto_fin.md)" not in report
+    assert "缺失文章" in report and "越界文章" in report
+    assert "missing.md" not in report and "outside.md" not in report
+    assert not (tmp_path / "daily" / "2026-08-10" / "auto_fin_news.md").exists()
+    assert not (tmp_path / "resource").exists()
+    assert response.metadata["source_paths"] == ["daily/2026-08-01/auto_fin.md"]
+
+
+def test_hybrid_wikilink_normalization_is_conservative_and_failure_safe(tmp_path: Path, monkeypatch):
+    import reme.steps.cookbook.auto_fin.merge as merge_module
+
     step = AutoFinMergeStep(
         app_context=ApplicationContext(workspace_dir=str(tmp_path), timezone="Asia/Shanghai"),
     )
-    run_date = date(2026, 7, 24)
+    body = (
+        "[[digest/wiki/gold.md]](digest/wiki/gold.md) "
+        "[[digest/wiki/gold.md|黄金]](<digest/wiki/gold.md>) "
+        "[[digest/wiki/gold.md#L2|黄金]](digest/wiki/gold.md) "
+        "[[digest/wiki/gold.md]](digest/wiki/other.md)"
+    )
+    assert step._normalize_hybrid_wikilinks(body) == (
+        "[[digest/wiki/gold.md]] "
+        "[[digest/wiki/gold.md|黄金]] "
+        "[[digest/wiki/gold.md#L2|黄金]] "
+        "[[digest/wiki/gold.md]](digest/wiki/other.md)"
+    )
 
-    # Nothing on disk yet: yesterday falls back, today marks a first run.
-    assert step._previous_report(run_date) == "无历史推荐。"
-    assert "首次生成" in step._current_report(run_date)
+    class _BrokenPattern:
+        @staticmethod
+        def sub(_replace, _body):
+            raise RuntimeError("normalization failed")
 
-    (tmp_path / "daily" / "2026-07-23").mkdir(parents=True)
-    (tmp_path / "daily" / "2026-07-23" / "auto_fin.md").write_text("# 昨日建议\n", encoding="utf-8")
-    step._report_path(run_date).parent.mkdir(parents=True)
-    step._report_path(run_date).write_text("# 今晨建议\n", encoding="utf-8")
-
-    # A later same-day rerun sees yesterday's report and its own earlier report.
-    assert step._previous_report(run_date) == "# 昨日建议\n"
-    assert step._current_report(run_date) == "# 今晨建议\n"
+    monkeypatch.setattr(merge_module, "_HYBRID_WIKILINK_RE", _BrokenPattern())
+    assert step._normalize_hybrid_wikilinks(body) == body
 
 
-def test_config_has_fixed_codes_and_no_agent_tools():
+def test_config_has_default_topics_and_no_intermediate_index_step():
     from reme.config.config_parser import _load_config
 
     config = _load_config("daily_cookbook")
     job = config["jobs"]["auto_fin"]
-    assert job["etf_codes"] == [
-        "518880.SH",
-        "159530.SZ",
-        "512760.SH",
+    assert job["parameters"]["properties"]["topics"]["default"] == "黄金,机器人,半导体"
+    assert job["parameters"]["properties"]["window_hours"]["default"] == 24
+    assert job["parameters"]["properties"]["request_interval"]["default"] == 10
+    assert job["parameters"]["properties"]["max_retries"]["default"] == 3
+    assert "news_file" not in job["parameters"]["properties"]
+    assert [step["backend"] for step in job["steps"]] == [
+        "auto_fin_data_step",
+        "auto_fin_topic_step",
+        "auto_fin_merge_step",
+        "dingtalk_markdown_send_step",
     ]
-    search_limit = job["parameters"]["properties"]["historical_search_limit"]
-    assert job["parameters"]["properties"]["now"]["default"] == ""
-    assert search_limit["default"] == 10
-    assert search_limit["minimum"] == 1
-    assert job["historical_search_limit"] == 10
-    assert job["steps"][3]["historical_search_limit"] == 10
-    crons = {
+    assert job["steps"][2]["job_tools"] == ["memory_search", "read"]
+    for name, schedule in {
         "auto_fin_0930_cron": "30 9 * * *",
         "auto_fin_1130_cron": "30 11 * * *",
         "auto_fin_1800_cron": "0 18 * * *",
-    }
-    for name, schedule in crons.items():
+    }.items():
         assert config["jobs"][name]["cron"] == schedule
         assert config["jobs"][name]["steps"] == job["steps"]
-    assert "auto_fin_1200_cron" not in config["jobs"]
-    wrapper = config["components"]["agent_wrapper"]["default"]
-    assert wrapper["backend"] == "agentscope"
-    assert wrapper["builtin_tools"] is False
-    assert "skills" not in wrapper and "job_tools" not in wrapper
-    assert "agent_wrapper" not in job["steps"][2]
+
+
+def test_agent_schemas_are_small_and_required():
+    topic = AutoFinTopicOutput.model_json_schema()
+    report = AutoFinReportOutput.model_json_schema()
+
+    assert topic["required"] == ["news_ids"]
+    assert set(topic["properties"]) == {"news_ids"}
+    assert report["required"] == ["title", "description", "body"]
+    assert set(report["properties"]) == {"title", "description", "body"}

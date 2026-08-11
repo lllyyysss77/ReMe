@@ -1,67 +1,44 @@
-"""Select configured ETFs that are directly related to today's news."""
+"""Select CLS news that is semantically related to configured topics."""
 
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from ....components import R
-from ....schema import AutoFinEtfsOutput
+from ....schema import AutoFinTopicOutput
 from ._base import AutoFinStep
 
 
 @R.register("auto_fin_topic_step")
 class AutoFinTopicStep(AutoFinStep):
-    """Call the first tool-free Agent with complete current-news context."""
-
-    @staticmethod
-    def _normalize(
-        output: AutoFinEtfsOutput,
-        news: list[dict[str, str]],
-        names: dict[str, str],
-        limit: int,
-    ):
-        news_ids = {row["news_id"] for row in news}
-        selected: dict[str, dict[str, Any]] = {}
-        for item in output.etfs:
-            code = item.etf_code.strip().upper()
-            if code not in names:
-                continue
-            target = selected.setdefault(code, {"etf_code": code, "etf_name": names[code], "events": []})
-            seen = {event["news_id"] for event in target["events"]}
-            for event in item.events:
-                news_id, reason = event.news_id.strip(), event.reason.strip()
-                if news_id in news_ids and news_id not in seen and reason and len(target["events"]) < limit:
-                    target["events"].append({"news_id": news_id, "reason": reason})
-                    seen.add(news_id)
-        return AutoFinEtfsOutput.model_validate({"etfs": [item for item in selected.values() if item["events"]]})
+    """Filter current news in bounded Agent batches without writing files."""
 
     async def execute(self):
         assert self.context is not None
-        if self.context.get("auto_fin_skipped"):
-            return self.context.response
-        from .data import AutoFinDataStep  # Avoid a module import cycle.
-
-        day = str(self._required("auto_fin_date"))
-        news_path = self.workspace_path / str(self.config_value("daily_dir")) / day / "auto_fin_news.md"
-        news = AutoFinDataStep.read_news(news_path)
-        names = dict(self._required("auto_fin_etf_names"))
-        output, output_path = await self._reply(
-            "topic_user",
-            "auto_fin_topic",
-            AutoFinEtfsOutput,
-            news=json.dumps(news, ensure_ascii=False),
-            etfs=json.dumps(
-                [{"etf_code": code, "etf_name": name} for code, name in names.items()],
-                ensure_ascii=False,
-            ),
-        )
-        normalized = self._normalize(output, news, names, int(self._value("current_news_limit_per_etf", 10)))
-        if normalized != output:
-            self._write_output(output_path, normalized)
-        self.context["auto_fin_news"] = news
-        self.context["auto_fin_etfs"] = normalized.model_dump(mode="json")["etfs"]
-        self.context.response.metadata.update(
-            {"news_count": len(news), "etf_count": len(normalized.etfs)},
-        )
+        news = list(self._required("auto_fin_news"))
+        topics = list(self._required("auto_fin_topics"))
+        window_hours = float(self._value("auto_fin_window_hours", 24))
+        formatted_hours = f"{window_hours:g}"
+        batch_size = max(1, int(self._value("topic_batch_size", 50)))
+        selected: set[str] = set()
+        for start in range(0, len(news), batch_size):
+            batch = [
+                {**row, "content": str(row.get("content") or "")[:1000]} for row in news[start : start + batch_size]
+            ]
+            output = await self._reply(
+                "topic_user",
+                AutoFinTopicOutput,
+                topics=json.dumps(topics, ensure_ascii=False),
+                news=json.dumps(batch, ensure_ascii=False),
+                window_hours=formatted_hours,
+            )
+            selected.update(output.news_ids)
+        relevant = [row for row in news if row["news_id"] in selected]
+        self.context["auto_fin_selected_news"] = relevant
+        self.context.response.metadata["relevant_news_count"] = len(relevant)
+        if not relevant:
+            reason = f"最近{formatted_hours}小时没有与 {', '.join(topics)} 相关的财联社新闻。"
+            self.context["auto_fin_skipped"] = True
+            self.context.response.answer = reason
+            self.context.response.metadata.update({"skipped": True, "skip_reason": reason})
         return self.context.response

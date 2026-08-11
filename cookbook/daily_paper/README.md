@@ -24,9 +24,10 @@ The built-in LLM component defaults to:
 - endpoint: no built-in `LLM_BASE_URL`; set the OpenAI-compatible endpoint required by your provider
 - environment variables: `LLM_API_KEY`, `LLM_MODEL_NAME`, and `LLM_BASE_URL`
 
-Auto Fin and Daily Paper share this single `default` LLM and the single tool-free `default` AgentScope wrapper.
-Only the interactive `dingtalk_wait` step overrides the wrapper per call with AgentScope `bash` and an explicit ReMe
-job allowlist; Daily Paper calls remain tool-free.
+Auto Fin and Daily Paper share this single `default` LLM and the `default` AgentScope wrapper. Daily Paper Select and
+Analyze call the wrapper without tools, while Daily Paper Digest and Auto Fin Merge receive the read-only
+`memory_search` and `read` ReMe job tools. The interactive `dingtalk_wait` step separately overrides the wrapper per
+call with AgentScope `bash` and an explicit ReMe job allowlist.
 
 The default workspace is `reme_workspace/` beneath the process working directory. Override it with
 `DAILY_PAPER_WORKSPACE_DIR`.
@@ -98,11 +99,13 @@ the note records `pdf_text_truncated: true` in its frontmatter.
 
 ### 5. Digest
 
-`daily_paper_digest_step` builds the Chinese brief directly from the three in-memory analyses; it does not reread or
-search other material. The agent returns `title`, `desc`, and `body`. The code then:
+`daily_paper_digest_step` uses the three in-memory analyses as the factual source for the Chinese brief. It also searches
+and, when needed, reads earlier daily notes to identify related coverage; those notes may only support contextual
+wikilinks, not add facts about the current papers. The agent returns `title`, `desc`, and `body`. The code then:
 
 - strips model-generated YAML frontmatter if present;
 - normalizes the Chinese title for use as a filename;
+- keeps model-generated wikilinks only when they point to existing `daily/` Markdown files dated before the run date;
 - deterministically appends wikilinks to all three source notes;
 - writes `daily/<date>/<Chinese-brief-title>.md`; and
 - rebuilds the `daily/<date>.md` day index.
@@ -164,7 +167,7 @@ Step-level settings on the `daily_paper` job:
 | `hf_max_retries` | `3` | Maximum Hugging Face attempts |
 | `pdf_timeout` | `600` seconds | arXiv PDF download timeout |
 | `max_pdf_bytes` | `52428800` | PDF limit, 50 MiB |
-| `max_pdf_pages` | `20` | Maximum extracted pages |
+| `max_pdf_pages` | `35` | Maximum extracted pages |
 | `max_pdf_chars` | `300000` | Maximum extracted PDF characters sent to the agent |
 
 ## Mirrors

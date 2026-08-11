@@ -62,8 +62,8 @@ memory, then continuously indexes, links, and consolidates that memory for futur
 - [2026.08] - [Experience-driven enhancement method](benchmark/toolmemory/README.md) of agent tool-use
   execution built on ReMe is available on [arXiv:2608.03403](https://arxiv.org/abs/2608.03403).
 - [2026.07] - Introduced optional Cookbooks: [Daily Paper](cookbook/daily_paper/README.md) for paper discovery and
-  analysis, and [Auto Fin](cookbook/auto-fin/README.md) for file-native ETF event research based on CLS news and
-  historical market reactions.
+  analysis, and [Auto Fin](cookbook/auto-fin/README.md) for researching the latest 24 hours of topic-related CLS news
+  with local-memory search and validated historical wikilinks.
 - [2026.07] - Our
   paper [Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution](https://aclanthology.org/2026.findings-acl.829/)
   has been accepted to Findings of ACL 2026.
@@ -180,7 +180,7 @@ another row in this table.
 | Cookbook                                      | Capability                                                                                                    |
 |-----------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [Daily Paper](cookbook/daily_paper/README.md) | Discover and rank papers, analyze PDFs with an agent, and generate file-native notes and a five-minute brief. |
-| [Auto Fin](cookbook/auto-fin/README.md)       | Match CLS events to liquid ETFs, study historical reactions, and generate file-native research reports.       |
+| [Auto Fin](cookbook/auto-fin/README.md)       | Fetch topic-related CLS news, search ReMe history, and generate wikilink-backed Markdown reports.             |
 
 ## 📁 Memory System
 

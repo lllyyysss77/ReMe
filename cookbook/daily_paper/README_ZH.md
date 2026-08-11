@@ -22,9 +22,9 @@ reme start config=daily_cookbook job=daily_paper
 - endpoint：无内置 `LLM_BASE_URL`；请设置服务商要求的 OpenAI 兼容 endpoint
 - 环境变量：`LLM_API_KEY`、`LLM_MODEL_NAME`、`LLM_BASE_URL`
 
-Auto Fin 和 Daily Paper 共用这一个 `default` LLM，以及唯一的无工具 `default` AgentScope wrapper。
-只有交互式 `dingtalk_wait` Step 会在调用时覆盖默认值，启用 AgentScope `bash` 和明确的 ReMe Job allowlist；Daily
-Paper 的模型调用仍然无工具。
+Auto Fin 和 Daily Paper 共用这一个 `default` LLM 和 `default` AgentScope wrapper。Daily Paper 的 Select 和 Analyze
+调用不带工具；Daily Paper Digest 与 Auto Fin Merge 使用只读的 ReMe Job 工具 `memory_search` 和 `read`。交互式
+`dingtalk_wait` Step 则会在调用时单独覆盖 wrapper，启用 AgentScope `bash` 和明确的 ReMe Job allowlist。
 
 默认 workspace 是启动目录下的 `reme_workspace/`，可通过 `DAILY_PAPER_WORKSPACE_DIR` 覆盖。
 
@@ -91,10 +91,12 @@ score = 1 / (rrf_k + monthly_rank)
 
 ### 5. Digest
 
-`daily_paper_digest_step` 直接使用内存中的三篇解读生成中文简报，不会重新读取或搜索其他资料。输出必须包含 `title`、`desc` 和 `body`。代码会：
+`daily_paper_digest_step` 以内存中的三篇解读作为本期事实来源生成中文简报，同时搜索并按需读取较早的 daily
+文章来识别相关报道；历史文章只能用于建立上下文 wikilink，不能用于补充本期论文事实。输出必须包含 `title`、`desc` 和 `body`。代码会：
 
 - 去掉模型可能生成的 YAML frontmatter；
 - 规范化中文标题并用作文件名；
+- 只保留指向真实存在、日期早于运行日期的 `daily/` Markdown 文件的模型生成 wikilink；
 - 确定性追加三篇源笔记的 wikilink；
 - 写入 `daily/<date>/<中文简报标题>.md`；
 - 重建 `daily/<date>.md` 当日索引。
@@ -153,7 +155,7 @@ reme_workspace/
 | `hf_max_retries` | `3` | Hugging Face 最大尝试次数 |
 | `pdf_timeout` | `600` 秒 | arXiv PDF 下载超时 |
 | `max_pdf_bytes` | `52428800` | PDF 上限，50 MiB |
-| `max_pdf_pages` | `20` | 最多提取页数 |
+| `max_pdf_pages` | `35` | 最多提取页数 |
 | `max_pdf_chars` | `300000` | 最多送入 Agent 的 PDF 字符数 |
 
 ## 镜像站

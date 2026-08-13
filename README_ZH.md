@@ -53,10 +53,8 @@ Code 等 Agent 协作，在持续整理知识的同时，始终把文件控制�
 
 ## 📰 新闻
 
-- [2026.08] - 发布 [ReMe 博客](docs/zh/reme-blog.md)，系统介绍本地优先的记忆架构、自进化工作流、混合检索、
+- [2026.08] - 发布 [ReMe 博客](https://agentscope-ai.github.io/ReMe/?doc=zh-reme-blog)，系统介绍本地优先的记忆架构、自进化工作流、混合检索、
   主动发现与评测结果。
-- [2026.08] - 新增 [ReMe Studio](https://reme.agentscope.io/?doc=studio-zh)：用于浏览、编辑和搜索记忆文件，与只读 ReMe Agent
-  对话，查看 digest wikilink 图，并管理本地服务。
 - [2026.08] - 基于 ReMe 的智能体工具使用
   [经验驱动增强方法](https://reme.agentscope.io/?doc=toolmemory-zh)已发布，见
   [arXiv:2608.03403](https://arxiv.org/abs/2608.03403)。
@@ -84,8 +82,14 @@ pip install "reme-ai[core]"
 ```bash
 git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe
-pip install -e ".[core]"
+pip install -e packages/reme_ai_studio -e ".[core]"
+cd website
+npm ci
+npm run build:static
+cd ..
 ```
+
+静态构建要求 Node.js 22.13 或更高版本，并让源码安装可以直接使用 Studio。
 
 ### 环境变量
 
@@ -125,13 +129,6 @@ reme start service.port=8181
 # reme start workspace_dir=/tmp/reme-demo service.port=8181
 ```
 
-启动后可以检查服务状态；如果使用了自定义端口，请将下面 URL 中的 `2333` 替换为对应端口。
-
-如果安装包中包含 Web 构建产物，HTTP 服务还会在 <http://127.0.0.1:2333/> 提供 **ReMe Studio**，用于浏览、编辑和搜索
-workspace，与只读 workspace agent 对话，以及查看 digest wikilink 图。可以设置
-`service.web_enabled=false` 关闭，或通过 `service.web_static_dir` / `REME_WEB_STATIC_DIR` 指定自定义静态目录。找不到 Web
-构建产物时，Job API 仍可正常使用。
-
 ```bash
 reme version
 reme health_check
@@ -139,31 +136,11 @@ reme help
 curl -s http://127.0.0.1:2333/version -H 'Content-Type: application/json' -d '{}'
 ```
 
-### 使用 ReMe Studio
+### ReMe Studio（可选）
 
-启动默认 HTTP 服务后，在浏览器打开 <http://127.0.0.1:2333/>。Studio 提供：
-
-- **文件、日记和知识库视图**：浏览整个 workspace，或聚焦 `daily/` 和 `digest/`。
-- **Markdown 多标签页**：支持预览、分栏编辑、基于修改时间的冲突检查、保存和本地下载。
-- **记忆图谱**：浏览已索引的 `personal`、`procedure` 和 `wiki` 节点，并打开对应 Markdown 源文件。
-- **只读 Agent 对话**：流式查看工具调用和模型用量；可将 workspace 文件拖入输入框作为引用。
-- **设置与服务管理**：查看服务/组件状态、脱敏后的生效配置和版本，并安全重建派生索引。
-- 支持中英文切换，以及浅色、深色和跟随系统外观。
-
-如需开发前端，在两个终端中分别启动 ReMe 和 Studio：
-
-```bash
-# 终端 1：仓库根目录
-reme start
-
-# 终端 2
-cd website
-npm install
-npm run dev
-```
-
-然后打开 <http://localhost:3000>。开发服务默认连接 `http://127.0.0.1:2333`；如需连接其他 ReMe HTTP
-服务，请设置 `NEXT_PUBLIC_REME_API_URL`。静态构建和前端配置说明见 [ReMe Studio 指南](https://reme.agentscope.io/?doc=studio-zh)。
+上面的 `core` 安装已包含 Studio。启动 ReMe 后，打开 <http://127.0.0.1:2333/> 即可浏览、编辑和搜索 workspace。
+如需为基础安装单独添加 Studio，可使用 `pip install "reme-ai[web]"`。源码构建、配置和开发说明见
+[ReMe Studio 指南](https://reme.agentscope.io/?doc=studio-zh)。
 
 ### 5 分钟记忆 Demo
 
@@ -205,7 +182,7 @@ ReMe 会把 Agent 记忆保存为可读的 Markdown。
 
 | 文档 | 主要内容 |
 |------|----------|
-| [快速开始](docs/zh/quick_start.md) | 安装 ReMe、启动服务、使用 Studio，并执行首次文件和记忆操作。 |
+| [快速开始](docs/zh/quick_start.md) | 安装 ReMe、启动服务，并执行首次文件和记忆操作。 |
 | [Memory as File](docs/zh/memory_as_file.md) | 理解 workspace 分层、frontmatter、wikilink、chunk 和文件事实来源模型。 |
 | [Auto Memory](docs/zh/auto_memory.md) | 保留过滤后的对话来源记录，并提炼可复用的 daily 记忆卡片。 |
 | [Auto Resource](docs/zh/auto_resource.md) | 导入支持的文本资料，转换为可追溯来源的 daily 卡片。 |
@@ -214,8 +191,7 @@ ReMe 会把 Agent 记忆保存为可读的 Markdown。
 | [Proactive](docs/zh/proactive.md) | 安全读取兴趣主题，并将其接入宿主 Agent 的决策流程。 |
 | [Agent 接入场景](docs/zh/reme_scene.md) | 在 CLI/SKILL.md、HTTP、MCP 和嵌入式 Python 集成之间选择。 |
 | [框架说明](docs/zh/framework.md) | 理解 Application、Job、Step、Component、service、配置和生命周期边界。 |
-| [ReMe Studio](https://reme.agentscope.io/?doc=studio-zh) | 使用、配置、开发、测试和构建 Web 前端。 |
-| [ReMe 博客](docs/zh/reme-blog.md) | 了解完整产品故事、设计动机、使用示例和评测摘要。 |
+| [ReMe 博客](https://agentscope-ai.github.io/ReMe/?doc=zh-reme-blog) | 了解完整产品故事、设计动机、使用示例和评测摘要。 |
 
 ## 🧑‍🍳 Cookbooks
 
@@ -231,8 +207,8 @@ cookbook 会继续在表格中按行追加。
 
 > Memory as File, File as Memory.
 
-ReMe 将 **记忆视为文件**，让过滤后的对话来源记录和外部资料从 `session/`、`resource/` 渐进加工到 `daily/`，再沉淀为 `digest/`
-中可长期复用的知识节点。默认 workspace 是当前目录下的 `.reme/`；可通过 `workspace_dir=...` 选择其他由用户控制的位置。
+ReMe 将 **记忆视为文件**，让过滤后的对话来源记录和外部资料从 `session/`、`resource/` 渐进加工到 `daily/`，再沉淀为
+`digest/`。默认 workspace 是当前目录下的 `.reme/`；可通过 `workspace_dir=...` 选择其他由用户控制的位置。
 
 ### 目录结构
 
@@ -272,13 +248,7 @@ ReMe 将 **记忆视为文件**，让过滤后的对话来源记录和外部资�
 
 ## 🧭 记忆设计理念
 
-> 捕获过滤后的对话来源记录和资料，将其整理为长期偏好、可复用经验和有价值的知识，并让结果始终能被用户和 Agent 直接编辑。
-
-### 自动记忆流程
-
-ReMe 遵循 capture → index → consolidate → recall 的循环。对话和资料先变成 daily 记忆卡片；后台任务保持文件可检索；
-`auto_dream` 将稳定知识沉淀到 `digest/`；Agent 再通过搜索、wikilink 或 proactive topics 召回记忆。文件是持久化的事实来源，
-`metadata/` 中的索引、图谱、catalog 和缓存都可以由它们重建。
+ReMe 遵循 capture → index → consolidate → recall 的循环。workspace 文件是持久化的事实来源，`metadata/` 中的内容均可重建。
 
 | 能力                                        | 入口                                      | 作用                                                                                         | 输出                                                         |
 |---------------------------------------------|-------------------------------------------|----------------------------------------------------------------------------------------------|--------------------------------------------------------------|
@@ -307,8 +277,7 @@ ReMe 遵循 capture → index → consolidate → recall 的循环。对话和�
   </tr>
 </table>
 
-搜索会先返回最相关的 chunks、文件路径和行号范围，再以元数据形式列出数量受限的入链与出链邻居。Agent 只需在判断确实相关后再读取原文或继续遍历图谱。
-启用 embedding 时，BM25 和向量排名通过 RRF 融合；默认未启用 embedding 时，则使用 BM25 + wikilink 扩展。
+搜索返回带行号范围的相关 chunks 和数量受限的 wikilink 邻居；可选向量结果通过 RRF 与 BM25 融合。
 
 > [!IMPORTANT]
 > `proactive` 只读取并暴露 Auto Dream 生成的兴趣主题，不会自行联网、发送通知或改写知识库；是否以及如何使用主题，由宿主 Agent
@@ -330,7 +299,7 @@ ReMe 通过 Agent 多轮搜索与读取的方式，评测多会话和超长上�
 ## 🤝 Agent-friendly Integration
 
 ReMe 既可以作为本地记忆服务，通过 CLI、HTTP API 或 MCP server 接入，也可以通过 Python API 嵌入宿主进程。不同 Agent 可以选择适合自身
-runtime 的路径，并按需共享同一个本地 memory workspace。默认 HTTP 服务还可以在同一地址提供 ReMe Studio。
+runtime 的路径。
 
 | Agent                                         | 推荐接入方式                                                                                    | 接入后能力                                                                   |
 |-----------------------------------------------|-------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
@@ -369,26 +338,20 @@ runtime 的路径，并按需共享同一个本地 memory workspace。默认 HTT
 
 ## 🛠️ ReMe Operations
 
-ReMe 通过 CLI 暴露的统一 job interface 操作 workspace。Agent 通常只需要使用检索、读取、写入、编辑和自动记忆相关命令；更底层的索引、
-frontmatter 和文件操作接口主要用于维护、调试或高级集成。完整 job 列表可以运行 `reme help` 查看。
+运行 `reme help` 可查看完整 job 列表。常用 workspace 与维护命令如下：
 
 | 命令                                      | 作用                                                          |
 |-------------------------------------------|---------------------------------------------------------------|
-| `reme start`                              | 启动本地 ReMe 服务。                                          |
-| `reme version` / `reme health_check`      | 检查包版本和组件状态。                                        |
 | `reme status`                             | 查看有状态数据组件的内存估算及进程 RSS。                      |
 | [`reme search`](docs/zh/memory_search.md) | 默认使用 BM25 和 wikilink 检索，启用后增加向量检索。          |
 | `reme read` / `reme write` / `reme edit`  | 检查和维护 Markdown 记忆文件。                                |
 | `reme traverse` / `reme graph_snapshot`   | 浏览 wikilink 邻域或按类别组织的 digest 图。                  |
 | `reme chat`                               | 与可感知 workspace 的只读 Agent 进行流式对话；需要 LLM 凭证。 |
-| `reme auto_memory`                        | 将对话 messages 转为 daily 记忆卡片；需要 LLM 凭证。          |
-| `reme auto_resource`                      | 将 `resource/` 下的文件解读为 daily 资料卡片；需要 LLM 凭证。 |
-| `reme auto_dream` / `reme proactive`      | 将 daily 记忆整理为长期 digest，并暴露值得关注的主题。        |
 | `reme reindex`                            | 基于已有文件重建检索和 wikilink 索引。                        |
 
 ## 🤝 社区与支持
 
-- **问题反馈与需求**：请先查看 [Open Issues](https://github.com/agentscope-ai/ReMe/issues)；如无相关讨论，可新建 Issue
+- **问题反馈、需求与帮助**：请先查看 [Open Issues](https://github.com/agentscope-ai/ReMe/issues)；如无相关讨论，可新建 Issue
   说明背景、目标行为和影响范围。
 - **代码贡献**：改动前建议阅读 [贡献指南](https://docs.agentscope.io/reme/latest/zh/contribution)。架构与扩展方式以源码、schema
   和测试为准。
@@ -397,8 +360,7 @@ frontmatter 和文件操作接口主要用于维护、调试或高级集成。�
   `docs(zh): update quick start`。
 - **提交前检查**：提交 PR 前请尽量运行 `pre-commit run --all-files` 和 `pytest`；如有依赖 LLM、embedding 或外部服务的测试无法运行，请在
   PR 中说明。
-- **获取帮助**：如需反馈 Bug 或功能请求，请使用 [GitHub Issues](https://github.com/agentscope-ai/ReMe/issues)；项目文档见
-  [https://reme.agentscope.io](https://reme.agentscope.io)。
+- **项目文档**：访问 [reme.agentscope.io](https://reme.agentscope.io)。
 
 ### 贡献者
 

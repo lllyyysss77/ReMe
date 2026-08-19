@@ -17,7 +17,7 @@ from reme.components.runtime_context import RuntimeContext
 from reme.schema import DreamState, FileNode
 from reme.steps.evolve.dream.extract import DreamExtractStep
 from reme.steps.evolve.dream.finish import DreamFinishStep
-from reme.steps.evolve.dream.integrate import DreamIntegrateStep
+from reme.steps.evolve.dream.integrate import DreamIntegrateStep, _snapshot_digest
 from reme.steps.evolve.dream.proactive import ProactiveStep
 from reme.steps.evolve.dream.topics import DreamTopicsStep
 from reme.steps.evolve.dream.utils import load_yaml_topics, parse_structured_reply, recent_dates, scan_day_files
@@ -321,12 +321,17 @@ def test_integrate_retries_one_invalid_receipt(tmp_path):
         )
         step = DreamIntegrateStep(agent_wrapper=agent)
 
-        await step._integrate_one(state, unit, 1, tmp_path, "digest")  # pylint: disable=protected-access
+        with patch(
+            "reme.steps.evolve.dream.integrate._snapshot_digest",
+            wraps=_snapshot_digest,
+        ) as snapshot:
+            await step._integrate_one(state, unit, 1, tmp_path, "digest")  # pylint: disable=protected-access
 
         assert target.is_file()
         assert state.integrate_results[0]["target_path"] == "digest/wiki/unit.md"
         assert state.skipped_units == []
         assert agent.calls == 2
+        assert snapshot.call_count == 3
 
     asyncio.run(run())
 
@@ -353,6 +358,7 @@ def test_integrate_invalid_receipt_recovers_one_changed_digest_file(tmp_path):
         assert state.integrate_results[0]["action"] == "CREATE"
         assert state.integrate_results[0]["target_path"] == "digest/wiki/unit.md"
         assert state.nodes_created == ["digest/wiki/unit.md"]
+        assert state.modified_paths == ["digest/wiki/unit.md"]
         assert len(state.warnings) == 1
 
     asyncio.run(run())
@@ -379,6 +385,7 @@ def test_integrate_recovers_an_update_to_another_bucket(tmp_path):
         assert state.integrate_results[0]["action"] == "UPDATED"
         assert state.integrate_results[0]["target_path"] == "digest/procedure/unit.md"
         assert state.nodes_updated == ["digest/procedure/unit.md"]
+        assert state.modified_paths == ["digest/procedure/unit.md"]
         assert step.agent_wrapper.calls == 1
 
     asyncio.run(run())
@@ -402,6 +409,7 @@ def test_integrate_does_not_recover_a_create_in_another_bucket(tmp_path):
         assert state.integrate_results == []
         assert len(state.skipped_units) == 1
         assert state.nodes_created == []
+        assert state.modified_paths == ["digest/procedure/unit.md"]
 
     asyncio.run(run())
 
@@ -423,11 +431,17 @@ def test_integrate_accepts_cross_bucket_update_receipt(tmp_path):
         )
         step = DreamIntegrateStep(agent_wrapper=agent)
 
-        await step._integrate_one(state, unit, 1, tmp_path, "digest")  # pylint: disable=protected-access
+        with patch(
+            "reme.steps.evolve.dream.integrate._snapshot_digest",
+            wraps=_snapshot_digest,
+        ) as snapshot:
+            await step._integrate_one(state, unit, 1, tmp_path, "digest")  # pylint: disable=protected-access
 
         assert state.skipped_units == []
         assert state.integrate_results[0]["action"] == "REFINE"
         assert state.nodes_updated == ["digest/procedure/unit.md"]
+        assert state.modified_paths == []
+        assert snapshot.call_count == 2
 
     asyncio.run(run())
 
@@ -497,7 +511,57 @@ def test_topics_step_writes_only_target_date_interests():
             assert target.is_file()
             assert old_interests.read_text(encoding="utf-8") == "date: 2026-05-26\ntopics: []\n"
             assert dream["interests_paths"] == ["daily/2026-05-28/interests.yaml"]
+            assert dream["modified_paths"] == ["daily/2026-05-28/interests.yaml"]
             assert yaml.safe_load(target.read_text(encoding="utf-8"))["date"] == "2026-05-28"
+
+    asyncio.run(run())
+
+
+def test_topics_same_content_is_not_modified(tmp_path):
+    """Rewriting deterministic interests content does not count as a user-visible change."""
+
+    async def run():
+        topic = {"title": "Topic", "reason": "Reason", "paths": ["daily/source.md"]}
+        step = DreamTopicsStep()
+
+        with patch("reme.steps.evolve.dream.topics.refresh_day_index", return_value={}):
+            first = await step(
+                RuntimeContext(
+                    dream=DreamState(
+                        date="2026-05-28",
+                        workspace=str(tmp_path),
+                        daily_dir="daily",
+                        topics=[topic],
+                    ).model_dump(),
+                    file_store=_FileStore(tmp_path),
+                ),
+            )
+            second = await step(
+                RuntimeContext(
+                    dream=DreamState(
+                        date="2026-05-28",
+                        workspace=str(tmp_path),
+                        daily_dir="daily",
+                        topics=[topic],
+                    ).model_dump(),
+                    file_store=_FileStore(tmp_path),
+                ),
+            )
+            third = await step(
+                RuntimeContext(
+                    dream=DreamState(
+                        date="2026-05-28",
+                        workspace=str(tmp_path),
+                        daily_dir="daily",
+                        topics=[topic],
+                    ).model_dump(),
+                    file_store=_FileStore(tmp_path),
+                ),
+            )
+
+        assert first.metadata["dream"]["modified_paths"] == ["daily/2026-05-28/interests.yaml"]
+        assert second.metadata["dream"]["modified_paths"] == ["daily/2026-05-28/interests.yaml"]
+        assert third.metadata["dream"]["modified_paths"] == []
 
     asyncio.run(run())
 
@@ -700,6 +764,7 @@ def test_finish_does_not_checkpoint_failed_changed_paths():
                 changed_paths=[ok.relative_to(workspace).as_posix(), failed.relative_to(workspace).as_posix()],
                 failed_paths=[failed.relative_to(workspace).as_posix()],
                 interests_paths=[interests.relative_to(workspace).as_posix()],
+                modified_paths=["digest/procedure/example.md"],
                 integrate_results=[
                     {
                         "action": "CREATE",
@@ -723,6 +788,7 @@ def test_finish_does_not_checkpoint_failed_changed_paths():
             assert interests.relative_to(workspace).as_posix() in upserted
             assert day_index.relative_to(workspace).as_posix() in upserted
             assert catalog.dumps == 1
+            assert resp.metadata["modified"] is True
 
     asyncio.run(run())
 
@@ -749,6 +815,7 @@ def test_finish_does_not_readd_a_failed_day_index(tmp_path):
         assert response.success is False
         assert not catalog.upserts
         assert response.metadata["dream"]["checkpoint_paths"] == []
+        assert response.metadata["modified"] is False
 
     asyncio.run(run())
 

@@ -4,11 +4,12 @@ import asyncio
 import sys
 
 from .application import Application
-from .components import R
+from .components import create_application_registry
 from .components.service.cli_service import prepare_start_config, should_precheck_start
 from .config import parse_args, resolve_app_config
 from .enumeration import ComponentEnum
-from .utils import cli_find_reme, load_env, precheck_start, running_service_config
+from .plugin import PluginManager
+from .utils import cli_find_reme, load_env, precheck_start, running_app_config
 
 _CLIENT_KWARGS = {"host", "port", "timeout", "transport", "command", "args", "show_metadata"}
 
@@ -36,10 +37,14 @@ async def call_server(action: str, **kwargs):
     if isinstance(kwargs.get("service"), dict):
         resolve_kwargs["service"] = kwargs.pop("service")
 
-    # Prefer the running server's real config; fall back to the local config file.
-    service = running_service_config()
-    if service is None:
-        service = resolve_app_config(log_config=False, **resolve_kwargs).get("service")
+    # Prefer the running server's complete config so its enabled client plugins
+    # are available even when the caller does not repeat config=<name>.
+    app_config = running_app_config()
+    if app_config is None:
+        app_config = resolve_app_config(log_config=False, **resolve_kwargs)
+    plugin_manager = PluginManager.discover(app_config.get("plugins") or ())
+    app_config = plugin_manager.merge_config(app_config)
+    service = app_config.get("service")
     service = service if isinstance(service, dict) else {}
 
     backend: str = kwargs.pop("backend", None) or service.get("backend", "http")
@@ -50,7 +55,9 @@ async def call_server(action: str, **kwargs):
     client_kwargs = {k: seed[k] for k in _CLIENT_KWARGS if k in seed}
     client_kwargs.update({key: kwargs.pop(key) for key in list(kwargs) if key in _CLIENT_KWARGS})
 
-    client_cls = R.get(ComponentEnum.CLIENT, backend)
+    registry = create_application_registry()
+    plugin_manager.register(registry)
+    client_cls = registry.get(ComponentEnum.CLIENT, backend)
     if client_cls is None:
         raise ValueError(f"Unknown client backend: {backend!r}")
     async with client_cls(**client_kwargs) as client:

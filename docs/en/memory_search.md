@@ -117,6 +117,14 @@ Out of the box, search therefore uses primarily BM25 plus link expansion. After 
 `SearchStep` runs vector and keyword recall together. Additionally, switching the `file_store` `backend` from `local` to
 `faiss` upgrades vector retrieval from a linear scan to a FAISS HNSW index, offering faster recall at scale.
 
+The embedding store accepts `health_check_timeout` for its startup probe. A temporary failure skips the current vector
+backfill while keeping BM25 available; a later successful provider request resumes the missing-vector backfill
+automatically.
+
+Embedded integrations that have already verified a provider can call `resume_embedding(verified=True)`. When changing
+the embedding vector space, pass `rebuild=True`; persisted vectors are invalidated before a serial background rebuild,
+and vector search remains unavailable until the rebuilt vectors are safely persisted.
+
 ## How to Search
 
 The `search` Job is also configured in `default.yaml`:

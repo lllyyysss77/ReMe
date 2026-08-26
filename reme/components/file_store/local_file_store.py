@@ -100,7 +100,15 @@ class LocalFileStore(BaseFileStore):
     async def _close(self) -> None:
         self._closing = True
         await self._cancel_embedding_backfill()
-        await self.dump()
+        # Dependencies are closed separately by Application (reverse
+        # topological order) or BaseComponent (owned standalone dependencies).
+        # Persist only this store's local state here so each component writes
+        # exactly once during shutdown. Preserve the historical dump() hook for
+        # third-party subclasses that override it to write additional state.
+        if type(self).dump is LocalFileStore.dump:
+            await self._dump_owned_state()
+        else:
+            await self.dump()
         self.file_chunks.clear()
         await super()._close()
 
@@ -529,9 +537,8 @@ class LocalFileStore(BaseFileStore):
         elapsed = time.monotonic() - started_at
         self.logger.info(f"{self.name}: keyword index rebuild complete: total={total}, elapsed={elapsed:.2f}s")
 
-    async def dump(self) -> None:
-        """Atomically rewrite the JSONL, then cascade dump into keyword_index and file_graph."""
-        assert self.file_graph is not None
+    async def _dump_owned_state(self) -> None:
+        """Persist state owned by this store, excluding dependency snapshots."""
         try:
             write_jsonl_zst(
                 self.chunks_path,
@@ -541,6 +548,11 @@ class LocalFileStore(BaseFileStore):
             self.logger.info(f"Saved {len(self.file_chunks)} chunks to {self.chunks_path}")
         except Exception as e:
             self.logger.exception(f"Failed to write {self.chunks_path}: {e}")
+
+    async def dump(self) -> None:
+        """Persist a complete store/index/graph consistency checkpoint."""
+        assert self.file_graph is not None
+        await self._dump_owned_state()
         if self.keyword_index:
             await self.keyword_index.dump()
         await self.file_graph.dump()

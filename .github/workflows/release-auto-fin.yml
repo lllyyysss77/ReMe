@@ -109,15 +109,27 @@ jobs:
           "${RUNNER_TEMP}/reme-auto-fin-smoke/bin/python" - <<'PY'
           from importlib.metadata import distribution
 
+          from reme.plugin_manifest import load_package_manifest
+
           package = distribution("reme-auto-fin")
           plugins = {entry.name: entry for entry in package.entry_points if entry.group == "reme.plugins"}
-          configs = {entry.name: entry for entry in package.entry_points if entry.group == "reme.configs"}
-          assert plugins["auto-fin"].load().name == "auto-fin"
-          assert configs["auto-fin"].load().is_file()
+          assert plugins["auto-fin"].value == "reme_auto_fin"
+          manifest = load_package_manifest("reme_auto_fin", plugin_name="auto-fin")
+          assert set(manifest.backends) == {
+              "auto_fin_data_step",
+              "auto_fin_topic_step",
+              "auto_fin_merge_step",
+          }
+          assert set(manifest.application_defaults["jobs"]) == {
+              "auto_fin",
+              "auto_fin_0930_cron",
+              "auto_fin_1130_cron",
+              "auto_fin_1800_cron",
+          }
           PY
 
       - name: Upload distributions
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: reme-auto-fin-${{ inputs.version }}
           path: dist/auto-fin/
@@ -133,7 +145,7 @@ jobs:
 
     steps:
       - name: Download distributions
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: reme-auto-fin-${{ inputs.version }}
           path: dist/auto-fin

@@ -1,12 +1,12 @@
 # ReMe Studio
 
-English | [简体中文](./README_ZH.md)
+English | [简体中文](https://github.com/agentscope-ai/ReMe/blob/main/reme_studio/README_ZH.md)
 
 ReMe Studio is the local web workspace for ReMe. It lets you browse and edit user-owned workspace files, explore memory
 links, and chat with the ReMe Agent without moving durable memory into a separate application database. Search indexes,
 graphs, and other derived metadata remain rebuildable from the source files.
 
-![ReMe Studio workspace](./public/og.jpg)
+![ReMe Studio workspace](https://raw.githubusercontent.com/agentscope-ai/ReMe/main/reme_studio/public/og.jpg)
 
 ## Installation
 
@@ -18,6 +18,14 @@ pip install "reme-ai[core]"
 
 For Studio without the other optional integrations, use `pip install "reme-ai[web]"`. The base `reme-ai` package is
 headless and does not include the frontend assets.
+
+The same prebuilt static workspace is available for Node.js applications:
+
+```bash
+npm install @agentscope-ai/reme_studio
+```
+
+Its static entry point is installed at `@agentscope-ai/reme_studio/dist-static/index.html`.
 
 ## Features
 
@@ -39,7 +47,7 @@ headless and does not include the frontend assets.
 - A running ReMe HTTP service. Agent chat additionally requires a working Agent and model configuration.
 - Node.js 22.13 or newer is required only when developing or building Studio from source.
 
-See the [repository README](../README.md) for ReMe installation and backend configuration.
+See the [repository README](https://github.com/agentscope-ai/ReMe#readme) for ReMe installation and backend configuration.
 
 ## Development
 
@@ -50,7 +58,7 @@ Start ReMe from the repository root, then run the frontend in another terminal:
 reme start
 
 # Terminal 2
-cd website
+cd reme_studio
 npm install
 npm run dev
 ```
@@ -67,7 +75,7 @@ NEXT_PUBLIC_REME_API_URL=http://127.0.0.1:8000 npm run dev
 ReMe can serve Studio from the same FastAPI process as its HTTP API. Build the static variant and restart ReMe:
 
 ```bash
-cd website
+cd reme_studio
 npm ci
 npm run build:static
 cd ..
@@ -83,11 +91,21 @@ The regular `npm run build` command remains the vinext/Sites deployment build;
 
 ## Configuration
 
-The workspace hides dotfiles and dot-directories. It displays only Markdown and text files by default. Configure the
-allowed extensions as a comma-separated list in `.env.local`:
+Copy `.env.example` to `.env.local` when persistent local overrides are useful. The vinext/Sites build reads
+`NEXT_PUBLIC_*`; the FastAPI/static build reads the matching `VITE_*` names:
+
+| Setting                                 | Build        | Purpose                                                        |
+| --------------------------------------- | ------------ | -------------------------------------------------------------- |
+| `NEXT_PUBLIC_REME_API_URL`              | vinext/Sites | ReMe HTTP service URL; defaults to `http://127.0.0.1:2333`     |
+| `NEXT_PUBLIC_REME_WORKSPACE_EXTENSIONS` | vinext/Sites | Comma-separated file extensions visible in the workspace       |
+| `VITE_REME_API_URL`                     | static       | ReMe HTTP service URL; use `/` for same-origin FastAPI hosting |
+| `VITE_REME_WORKSPACE_EXTENSIONS`        | static       | Static-build counterpart of the workspace extension list       |
+
+The workspace hides dotfiles and dot-directories. It displays Markdown and text files by default. For example:
 
 ```bash
 NEXT_PUBLIC_REME_WORKSPACE_EXTENSIONS=md,txt,mdx
+VITE_REME_WORKSPACE_EXTENSIONS=md,txt,mdx
 ```
 
 The memory graph requires an index built by ReMe. Rebuilding the index from the Studio settings regenerates derived data

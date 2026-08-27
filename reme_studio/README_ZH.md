@@ -1,11 +1,11 @@
 # ReMe Studio
 
-[English](./README.md) | 简体中文
+[English](https://github.com/agentscope-ai/ReMe/blob/main/reme_studio/README.md) | 简体中文
 
 ReMe Studio 是 ReMe 的本地 Web 工作区。你可以在这里浏览和编辑自己拥有的工作区文件、探索记忆之间的联系，并与 ReMe Agent
 对话，而无需将持久记忆迁移到独立的应用数据库中。搜索索引、图谱和其他派生元数据均可根据源文件重建。
 
-![ReMe Studio 工作区](./public/og.jpg)
+![ReMe Studio 工作区](https://raw.githubusercontent.com/agentscope-ai/ReMe/main/reme_studio/public/og.jpg)
 
 ## 安装
 
@@ -17,6 +17,14 @@ pip install "reme-ai[core]"
 
 如果只需要 Studio，不需要其他可选集成，可以使用 `pip install "reme-ai[web]"`。基础 `reme-ai` 包以无界面模式分发，
 不包含前端资源。
+
+Node.js 应用也可以安装同一份预构建静态工作区：
+
+```bash
+npm install @agentscope-ai/reme_studio
+```
+
+静态入口安装在 `@agentscope-ai/reme_studio/dist-static/index.html`。
 
 ## 功能
 
@@ -35,7 +43,7 @@ pip install "reme-ai[core]"
 - 正在运行的 ReMe HTTP 服务。Agent 对话还需要可用的 Agent 和模型配置。
 - 只有从源码开发或构建 Studio 时才需要 Node.js 22.13 或更高版本。
 
-ReMe 的安装和后端配置请参阅[仓库中文 README](../README_ZH.md)。
+ReMe 的安装和后端配置请参阅[仓库中文 README](https://github.com/agentscope-ai/ReMe/blob/main/README_ZH.md)。
 
 ## 本地开发
 
@@ -46,7 +54,7 @@ ReMe 的安装和后端配置请参阅[仓库中文 README](../README_ZH.md)。
 reme start
 
 # 终端 2
-cd website
+cd reme_studio
 npm install
 npm run dev
 ```
@@ -62,7 +70,7 @@ NEXT_PUBLIC_REME_API_URL=http://127.0.0.1:8000 npm run dev
 ReMe 可以通过提供 HTTP API 的同一个 FastAPI 进程托管 Studio。构建静态版本并重启 ReMe：
 
 ```bash
-cd website
+cd reme_studio
 npm ci
 npm run build:static
 cd ..
@@ -77,10 +85,21 @@ reme start
 
 ## 配置
 
-工作区会隐藏点文件和点目录，并且默认只显示 Markdown 和文本文件。可以在 `.env.local` 中通过逗号分隔的列表配置允许显示的扩展名：
+如需持久保存本地覆盖，可以将 `.env.example` 复制为 `.env.local`。vinext/Sites 构建读取
+`NEXT_PUBLIC_*`，FastAPI/static 构建读取对应的 `VITE_*` 变量：
+
+| 配置项                                  | 构建类型     | 作用                                              |
+| --------------------------------------- | ------------ | ------------------------------------------------- |
+| `NEXT_PUBLIC_REME_API_URL`              | vinext/Sites | ReMe HTTP 服务地址，默认 `http://127.0.0.1:2333`  |
+| `NEXT_PUBLIC_REME_WORKSPACE_EXTENSIONS` | vinext/Sites | 工作区允许显示的扩展名，使用逗号分隔              |
+| `VITE_REME_API_URL`                     | static       | ReMe HTTP 服务地址；由 FastAPI 同源托管时使用 `/` |
+| `VITE_REME_WORKSPACE_EXTENSIONS`        | static       | static 构建使用的工作区扩展名列表                 |
+
+工作区会隐藏点文件和点目录，并且默认只显示 Markdown 和文本文件。例如：
 
 ```bash
 NEXT_PUBLIC_REME_WORKSPACE_EXTENSIONS=md,txt,mdx
+VITE_REME_WORKSPACE_EXTENSIONS=md,txt,mdx
 ```
 
 记忆图谱依赖 ReMe 构建的索引。在 Studio 设置中重建索引时，只会根据工作区文件重新生成派生数据，不会修改记忆源文件。

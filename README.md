@@ -1,5 +1,5 @@
 <p align="center">
- <img src="docs/figure/reme_logo.png" alt="ReMe Logo" width="50%">
+ <img src="https://raw.githubusercontent.com/agentscope-ai/ReMe/main/docs/figure/reme_logo.png" alt="ReMe Logo" width="50%">
 </p>
 
 <p align="center">
@@ -30,8 +30,8 @@
 ## ✨ Why ReMe?
 
 🧠 ReMe turns conversations and resources into readable, editable, searchable, and interconnected Markdown memory. Agents
-such as QwenPaw, OpenClaw, Hermes, and Claude Code can share the same workspace to retrieve, maintain, and evolve
-knowledge, while users retain control of the durable files.
+such as QwenPaw and DeepSeek Harness can share the same workspace to retrieve, maintain, and evolve knowledge, while
+users retain control of the durable files.
 
 - **Memory as File, File as Memory**: ReMe stores durable memory as ordinary Markdown with frontmatter and wikilinks.
   Users and agents can inspect, edit, move, sync, and back it up with familiar tools, while indexes and generated
@@ -49,8 +49,8 @@ knowledge, while users retain control of the durable files.
 
 ## 📰 Latest Updates
 
-- [2026.08] - Published [`@agentscope-ai/reme`](https://www.npmjs.com/package/@agentscope-ai/reme), providing a native
-  ReMe memory integration for DeepSeek Harness.
+- [2026.08] - Published [`@agentscope-ai/reme`](https://www.npmjs.com/package/@agentscope-ai/reme), providing native
+  ReMe memory integrations for DeepSeek Harness and OpenClaw plus a shared TypeScript HTTP client.
 - [2026.08] - Published the [ReMe blog](https://agentscope-ai.github.io/ReMe/?doc=en-reme-blog), an end-to-end introduction to its local-first memory
   architecture, self-evolving workflows, hybrid search, proactive discovery, and benchmark results.
 - [2026.08] - [Experience-driven enhancement method](https://reme.agentscope.io/?doc=toolmemory-en) of agent tool-use execution built
@@ -79,8 +79,8 @@ Install from source:
 ```bash
 git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe
-pip install -e packages/reme_ai_studio -e ".[core]"
-cd website
+pip install -e reme_studio -e ".[core]"
+cd reme_studio
 npm ci
 npm run build:static
 cd ..
@@ -181,8 +181,8 @@ lifecycle according to the capabilities of each runtime.
 
 | Agent                          | Recommended path                                                                                                                         | Available after integration                                                                             |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **DeepSeek Harness**           | Install [`@agentscope-ai/reme`](packages/typescript/README.md#deepseek-harness) with `dsh plugin --profile web add @agentscope-ai/reme`. | Long-term memory guidance, the `reme_search` tool, and automatic capture of completed main-agent turns. |
-| **OpenClaw**                   | Install [`@agentscope-ai/reme`](packages/typescript/README.md#openclaw) with `openclaw plugins install @agentscope-ai/reme`.             | Native memory tools, recall before user-triggered runs, and automatic turn capture.                     |
+| **DeepSeek Harness**           | Install [`@agentscope-ai/reme`](typescript/README.md#deepseek-harness) with `dsh plugin --profile web add @agentscope-ai/reme`. | Long-term memory guidance, the `reme_search` tool, and automatic capture of completed main-agent turns. |
+| **OpenClaw**                   | Install [`@agentscope-ai/reme`](typescript/README.md#openclaw) with `openclaw plugins install @agentscope-ai/reme`.             | Native memory tools, recall before user-triggered runs, and automatic turn capture.                     |
 | **QwenPaw**                    | Embed ReMe in-process through its Python API.                                                                                            | Reuse the host lifecycle and model config while keeping memory local and file-based.                    |
 | **Claude Code**                | Start the streamable HTTP MCP service and install [the ReMe plugin](integrations/claude_code/reme).                                      | MCP recall tools, the `reme-memory` skill, and a Stop hook that records sessions automatically.         |
 | **Hermes**                     | Start the HTTP service and install [the ReMe provider](integrations/hermes_agent).                                                       | Recall before model calls and asynchronous `auto_memory` after each completed turn.                     |
@@ -317,11 +317,12 @@ ReMe also achieved a **0.580 PROC score across five user personas** in the repos
 measures proactive handling of hidden intent, clarification, cross-session preferences and conventions, task
 dependencies, and underspecified requests.
 
-## 🧩 Extensions and Workflows
+## 🧩 Extensions and Plugins
 
 Plugins are optional Python distributions that contribute Component, Step, or Job backends and configuration. They are
 installed separately and enabled explicitly by configuration. Daily Paper and Auto Fin are independently packaged
-plugins; their source distributions live under [`plugins/`](plugins/README.md).
+plugins; see the source distributions and their documentation for [Daily Paper](plugins/daily_paper/README.md) and
+[Auto Fin](plugins/auto-fin/README.md).
 
 | Plugin                                                        | Capability                                                                                                    |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -343,8 +344,9 @@ These guides cover the main user workflows and the runtime contracts implemented
 | [Auto Dream](docs/en/auto_dream.md) and [Auto Link](docs/en/auto_link.md) | Consolidate daily notes into evolving digest nodes and readable wikilink relationships.             |
 | [Memory Search](docs/en/memory_search.md)                                 | Use BM25, optional vectors, RRF fusion, line-range recall, and progressive link expansion.          |
 | [Proactive](docs/en/proactive.md)                                         | Read interest topics safely and integrate them into a host agent's decision flow.                   |
-| [Agent Integration Scenarios](docs/en/reme_scene.md)                      | Choose among CLI/SKILL.md, HTTP, MCP, and embedded Python integration.                              |
+| [Application Scenarios](docs/en/reme_scene.md)                            | Follow concrete financial research, coding-memory, and personal knowledge-base examples.           |
 | [Framework](docs/en/framework.md)                                         | Understand Application, Job, Step, Component, service, configuration, and lifecycle boundaries.     |
+| [TypeScript integrations](typescript/README.md)                            | Configure the shared client and native DeepSeek Harness and OpenClaw adapters.                       |
 | [ReMe Blog](https://agentscope-ai.github.io/ReMe/?doc=en-reme-blog)       | Read the product story, design rationale, examples, and benchmark summary.                          |
 
 ## 🛠️ Common Commands
@@ -364,11 +366,11 @@ Run `reme help` for the full job list. Common workspace and maintenance commands
 
 - **Issues, requests, and help**: Check [Open Issues](https://github.com/agentscope-ai/ReMe/issues) first. If there is no
   related discussion, open one with the background, expected behavior, and impact scope.
-- **Code contributions**: Before making changes, read
-  the [contribution guide](https://docs.agentscope.io/reme/latest/en/contribution). Source, schemas, and tests are the
-  authoritative architecture and extension guide.
-- **Documentation contributions**: Submit user-facing documentation changes to the
-  [unified documentation repository](https://github.com/agentscope-ai/docs) under `reme/<version>/{en,zh}/`.
+- **Code contributions**: Before making changes, read the repository's
+  [contribution guide](docs/en/contributing.md). Source, schemas, and tests are the authoritative architecture and
+  extension guide.
+- **Documentation contributions**: Update the canonical files under `docs/en/`, `docs/zh/`, or the relevant package
+  directory in this repository. The documentation site is generated from these files.
 - **Commit convention**: Conventional Commits are recommended, for example `feat(search): add link expansion option` or
   `docs(zh): update quick start`.
 - **Pre-submit checks**: Before submitting a PR, try to run `pre-commit run --all-files` and `pytest`. If tests that

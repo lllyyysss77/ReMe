@@ -15,7 +15,7 @@ plugins: [auto-fin]             为一个 Application 启用已安装插件
 典型的插件使用流程分为三个阶段：
 
 1. 安装 ReMe 和插件 distribution。
-2. 按照 [ReMe 环境变量说明](../../README_ZH.md#环境变量)配置插件运行所需的环境变量。
+2. 按照 [ReMe 可选模型配置说明](../../README_ZH.md#可选模型配置)配置插件运行所需的环境变量。
 3. 启动 Application 时显式启用插件，例如 `reme start plugins='["auto-fin"]'`。
 
 ## 查看已安装插件
@@ -29,7 +29,7 @@ reme plugins list
 ```text
 PLUGIN    DISTRIBUTION   VERSION  FORMAT
 --------  -------------  -------  --------
-auto-fin  reme-auto-fin  0.1.0    manifest
+auto-fin  reme-auto-fin  X.Y.Z    manifest
 ```
 
 `manifest` 表示插件使用当前的 package-level `plugin.yaml` 契约；`legacy` 表示插件使用仍然兼容的 Python descriptor
@@ -77,7 +77,7 @@ reme plugins install reme-auto-fin
 安装指定版本或升级：
 
 ```bash
-reme plugins install 'reme-auto-fin==0.1.0'
+reme plugins install 'reme-auto-fin==X.Y.Z'
 reme plugins install reme-auto-fin --upgrade
 ```
 

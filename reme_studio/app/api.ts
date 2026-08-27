@@ -2,10 +2,12 @@ import type {
   AppConfig,
   FileStat,
   GraphSnapshot,
+  ReMeHealth,
   ReMeResponse,
   StreamChunk,
 } from "./types";
 import { decodeSseEvent } from "./chat-stream";
+import { healthFromResponse } from "./health-status";
 import { translate, useLanguageStore, type TranslationKey } from "./i18n";
 import {
   WORKSPACE_FILE_LIMIT,
@@ -65,6 +67,11 @@ export async function getReMeVersion(): Promise<string> {
 
 export async function getReMeStatus(): Promise<ReMeResponse<string>> {
   return callReMe<string>("status");
+}
+
+export async function getReMeHealth(): Promise<ReMeHealth | undefined> {
+  const response = await callReMe<string>("health_check");
+  return healthFromResponse(response);
 }
 
 export async function rebuildReMeIndex(): Promise<ReMeResponse<unknown>> {

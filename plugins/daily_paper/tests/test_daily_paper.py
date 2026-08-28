@@ -627,6 +627,27 @@ def test_daily_paper_cron_hf_mirror_defaults_enabled_with_environment_override(m
     assert _plugin_config()["jobs"]["daily_paper_cron"]["use_hf_mirror"] is False
 
 
+def test_digest_prompt_uses_configured_daily_directory(tmp_path: Path):
+    """Use the host application's daily directory in historical-link guidance."""
+    step = DailyPaperDigestStep(
+        app_context=ApplicationContext(
+            workspace_dir=str(tmp_path),
+            daily_dir="memory",
+        ),
+    )
+
+    prompt = step.prompt_format(
+        "digest_user",
+        documents="[]",
+        daily_dir=str(step.config_value("daily_dir")).strip("/"),
+    )
+
+    assert "`memory/`" in prompt
+    assert "搜索结果不必局限于 `memory/`" in prompt
+    assert "[[memory/2026-07-01/旧文章.md" in prompt
+    assert "[[daily/2026-07-01/" not in prompt
+
+
 def test_paper_pick_list_uses_an_object_root_for_tool_output():
     """AgentScope function arguments require an object-root JSON schema."""
     schema = PaperPickList.model_json_schema()
@@ -846,7 +867,7 @@ async def test_pipeline_filters_strict_yesterday_and_writes_outputs(
     await DailyPaperDigestStep(
         app_context=app_context,
         agent_wrapper=cc_wrapper,
-        job_tools=["memory_search", "read"],
+        job_tools=["search", "read"],
     )(context)
 
     assert _FakeHfClient.requested_daily == ["2026-07-20"]
@@ -886,7 +907,13 @@ async def test_pipeline_filters_strict_yesterday_and_writes_outputs(
     assert all(call["kwargs"] == {"output_schema": DailyPaperMarkdownOutput} for call in cc_wrapper.calls[1:-1])
     assert cc_wrapper.calls[-1]["kwargs"] == {
         "output_schema": DailyPaperMarkdownOutput,
-        "job_tools": ["memory_search", "read"],
+        "job_tools": ["search", "read"],
+        "injected_job_kwargs": {
+            "limit": 20,
+            "min_score": 0.0,
+            "start_date": None,
+            "end_date": "2026-07-20",
+        },
     }
     assert [call["kwargs"]["output_schema"] for call in cc_wrapper.calls] == [
         PaperPickList,
@@ -906,8 +933,10 @@ async def test_pipeline_filters_strict_yesterday_and_writes_outputs(
     assert "调用 Read" not in digest_prompt
     assert "daily/2026-07-21" not in digest_prompt
     assert "长期记忆" not in digest_prompt
-    assert "先调用 `memory_search` 检索以前的文章" in digest_prompt
-    assert "end_date=2026-07-20" in digest_prompt
+    assert "先调用 `search` 检索已有记忆" in digest_prompt
+    assert "搜索结果不必局限于 `daily/`" in digest_prompt
+    assert "end_date" not in digest_prompt
+    assert "limit=" not in digest_prompt
     assert "Wikilink" in digest_prompt
 
     rerun = RuntimeContext(date="2026-07-21")

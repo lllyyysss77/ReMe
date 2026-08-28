@@ -61,7 +61,7 @@ reme plugins list --json
 对照某个应用配置查看启用状态：
 
 ```bash
-reme plugins list --config daily_cookbook
+reme plugins list --config default
 ```
 
 可选的 `ENABLED` 列只反映该配置解析出的 `plugins` 列表。其他运行中进程使用的 CLI override 不是全局启用状态。
@@ -167,11 +167,7 @@ curl -s http://127.0.0.1:2333/auto_fin \
 
 当应用使用 MCP service 时，允许对外服务的插件 Job 会显示为 MCP tool。
 
-如果需要将插件叠加到其他应用配置，则显式选择该配置：
-
-```bash
-reme start config=daily_cookbook plugins='["auto-fin"]'
-```
+自定义应用配置需要提供插件的运行依赖，包括 `agent_wrapper.default`，以及 Auto Fin 使用的 `search` 和 `read` Jobs。
 
 ## 卸载插件
 

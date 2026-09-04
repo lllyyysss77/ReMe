@@ -28,16 +28,32 @@ test("generates every required bilingual guide", async () => {
   await access(path.join(generatedDir, "en/integrations/claude-code.md"));
   await access(path.join(generatedDir, "zh/integrations/hermes.md"));
   await access(path.join(generatedDir, "en/integrations/hermes.md"));
+  await access(path.join(generatedDir, "zh/integrations/dsh.md"));
+  await access(path.join(generatedDir, "en/integrations/dsh.md"));
+  await access(path.join(generatedDir, "zh/integrations/openclaw.md"));
+  await access(path.join(generatedDir, "en/integrations/openclaw.md"));
+  await access(path.join(generatedDir, "public/figures/dsh/reme-status-overview.png"));
 });
 
 test("maps mirrored pages back to their canonical repository sources", async () => {
   const sourceMap = JSON.parse(await readFile(path.join(generatedDir, ".source-map.json"), "utf8"));
   assert.equal(sourceMap["zh/integrations/typescript.md"], "typescript/README_ZH.md");
+  assert.equal(sourceMap["en/integrations/dsh.md"], "typescript/docs/dsh.md");
+  assert.equal(sourceMap["zh/integrations/openclaw.md"], "typescript/docs/openclaw.zh-CN.md");
   assert.equal(sourceMap["en/integrations/claude-code.md"], "integrations/claude_code/README.md");
   assert.equal(sourceMap["en/integrations/hermes.md"], "integrations/hermes_agent/README.md");
   assert.equal(sourceMap["en/workspace/studio.md"], "reme_studio/README.md");
   assert.equal(sourceMap["zh/plugins/lme.md"], "plugins/lme/README_ZH.md");
   assert.equal(sourceMap["en/reference/jobs.md"], "reme/config/default.yaml");
+});
+
+test("publishes portable and accurate DSH instructions", async () => {
+  const english = await readFile(path.join(generatedDir, "en/integrations/dsh.md"), "utf8");
+  const chinese = await readFile(path.join(generatedDir, "zh/integrations/dsh.md"), "utf8");
+  assert.doesNotMatch(english, /\/Users\//);
+  assert.doesNotMatch(chinese, /\/Users\//);
+  assert.match(english, /runtime counters refresh every 5 seconds/);
+  assert.match(chinese, /每 5 秒仅刷新 DSH 插件的运行时计数/);
 });
 
 test("generates the callable Job reference from default.yaml", async () => {
@@ -81,6 +97,8 @@ test("tracks every generated input in documentation CI and deployment", async ()
     "reme/config/default.yaml",
     "integrations/claude_code/README.md",
     "integrations/hermes_agent/README.md",
+    "typescript/docs/**",
+    "typescript/figures/**",
     "benchmark/toolmemory/gitcha.png",
   ];
   for (const workflow of ["ci-docs.yml", "deploy-docs.yml"]) {

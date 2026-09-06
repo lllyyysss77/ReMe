@@ -1,0 +1,404 @@
+# Instincts generated from https://github.com/lllyyysss77/ReMe
+# Generated: 2026-07-01T21:21:34.555Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: ReMe-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, fix, docs, chore
+
+## Evidence
+
+- 7 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat(README): Enhance documentation styling, content, and layout (#303), docs(framework): clarify context management boundary (#306)
+
+---
+id: ReMe-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Commit Length
+
+## Action
+
+Write moderate-length commit messages (~61 characters)
+
+## Evidence
+
+- Average commit message length: 61 chars
+- Based on 7 commits
+
+---
+id: ReMe-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: ReMe-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: ReMe-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: ReMe-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: ReMe-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: ReMe-workflow-update-documentation-and-figures
+trigger: "when doing update documentation and figures"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/lllyyysss77/ReMe
+---
+
+# ReMe Workflow Update Documentation And Figures
+
+## Action
+
+Follow the update-documentation-and-figures workflow:
+1. Edit README.md and README_ZH.md to update content, layout, and formatting.
+2. Modify or add SVG/GIF files under docs/figure/ to update diagrams or demo assets.
+3. Synchronize changes across both English and Chinese documentation.
+4. Adjust table/image dimensions and styling for consistency.
+5. Optionally remove outdated media assets from docs/figure/.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: README.md, README_ZH.md, docs/figure/*.svg
+
+---
+id: reme-instinct-file-naming
+trigger: "When creating or renaming a Python file"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct File Naming
+
+## Action
+
+Name the file using snake_case
+
+## Evidence
+
+- Pattern in files: reme/, tests/
+
+---
+id: reme-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in code: function definitions in reme/
+
+---
+id: reme-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in code: class definitions in reme/
+
+---
+id: reme-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in code: constants in reme/
+
+---
+id: reme-instinct-import-style
+trigger: "When importing modules within the package"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in code: import statements in reme/
+
+---
+id: reme-instinct-export-style
+trigger: "When exporting functions or classes"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in code: __all__ usage or explicit exports in modules
+
+---
+id: reme-instinct-test-location
+trigger: "When adding new tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Test Location
+
+## Action
+
+Place test files in the separate tests/ folder
+
+## Evidence
+
+- Pattern in folder structure: tests/
+
+---
+id: reme-instinct-test-pattern
+trigger: "When naming a test file"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Test Pattern
+
+## Action
+
+Use the pattern *.test.ts
+
+## Evidence
+
+- Pattern in testing: filePattern '*.test.ts'
+
+---
+id: reme-instinct-test-type
+trigger: "When writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Test Type
+
+## Action
+
+Write unit tests
+
+## Evidence
+
+- Pattern in testing: testTypes ['unit']
+
+---
+id: reme-instinct-commit-format
+trigger: "When making a commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Commit Format
+
+## Action
+
+Format the commit message using the conventional type(scope): description (#issue) style
+
+## Evidence
+
+- Seen in commit: feat(README): Enhance documentation styling, content, and layout (#303)
+- Seen in commit: fix(config): correct indentation in default.yaml (#308)
+
+---
+id: reme-instinct-commit-types
+trigger: "When choosing a commit type"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Commit Types
+
+## Action
+
+Use one of: feat, fix, docs, chore
+
+## Evidence
+
+- Pattern in commits: prefixes ['feat', 'fix', 'docs', 'chore']
+
+---
+id: reme-instinct-docs-workflow
+trigger: "When updating documentation or visual assets"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: lllyyysss77/ReMe
+---
+
+# Reme Instinct Docs Workflow
+
+## Action
+
+Edit README.md and README_ZH.md, update/add SVG/GIF/MP4 files in docs/figure/, synchronize changes across both languages, adjust styling, and remove outdated media as needed
+
+## Evidence
+
+- Workflow: update-documentation-and-figures
+- Commits: feat(README): Enhance documentation styling, content, and layout (#303)
+- Files: README.md, README_ZH.md, docs/figure/*.svg, docs/figure/*.gif, docs/figure/*.mp4
+

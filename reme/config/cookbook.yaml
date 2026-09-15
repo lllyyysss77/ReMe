@@ -72,6 +72,8 @@ components:
     default:
       backend: local
       as_embedding: default
+      max_retries: 3
+      quota_retry_delay: 60
 
   as_llm:
     default:
